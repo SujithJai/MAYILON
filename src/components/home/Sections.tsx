@@ -293,9 +293,14 @@ export function QuickCalculator({ products }: { products: CalcProduct[] }) {
                   />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[13.5px] font-medium text-white">{p.name}</p>
-                    <p className="text-[11px] uppercase tracking-[2px] text-white/35">
-                      {p.sku} · {p.packing}
-                    </p>
+                    <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                      <span className="font-semibold text-gold sm:hidden">
+                        {formatINR(Number(p.offerPrice))}
+                      </span>
+                      <span className="uppercase tracking-[1.5px] text-white/35">
+                        {p.sku} · {p.packing}
+                      </span>
+                    </div>
                   </div>
                   <p className="hidden text-sm font-semibold text-gold sm:block">
                     {formatINR(Number(p.offerPrice))}
