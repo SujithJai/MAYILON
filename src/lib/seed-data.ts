@@ -31,7 +31,7 @@ export const SEED_CATEGORIES: SeedCategory[] = [
     description: "Traditional single report crackers with sharp decibel report and reliable fuses.",
     accent: "#FF3131",
     icon: "volume",
-    imageUrl: IMAGE_POOL[0],
+    imageUrl: "/categories/single-sound.jpg",
   },
   {
     name: "Flower Pots",
@@ -41,7 +41,7 @@ export const SEED_CATEGORIES: SeedCategory[] = [
     description: "Classic high-rise golden and silver fountains with low smoke composition.",
     accent: "#D4AF37",
     icon: "sparkles",
-    imageUrl: IMAGE_POOL[1],
+    imageUrl: "/categories/flower-pots.jpg",
   },
   {
     name: "Premium Fountains",
@@ -51,7 +51,7 @@ export const SEED_CATEGORIES: SeedCategory[] = [
     description: "Vibrant shower cones, multi-step fountains and tri-color pyro fountain displays.",
     accent: "#FF8C00",
     icon: "flame",
-    imageUrl: IMAGE_POOL[2],
+    imageUrl: "/categories/fountains.jpg",
   },
   {
     name: "Chakkars & Spinners",
@@ -61,7 +61,7 @@ export const SEED_CATEGORIES: SeedCategory[] = [
     description: "High-rpm ground wheels and color changing spinners for kids and families.",
     accent: "#00D26A",
     icon: "disc",
-    imageUrl: IMAGE_POOL[3],
+    imageUrl: "/categories/ground-chakkar.jpg",
   },
   {
     name: "Bijili Crackers",
@@ -71,7 +71,7 @@ export const SEED_CATEGORIES: SeedCategory[] = [
     description: "Crisp crackling bijilis packed in 50 and 100 piece bags.",
     accent: "#FF3131",
     icon: "zap",
-    imageUrl: IMAGE_POOL[4],
+    imageUrl: "/categories/bijili-crackers.jpg",
   },
   {
     name: "Wala Crackers",
@@ -81,7 +81,7 @@ export const SEED_CATEGORIES: SeedCategory[] = [
     description: "Continuous garland crackers for grand celebrations and festival inaugurations.",
     accent: "#FF8C00",
     icon: "layers",
-    imageUrl: IMAGE_POOL[5],
+    imageUrl: "/categories/wala-crackers.jpg",
   },
   {
     name: "Bomb Novelties",
@@ -91,7 +91,7 @@ export const SEED_CATEGORIES: SeedCategory[] = [
     description: "High-decibel sound bombs with heavy casing and water-resistant fuse.",
     accent: "#FF3131",
     icon: "bomb",
-    imageUrl: IMAGE_POOL[6],
+    imageUrl: "/categories/bombs.jpg",
   },
   {
     name: "Paper Flash Blast",
@@ -101,7 +101,7 @@ export const SEED_CATEGORIES: SeedCategory[] = [
     description: "Colourful paper streamer explosions perfect for celebrations.",
     accent: "#0057FF",
     icon: "sparkles",
-    imageUrl: IMAGE_POOL[7],
+    imageUrl: "/categories/paper-flash.jpg",
   },
   {
     name: "Rockets",
@@ -111,7 +111,7 @@ export const SEED_CATEGORIES: SeedCategory[] = [
     description: "High-flying rockets with whistling sound and bright canopy bursts.",
     accent: "#FF8C00",
     icon: "rocket",
-    imageUrl: IMAGE_POOL[8],
+    imageUrl: "/categories/rockets.jpg",
   },
   {
     name: "Twinkling Star",
@@ -121,7 +121,7 @@ export const SEED_CATEGORIES: SeedCategory[] = [
     description: "Continuous twinkling stars and pink rope crackers.",
     accent: "#F5D982",
     icon: "star",
-    imageUrl: IMAGE_POOL[9],
+    imageUrl: "/categories/twinkling-star.jpg",
   },
   {
     name: "Classic Candles",
@@ -131,7 +131,7 @@ export const SEED_CATEGORIES: SeedCategory[] = [
     description: "Multi-color fountain pencils and crackling torches.",
     accent: "#00D26A",
     icon: "flame",
-    imageUrl: IMAGE_POOL[0],
+    imageUrl: "/categories/candles.jpg",
   },
   {
     name: "Hand Lighters",
@@ -141,7 +141,7 @@ export const SEED_CATEGORIES: SeedCategory[] = [
     description: "Long hand-held lighters with multi-color stars and crackling tips.",
     accent: "#D4AF37",
     icon: "wand",
-    imageUrl: IMAGE_POOL[1],
+    imageUrl: "/categories/lighters.jpg",
   },
   {
     name: "Peacock Fountain",
@@ -151,7 +151,7 @@ export const SEED_CATEGORIES: SeedCategory[] = [
     description: "Majestic fan-shaped peacock fountain sprays in vibrant hues.",
     accent: "#0057FF",
     icon: "feather",
-    imageUrl: IMAGE_POOL[2],
+    imageUrl: "/categories/peacock-fountain.jpg",
   },
   {
     name: "Special Novelties",
@@ -161,7 +161,7 @@ export const SEED_CATEGORIES: SeedCategory[] = [
     description: "Brand novelty pyrotechnics, caterpillar, shot fountains and special effects.",
     accent: "#FF3131",
     icon: "gift",
-    imageUrl: IMAGE_POOL[3],
+    imageUrl: "/categories/novelties.jpg",
   },
   {
     name: "Sky Display & Multi Shots",
@@ -171,7 +171,7 @@ export const SEED_CATEGORIES: SeedCategory[] = [
     description: "Aerial shells, multi-color sky repeaters and 5x10 / 10x10 celebration set outs.",
     accent: "#0057FF",
     icon: "rocket",
-    imageUrl: IMAGE_POOL[4],
+    imageUrl: "/categories/sky-shots.jpg",
   },
   {
     name: "Premium Sparklers",
@@ -181,7 +181,7 @@ export const SEED_CATEGORIES: SeedCategory[] = [
     description: "Child-safe sparklers with bright light and low smoke emission.",
     accent: "#F5D982",
     icon: "wand",
-    imageUrl: IMAGE_POOL[5],
+    imageUrl: "/categories/sparklers.jpg",
   },
   {
     name: "Match Boxes",
@@ -191,7 +191,7 @@ export const SEED_CATEGORIES: SeedCategory[] = [
     description: "Safety matches for easy lighting.",
     accent: "#FF8C00",
     icon: "box",
-    imageUrl: IMAGE_POOL[6],
+    imageUrl: "/categories/match-boxes.jpg",
   },
   {
     name: "Hunters Gun",
@@ -201,7 +201,7 @@ export const SEED_CATEGORIES: SeedCategory[] = [
     description: "Toy ring cap guns with realistic sound effect.",
     accent: "#FF3131",
     icon: "target",
-    imageUrl: IMAGE_POOL[7],
+    imageUrl: "/categories/hunters-gun.jpg",
   },
   {
     name: "Kids & Magical Novelties",
@@ -211,7 +211,7 @@ export const SEED_CATEGORIES: SeedCategory[] = [
     description: "Fun, low-sound novelties designed for children's enjoyment.",
     accent: "#00D26A",
     icon: "smile",
-    imageUrl: IMAGE_POOL[8],
+    imageUrl: "/categories/kids-special.jpg",
   },
   {
     name: "Gift Boxes",
@@ -221,7 +221,7 @@ export const SEED_CATEGORIES: SeedCategory[] = [
     description: "Curated festival packages containing a balanced mix across all categories.",
     accent: "#D4AF37",
     icon: "package",
-    imageUrl: IMAGE_POOL[9],
+    imageUrl: "/categories/gift-boxes.jpg",
   },
 ];
 
