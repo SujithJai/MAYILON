@@ -310,10 +310,14 @@ export function createFireworksEngine(canvas: HTMLCanvasElement, options: Engine
     raf = requestAnimationFrame(frame);
   }
 
-  const onResize = () => resize();
   const onVisibility = () => {
-    if (document.hidden) stop();
-    else start();
+    shells.length = 0;
+    particles.length = 0;
+    if (document.hidden) {
+      stop();
+    } else {
+      start();
+    }
   };
 
   function start() {

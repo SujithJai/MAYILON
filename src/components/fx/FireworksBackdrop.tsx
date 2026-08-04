@@ -10,24 +10,29 @@ export function FireworksBackdrop() {
     const canvas = ref.current;
     if (!canvas) return;
 
-    // Guaranteed fireworks engine start across all devices
     const engine = createFireworksEngine(canvas, { quality: "medium", autoLaunch: false });
     engine.start();
 
-    // Random sky shot launch function covering Left, Center, Right, and Corners
-    const launchSkyShot = () => {
+    let timerId: NodeJS.Timeout | null = null;
+    let initialTimerId: NodeJS.Timeout | null = null;
+
+    // Launch exactly ONE single sky shot rocket at a time
+    const launchSingleSkyShot = () => {
+      // Don't launch if tab is not active / user is away
+      if (document.hidden) return;
+
       const w = window.innerWidth;
       const h = window.innerHeight;
 
-      // Random X: Left (10-25%), Center (35-65%), Right (72-90%)
+      // Random position: Left (10-25%), Center (35-65%), Right (70-90%)
       const zone = Math.random();
       let randomX = w * 0.5;
       if (zone < 0.35) {
-        randomX = w * (0.10 + Math.random() * 0.20); // Left & Corner
+        randomX = w * (0.10 + Math.random() * 0.20);
       } else if (zone < 0.70) {
-        randomX = w * (0.35 + Math.random() * 0.30); // Center
+        randomX = w * (0.35 + Math.random() * 0.30);
       } else {
-        randomX = w * (0.70 + Math.random() * 0.20); // Right & Corner
+        randomX = w * (0.70 + Math.random() * 0.20);
       }
 
       const randomY = h * (0.15 + Math.random() * 0.28);
@@ -37,28 +42,51 @@ export function FireworksBackdrop() {
         x: randomX,
         targetY: randomY,
         palette: randomPalette,
-        power: 1.6 + Math.random() * 0.8,
+        power: 1.5,
       });
     };
 
-    // Initial immediate launch after 800ms
-    const firstShot = setTimeout(launchSkyShot, 800);
-
-    // Continuous periodic launch every 4 to 6 seconds (4000ms to 6000ms)
-    let timerId: NodeJS.Timeout;
+    // Schedule next SINGLE launch every 5 to 7 seconds
     const scheduleNext = () => {
-      const delay = 4000 + Math.random() * 2000;
+      if (timerId) clearTimeout(timerId);
+      const delay = 5000 + Math.random() * 2000; // 5 to 7 seconds
       timerId = setTimeout(() => {
-        launchSkyShot();
+        if (!document.hidden) {
+          launchSingleSkyShot();
+        }
         scheduleNext();
       }, delay);
     };
 
-    scheduleNext();
+    // Initial launch after 2 seconds
+    initialTimerId = setTimeout(() => {
+      if (!document.hidden) {
+        launchSingleSkyShot();
+      }
+      scheduleNext();
+    }, 2000);
+
+    // Tab visibility listener: stop queue when away, resume clean when returning
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        if (timerId) clearTimeout(timerId);
+        if (initialTimerId) clearTimeout(initialTimerId);
+      } else {
+        // User came back: wait 2.5s and restart single launch cycle
+        if (timerId) clearTimeout(timerId);
+        initialTimerId = setTimeout(() => {
+          launchSingleSkyShot();
+          scheduleNext();
+        }, 2500);
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
-      clearTimeout(firstShot);
-      clearTimeout(timerId);
+      if (timerId) clearTimeout(timerId);
+      if (initialTimerId) clearTimeout(initialTimerId);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       engine.destroy();
     };
   }, []);
