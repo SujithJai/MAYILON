@@ -237,14 +237,14 @@ export const SEED_PRODUCTS: Record<string, [string, number, string, number, stri
   ],
 
   "flower-pots": [
-    ["Flower Pot Small", 250, "1 box (10 pcs)", 10, "B"],
-    ["Flower Pot Big", 300, "1 box (10 pcs)", 10, "B"],
-    ["Flower Pot Special", 450, "1 box (10 pcs)", 10, "F"],
-    ["Flower Pot Asoka", 600, "1 box (10 pcs)", 10, "F"],
-    ["O-Yolo Super Prime", 800, "1 box (2 pcs)", 2, "P"],
-    ["Flower Pots Deluxe", 850, "1 box (5 pcs)", 5, ""],
-    ["Color Koti Green", 960, "1 box (10 pcs)", 10, "N"],
-    ["Colour Koti Green Prime", 1150, "1 box (10 pcs)", 10, "PN"],
+    ["Flower Pot Small", 250, "1 box (10 pcs)", 10, "B", "/products/flower-pots/dass-deluxe.jpg"],
+    ["Flower Pot Big", 300, "1 box (10 pcs)", 10, "B", "/products/flower-pots/giant.jpg"],
+    ["Flower Pot Special", 450, "1 box (10 pcs)", 10, "F", "/products/flower-pots/special.jpg"],
+    ["Flower Pot Asoka", 600, "1 box (10 pcs)", 10, "F", "/products/flower-pots/asoka.jpg"],
+    ["O-Yolo Super Prime", 800, "1 box (2 pcs)", 2, "P", "/products/flower-pots/oyolo.jpg"],
+    ["Flower Pots Deluxe", 850, "1 box (5 pcs)", 5, "", "/products/flower-pots/dass-deluxe.jpg"],
+    ["Color Koti Green", 960, "1 box (10 pcs)", 10, "N", "/products/flower-pots/giant.jpg"],
+    ["Colour Koti Green Prime", 1150, "1 box (10 pcs)", 10, "PN", "/products/flower-pots/giant.jpg"],
   ],
 
   fountains: [
