@@ -2,9 +2,9 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
-import { createFireworksEngine, FIREWORK_PALETTES } from "@/lib/fx/fireworks";
+import { createFireworksEngine } from "@/lib/fx/fireworks";
 
-const INTRO_KEY = "mayilon_skyshot_intro_v2";
+const INTRO_KEY = "mayilon_skyshot_intro_3s_v1";
 
 export function CinematicIntro() {
   const [active, setActive] = useState(false);
@@ -33,59 +33,60 @@ export function CinematicIntro() {
     const engine = createFireworksEngine(canvas, {
       quality: "high",
       autoLaunch: false,
-      starCount: 180,
+      starCount: 200,
     });
     engine.start();
 
     const w = window.innerWidth;
     const h = window.innerHeight;
 
-    // Step 1: Launch Sky Shot rocket from bottom center to upper 30% of screen
+    // 1. Rocket launch from bottom center to upper sky (30% height)
     engine.launch({
       x: w / 2,
-      targetY: h * 0.3,
+      targetY: h * 0.28,
       palette: ["#FFE9A8", "#D4AF37", "#FF3131", "#0057FF", "#00D26A"],
-      power: 2.2,
+      power: 2.4,
     });
 
-    // Step 2: Sky Shot Burst after rocket reaches target height (~1.1s)
+    // 2. Explosive multi-color Sky Shot blast at 1.2s
     const burstTimer = setTimeout(() => {
       setPhase("burst");
-      // Multi-color explosive burst
-      engine.burst(w / 2, h * 0.3, {
+
+      // Main ultra-colorful fireworks bloom
+      engine.burst(w / 2, h * 0.28, {
         palette: ["#FF3131", "#D4AF37", "#0057FF", "#00D26A", "#A855F7", "#FFE9A8"],
-        power: 2.8,
-        count: 550,
+        power: 3.0,
+        count: 600,
       });
-      engine.shockwave(w / 2, h * 0.3, "#D4AF37");
+      engine.shockwave(w / 2, h * 0.28, "#D4AF37");
 
-      // Secondary side bursts for full colorful coverage
+      // Side flash bursts for full screen bloom
       setTimeout(() => {
-        engine.burst(w / 2 - 140, h * 0.35, {
+        engine.burst(w * 0.38, h * 0.32, {
           palette: ["#0057FF", "#6BFFB0", "#FFE9A8"],
-          power: 1.5,
-          count: 260,
+          power: 1.6,
+          count: 280,
         });
-        engine.burst(w / 2 + 140, h * 0.35, {
+        engine.burst(w * 0.62, h * 0.32, {
           palette: ["#FF3131", "#E4C7FF", "#D4AF37"],
-          power: 1.5,
-          count: 260,
+          power: 1.6,
+          count: 280,
         });
-      }, 250);
-    }, 1100);
+      }, 200);
+    }, 1200);
 
-    // Step 3: Smooth dissolve out (~2.4s)
+    // 3. Smooth dissolve out starts at 2.2s
     const dissolveTimer = setTimeout(() => {
       setPhase("dissolve");
-    }, 2500);
+    }, 2200);
 
-    // Step 4: Finish intro and reveal website (~3.5s)
+    // 4. Exact 3-second completion -> reveal site
     const finishTimer = setTimeout(() => {
       setPhase("done");
       setActive(false);
       document.body.style.overflow = "";
       engine.destroy();
-    }, 3600);
+    }, 3000);
 
     return () => {
       clearTimeout(burstTimer);
@@ -105,16 +106,16 @@ export function CinematicIntro() {
         initial={{ opacity: 1 }}
         animate={{ opacity: phase === "dissolve" ? 0 : 1 }}
         exit={{ opacity: 0 }}
-        transition={{ duration: 1.1, ease: [0.16, 1, 0.3, 1] }}
+        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
       >
         <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />
-        
-        {/* Subtle center gold glow on burst */}
+
+        {/* Ambient center fireworks flash glow */}
         <div
-          className={`absolute left-1/2 top-[30%] h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,#D4AF37_0%,#FF3131_30%,#0057FF_60%,transparent_75%)] transition-opacity duration-700 ${
-            phase === "burst" ? "opacity-35 scale-125" : "opacity-0 scale-50"
+          className={`absolute left-1/2 top-[28%] h-[400px] w-[400px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,#D4AF37_0%,#FF3131_30%,#0057FF_60%,transparent_75%)] transition-all duration-700 ${
+            phase === "burst" ? "opacity-40 scale-125" : "opacity-0 scale-50"
           }`}
-          style={{ filter: "blur(40px)" }}
+          style={{ filter: "blur(45px)" }}
         />
       </motion.div>
     </AnimatePresence>
