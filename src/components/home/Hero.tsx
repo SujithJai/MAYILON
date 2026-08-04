@@ -13,7 +13,7 @@ const SHOWCASE = [
   { label: "Sparklers", tamil: "மத்தாப்பு", image: "/categories/sparklers.jpg", slug: "sparklers", color: "#FF3131" },
 ];
 
-export function Hero({ stats }: { stats: { products: number; categories: number } }) {
+export function Hero({ stats }: { stats: { products: number; categories: number }; images?: string[] }) {
   const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
 
