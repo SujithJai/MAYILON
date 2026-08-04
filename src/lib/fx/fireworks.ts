@@ -310,6 +310,7 @@ export function createFireworksEngine(canvas: HTMLCanvasElement, options: Engine
     raf = requestAnimationFrame(frame);
   }
 
+  const onResize = () => resize();
   const onVisibility = () => {
     shells.length = 0;
     particles.length = 0;
