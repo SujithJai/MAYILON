@@ -67,10 +67,10 @@ function getInMemoryProducts(): ProductWithCategory[] {
     const cat = catMap.get(catSlug);
     if (!cat) continue;
     rows.forEach((row, idx) => {
-      const [name, mrp, packing, pieces, flags = ""] = row;
+      const [name, mrp, packing, pieces, flags = "", customImg] = row;
       const discount = 80;
       const offer = Math.round((mrp * 20) / 100);
-      const img = IMAGE_POOL[n % IMAGE_POOL.length];
+      const img = customImg ?? IMAGE_POOL[n % IMAGE_POOL.length];
       list.push({
         id: `prod-${n + 1}`,
         sku: `MYL-${CATEGORY_CODE[catSlug] ?? "GEN"}-${`${idx + 1}`.padStart(2, "0")}`,
@@ -177,10 +177,10 @@ async function seed() {
       const categoryId = bySlug.get(catSlug);
       if (!categoryId) continue;
       rows.forEach((row, idx) => {
-        const [name, mrp, packing, pieces, flags = ""] = row;
+        const [name, mrp, packing, pieces, flags = "", customImg] = row;
         const discount = 80;
         const offer = Math.round((mrp * 20) / 100);
-        const img = IMAGE_POOL[n % IMAGE_POOL.length];
+        const img = customImg ?? IMAGE_POOL[n % IMAGE_POOL.length];
         productRows.push({
           sku: `MYL-${CATEGORY_CODE[catSlug] ?? "GEN"}-${`${idx + 1}`.padStart(2, "0")}`,
           slug: slugify(name),

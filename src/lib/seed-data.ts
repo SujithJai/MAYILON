@@ -225,15 +225,15 @@ export const SEED_CATEGORIES: SeedCategory[] = [
   },
 ];
 
-export const SEED_PRODUCTS: Record<string, [string, number, string, number, string?][]> = {
+export const SEED_PRODUCTS: Record<string, [string, number, string, number, string?, string?][]> = {
   "single-sound": [
-    ["2.75″ Kuruvi Crackers", 40, "1 pkt (5 pcs)", 5, "B"],
-    ["3.5″ Lakshmi Crackers", 70, "1 pkt (5 pcs)", 5, "B"],
-    ["4″ Lakshmi Crackers", 90, "1 pkt (5 pcs)", 5, "F"],
-    ["2 Sound Crackers", 150, "1 pkt (5 pcs)", 5, ""],
-    ["4″ Hulk / Harry Potter Deluxe", 160, "1 pkt (5 pcs)", 5, "N"],
-    ["Gold Lakshmi Deluxe", 170, "1 pkt (5 pcs)", 5, "P"],
-    ["5″ Hulk / Vikram Mega Deluxe", 225, "1 pkt (5 pcs)", 5, "PN"],
+    ["2.75″ Kuruvi Crackers", 40, "1 pkt (5 pcs)", 5, "B", "/products/single-sound/kuruvi.jpg"],
+    ["3.5″ Lakshmi Crackers", 70, "1 pkt (5 pcs)", 5, "B", "/products/single-sound/kuruvi.jpg"],
+    ["4″ Lakshmi Crackers", 90, "1 pkt (5 pcs)", 5, "F", "/products/single-sound/gold-lakshmi.jpg"],
+    ["2 Sound Crackers", 150, "1 pkt (5 pcs)", 5, "", "/products/single-sound/2-sound.jpg"],
+    ["4″ Hulk / Harry Potter Deluxe", 160, "1 pkt (5 pcs)", 5, "N", "/products/single-sound/hulk-4.jpg"],
+    ["Gold Lakshmi Deluxe", 170, "1 pkt (5 pcs)", 5, "P", "/products/single-sound/gold-lakshmi.jpg"],
+    ["5″ Hulk / Vikram Mega Deluxe", 225, "1 pkt (5 pcs)", 5, "PN", "/products/single-sound/hulk-5.jpg"],
   ],
 
   "flower-pots": [
