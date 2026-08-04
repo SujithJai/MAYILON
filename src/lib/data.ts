@@ -7,16 +7,26 @@ import { slugify } from "./slug";
 type Seedable = typeof globalThis & { __mayilonSeed?: Promise<void> };
 
 const CATEGORY_CODE: Record<string, string> = {
-  "sky-shots": "SKY",
-  rockets: "RKT",
-  "flower-pots": "FLP",
-  "ground-chakkar": "GCK",
-  sparklers: "SPK",
-  "fancy-novelty": "FNC",
   "single-sound": "SND",
-  "gift-boxes": "GFT",
+  "flower-pots": "FLP",
+  fountains: "FTN",
+  "ground-chakkar": "GCK",
+  "bijili-crackers": "BJL",
+  "wala-crackers": "WLA",
+  bombs: "BMB",
+  "paper-flash": "PPR",
+  rockets: "RKT",
+  "twinkling-star": "TWN",
+  candles: "CND",
+  lighters: "LGT",
+  "peacock-fountain": "PCK",
+  novelties: "NVL",
+  "sky-shots": "SKY",
+  sparklers: "SPK",
+  "match-boxes": "MCH",
+  "hunters-gun": "GUN",
   "kids-special": "KID",
-  "wedding-events": "WED",
+  "gift-boxes": "GFT",
 };
 
 const EFFECTS = ["Gold", "Red", "Blue", "Green", "Silver", "Purple"];
@@ -58,8 +68,8 @@ function getInMemoryProducts(): ProductWithCategory[] {
     if (!cat) continue;
     rows.forEach((row, idx) => {
       const [name, mrp, packing, pieces, flags = ""] = row;
-      const discount = 78 + ((n * 3) % 10);
-      const offer = Math.round((mrp * (100 - discount)) / 100);
+      const discount = 80;
+      const offer = Math.round((mrp * 20) / 100);
       const img = IMAGE_POOL[n % IMAGE_POOL.length];
       list.push({
         id: `prod-${n + 1}`,
@@ -168,8 +178,8 @@ async function seed() {
       if (!categoryId) continue;
       rows.forEach((row, idx) => {
         const [name, mrp, packing, pieces, flags = ""] = row;
-        const discount = 78 + ((n * 3) % 10);
-        const offer = Math.round((mrp * (100 - discount)) / 100);
+        const discount = 80;
+        const offer = Math.round((mrp * 20) / 100);
         const img = IMAGE_POOL[n % IMAGE_POOL.length];
         productRows.push({
           sku: `MYL-${CATEGORY_CODE[catSlug] ?? "GEN"}-${`${idx + 1}`.padStart(2, "0")}`,
