@@ -1,35 +1,37 @@
 "use client";
 
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, ChevronLeft, ChevronRight, Play, ShieldCheck, Truck } from "lucide-react";
 import { useEffect, useState } from "react";
 
 const SHOWCASE = [
-  { label: "Sky Shots", tamil: "வான வெடி", image: "/categories/sky-shots.jpg", color: "#0057FF" },
-  { label: "Rockets", tamil: "ராக்கெட்", image: "/categories/rockets.jpg", color: "#FF8C00" },
-  { label: "Flower Pots", tamil: "பூச்சட்டி", image: "/categories/flower-pots.jpg", color: "#D4AF37" },
-  { label: "Ground Chakkar", tamil: "நிலச்சக்கரம்", image: "/categories/ground-chakkar.jpg", color: "#00D26A" },
-  { label: "Sparklers", tamil: "மத்தாப்பு", image: "/categories/sparklers.jpg", color: "#FF3131" },
+  { label: "Sky Shots", tamil: "வான வெடி", image: "/categories/sky-shots.jpg", slug: "sky-shots", color: "#0057FF" },
+  { label: "Rockets", tamil: "ராக்கெட்", image: "/categories/rockets.jpg", slug: "rockets", color: "#FF8C00" },
+  { label: "Flower Pots", tamil: "பூச்சட்டி", image: "/categories/flower-pots.jpg", slug: "flower-pots", color: "#D4AF37" },
+  { label: "Ground Chakkar", tamil: "நிலச்சக்கரம்", image: "/categories/ground-chakkar.jpg", slug: "ground-chakkar", color: "#00D26A" },
+  { label: "Sparklers", tamil: "மத்தாப்பு", image: "/categories/sparklers.jpg", slug: "sparklers", color: "#FF3131" },
 ];
 
 export function Hero({ stats }: { stats: { products: number; categories: number } }) {
-  const [angle, setAngle] = useState(0);
+  const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
 
   useEffect(() => {
-    const id = window.setInterval(() => {
-      if (!paused) {
-        setAngle((prev) => prev + 72);
-      }
-    }, 3200);
-    return () => window.clearInterval(id);
+    if (paused) return;
+    const timer = setInterval(() => {
+      setActive((prev) => (prev + 1) % SHOWCASE.length);
+    }, 2800);
+    return () => clearInterval(timer);
   }, [paused]);
 
-  const handlePrev = () => setAngle((prev) => prev - 72);
-  const handleNext = () => setAngle((prev) => prev + 72);
+  const handlePrev = () => {
+    setActive((prev) => (prev - 1 + SHOWCASE.length) % SHOWCASE.length);
+  };
 
-  const activeIndex = (Math.round(angle / 72) % 5 + 5) % 5;
+  const handleNext = () => {
+    setActive((prev) => (prev + 1) % SHOWCASE.length);
+  };
 
   return (
     <section className="relative overflow-hidden pb-24 pt-14 lg:pt-20">
@@ -109,84 +111,115 @@ export function Hero({ stats }: { stats: { products: number; categories: number 
           </div>
         </div>
 
-        {/* 3D rotating showcase */}
+        {/* 3D Coverflow Auto-sliding showcase */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.86 }}
+          initial={{ opacity: 0, scale: 0.88 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 1.3, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
-          className="relative flex h-[460px] items-center justify-center lg:h-[540px]"
+          transition={{ duration: 1.2, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+          className="relative flex h-[480px] items-center justify-center lg:h-[540px]"
           onMouseEnter={() => setPaused(true)}
           onMouseLeave={() => setPaused(false)}
         >
-          <div className="absolute h-72 w-72 rounded-full bg-[radial-gradient(circle,rgba(212,175,55,0.25),transparent_66%)] blur-3xl" />
-          
+          {/* Background Glow */}
+          <div className="absolute h-80 w-80 rounded-full bg-[radial-gradient(circle,rgba(212,175,55,0.25),transparent_66%)] blur-3xl" />
+
+          {/* Left / Right Nav Buttons */}
           <button
-            aria-label="Previous showcase"
+            aria-label="Previous slide"
             onClick={handlePrev}
-            className="glass absolute left-2 z-30 flex h-10 w-10 items-center justify-center rounded-full text-gold transition-transform hover:scale-110 md:left-6"
+            className="glass absolute left-0 z-30 flex h-11 w-11 items-center justify-center rounded-full text-gold transition-all duration-300 hover:scale-110 hover:border-gold md:left-2"
           >
-            <ChevronLeft size={20} />
+            <ChevronLeft size={22} />
           </button>
 
           <button
-            aria-label="Next showcase"
+            aria-label="Next slide"
             onClick={handleNext}
-            className="glass absolute right-2 z-30 flex h-10 w-10 items-center justify-center rounded-full text-gold transition-transform hover:scale-110 md:right-6"
+            className="glass absolute right-0 z-30 flex h-11 w-11 items-center justify-center rounded-full text-gold transition-all duration-300 hover:scale-110 hover:border-gold md:right-2"
           >
-            <ChevronRight size={20} />
+            <ChevronRight size={22} />
           </button>
 
-          <div
-            className="relative h-[320px] w-[240px] sm:h-[360px] sm:w-[270px]"
-            style={{ perspective: "1200px" }}
-          >
-            <motion.div
-              className="relative h-full w-full"
-              style={{ transformStyle: "preserve-3d" }}
-              animate={{ rotateY: -angle }}
-              transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
-            >
-              {SHOWCASE.map((s, i) => (
-                <div
-                  key={s.label}
-                  className="glass absolute inset-0 overflow-hidden rounded-[30px] border border-gold/30"
+          {/* Coverflow Slide Track */}
+          <div className="relative flex h-[350px] w-full max-w-[420px] items-center justify-center perspective-1000">
+            {SHOWCASE.map((item, index) => {
+              // Calculate offset relative to active card (-2, -1, 0, 1, 2)
+              let offset = index - active;
+              if (offset > 2) offset -= SHOWCASE.length;
+              if (offset < -2) offset += SHOWCASE.length;
+
+              const isCenter = offset === 0;
+              const isVisible = Math.abs(offset) <= 2;
+
+              if (!isVisible) return null;
+
+              // Coverflow transformations
+              const translateX = offset * 110; // offset in px
+              const scale = isCenter ? 1 : 0.82;
+              const rotateY = offset * -25; // 3D rotation angle
+              const zIndex = 20 - Math.abs(offset) * 5;
+              const opacity = isCenter ? 1 : Math.abs(offset) === 1 ? 0.65 : 0.3;
+
+              return (
+                <motion.div
+                  key={item.label}
+                  onClick={() => setActive(index)}
+                  className="absolute h-[340px] w-[240px] cursor-pointer overflow-hidden rounded-[32px] border glass transition-all duration-700 sm:h-[380px] sm:w-[270px]"
+                  animate={{
+                    x: translateX,
+                    scale,
+                    rotateY,
+                    opacity,
+                    zIndex,
+                  }}
+                  transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
                   style={{
-                    transform: `rotateY(${i * 72}deg) translateZ(260px)`,
-                    backfaceVisibility: "hidden",
-                    boxShadow: `0 25px 70px -30px ${s.color}aa`,
+                    borderColor: isCenter ? item.color : "rgba(212, 175, 55, 0.2)",
+                    boxShadow: isCenter
+                      ? `0 25px 70px -20px ${item.color}bb, inset 0 0 20px ${item.color}33`
+                      : "0 10px 30px -15px rgba(0,0,0,0.8)",
                   }}
                 >
                   <img
-                    src={s.image}
-                    alt={s.label}
+                    src={item.image}
+                    alt={item.label}
                     className="h-full w-full object-cover transition-transform duration-700 hover:scale-105"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black via-black/35 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+
                   <div
                     className="absolute inset-x-0 bottom-0 p-6"
-                    style={{ borderTop: `1px solid ${s.color}55` }}
+                    style={{ borderTop: isCenter ? `1px solid ${item.color}66` : "1px solid rgba(255,255,255,0.1)" }}
                   >
-                    <p className="text-[11px] font-bold uppercase tracking-[3px]" style={{ color: s.color }}>
-                      {s.tamil}
+                    <p className="text-[11px] font-bold uppercase tracking-[3px]" style={{ color: item.color }}>
+                      {item.tamil}
                     </p>
-                    <p className="font-display text-xl font-bold text-white">{s.label}</p>
+                    <p className="font-display text-xl font-bold text-white mt-1">{item.label}</p>
+                    {isCenter && (
+                      <Link
+                        href={`/products?category=${item.slug}`}
+                        className="mt-3 inline-flex items-center gap-1.5 text-[11.5px] uppercase tracking-[2px] text-gold hover:underline"
+                      >
+                        Browse Category <ArrowRight size={13} />
+                      </Link>
+                    )}
                   </div>
-                </div>
-              ))}
-            </motion.div>
+                </motion.div>
+              );
+            })}
           </div>
 
-          {/* reflection plate */}
-          <div className="absolute bottom-6 h-24 w-72 rounded-[50%] bg-[radial-gradient(ellipse,rgba(212,175,55,0.18),transparent_70%)] blur-xl" />
-
-          <div className="absolute bottom-0 flex items-center gap-2 z-20">
-            {SHOWCASE.map((s, i) => (
+          {/* Indicator Dots */}
+          <div className="absolute bottom-2 flex items-center gap-2 z-30">
+            {SHOWCASE.map((item, index) => (
               <button
-                key={s.label}
-                aria-label={`Show ${s.label}`}
-                onClick={() => setAngle(i * 72)}
-                className={`h-2 rounded-full transition-all duration-500 ${
-                  activeIndex === i ? "w-8 bg-gold shadow-[0_0_12px_rgba(212,175,55,0.8)]" : "w-3 bg-white/20 hover:bg-white/40"
+                key={item.label}
+                aria-label={`Go to slide ${item.label}`}
+                onClick={() => setActive(index)}
+                className={`h-2.5 rounded-full transition-all duration-500 ${
+                  active === index
+                    ? "w-8 bg-gold shadow-[0_0_12px_rgba(212,175,55,0.9)]"
+                    : "w-2.5 bg-white/20 hover:bg-white/40"
                 }`}
               />
             ))}
