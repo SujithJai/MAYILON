@@ -124,8 +124,8 @@ function getInMemoryReviews() {
     rating: r.rating,
     title: r.title,
     body: r.body,
-    isVerified: r.isVerified,
-    isPublished: r.isPublished,
+    isVerified: true,
+    isPublished: true,
     createdAt: new Date(),
   }));
 }
