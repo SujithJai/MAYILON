@@ -96,16 +96,6 @@ export function createFireworksEngine(canvas: HTMLCanvasElement, options: Engine
   const stars: { x: number; y: number; r: number; a: number; s: number }[] = [];
   function seedStars() {
     stars.length = 0;
-    const count = options.starCount ?? (quality === "high" ? 220 : quality === "medium" ? 130 : 60);
-    for (let i = 0; i < count; i++) {
-      stars.push({
-        x: Math.random(),
-        y: Math.random() * 0.82,
-        r: Math.random() * 1.5 + 0.35,
-        a: Math.random(),
-        s: Math.random() * 0.9 + 0.25,
-      });
-    }
   }
 
   function resize() {
@@ -183,17 +173,7 @@ export function createFireworksEngine(canvas: HTMLCanvasElement, options: Engine
     ctx!.fillRect(0, 0, w, h);
     ctx!.globalCompositeOperation = "lighter";
 
-    // stars
-    const t = performance.now() * 0.001;
-    for (const s of stars) {
-      const tw = 0.35 + 0.65 * Math.abs(Math.sin(t * s.s + s.a * 6.28));
-      ctx!.globalAlpha = tw * 0.85;
-      ctx!.fillStyle = s.a > 0.82 ? "#FFE9A8" : "#DCE6FF";
-      ctx!.beginPath();
-      ctx!.arc(s.x * w, s.y * h, s.r, 0, Math.PI * 2);
-      ctx!.fill();
-    }
-    ctx!.globalAlpha = 1;
+
 
     // shells
     for (let i = shells.length - 1; i >= 0; i--) {
