@@ -31,18 +31,8 @@ export function CinematicIntro() {
   }, []);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const seen = sessionStorage.getItem(KEY);
-    const quality = detectQuality();
-    if (seen || reduce || quality === "low") {
-      return;
-    }
-    sessionStorage.setItem(KEY, "1");
-    setActive(true);
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = "";
-    };
+    // Disabled full-screen intro to ensure instant, crystal-clear page load
+    return;
   }, [reduce]);
 
   useEffect(() => {

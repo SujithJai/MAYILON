@@ -41,9 +41,9 @@ export function Hero({ images, stats }: { images: string[]; stats: { products: n
           </motion.div>
 
           <motion.h1
-            initial={{ opacity: 0, y: 34, filter: "blur(10px)" }}
-            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-            transition={{ duration: 1.1, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
             className="mt-7 font-display text-[42px] font-bold leading-[1.05] tracking-[-1px] text-balance sm:text-[58px] lg:text-[66px]"
           >
             Celebrate Every Festival <br className="hidden sm:block" />
