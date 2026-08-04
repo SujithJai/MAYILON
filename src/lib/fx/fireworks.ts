@@ -153,29 +153,7 @@ export function createFireworksEngine(canvas: HTMLCanvasElement, options: Engine
       });
     }
 
-    // smoke puffs
-    const smokeCount = quality === "low" ? 3 : quality === "medium" ? 8 : 16;
-    for (let i = 0; i < smokeCount; i++) {
-      pushParticle({
-        x: x + (Math.random() - 0.5) * 26,
-        y: y + (Math.random() - 0.5) * 26,
-        z: 0,
-        vx: (Math.random() - 0.5) * 0.7,
-        vy: (Math.random() - 0.5) * 0.7 - 0.14,
-        vz: 0,
-        life: 0,
-        maxLife: 130 + Math.random() * 110,
-        size: 20 + Math.random() * 40,
-        hue: "rgba(150,150,175,0.05)",
-        drag: 0.99,
-        gravity: -0.006,
-        flicker: 0,
-        kind: 1,
-      });
-    }
-
-    rings.push({ x, y, r: 4, life: 1, hue: palette[1] ?? "#D4AF37" });
-    flash = Math.min(1, flash + 0.32 * power);
+    flash = Math.min(0.6, flash + 0.2 * power);
   }
 
   function launch(opts: { x?: number; targetY?: number; palette?: string[]; power?: number } = {}) {
@@ -195,8 +173,7 @@ export function createFireworksEngine(canvas: HTMLCanvasElement, options: Engine
   }
 
   function shockwave(x: number, y: number, hue = "#D4AF37") {
-    rings.push({ x, y, r: 8, life: 1, hue });
-    flash = Math.min(1, flash + 0.4);
+    flash = Math.min(0.5, flash + 0.3);
   }
 
   function step(dt: number) {

@@ -110,13 +110,6 @@ export function CinematicIntro() {
       >
         <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />
 
-        {/* Ambient center fireworks flash glow */}
-        <div
-          className={`absolute left-1/2 top-[28%] h-[400px] w-[400px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,#D4AF37_0%,#FF3131_30%,#0057FF_60%,transparent_75%)] transition-all duration-700 ${
-            phase === "burst" ? "opacity-40 scale-125" : "opacity-0 scale-50"
-          }`}
-          style={{ filter: "blur(45px)" }}
-        />
       </motion.div>
     </AnimatePresence>
   );
