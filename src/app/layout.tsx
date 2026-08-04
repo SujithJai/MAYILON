@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
-import { Poppins, Space_Grotesk } from "next/font/google";
+import { Cinzel, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { EstimateProvider } from "@/components/estimate/EstimateProvider";
 import { CinematicIntro } from "@/components/fx/CinematicIntro";
@@ -11,17 +11,17 @@ import { MobileDock } from "@/components/layout/MobileDock";
 import { Navbar } from "@/components/layout/Navbar";
 import { SITE } from "@/lib/slug";
 
-const display = Space_Grotesk({
+const display = Cinzel({
   subsets: ["latin"],
-  weight: ["500", "600", "700"],
-  variable: "--font-space-grotesk",
+  weight: ["500", "600", "700", "800", "900"],
+  variable: "--font-cinzel",
   display: "swap",
 });
 
-const body = Poppins({
+const body = Plus_Jakarta_Sans({
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600"],
-  variable: "--font-poppins",
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-jakarta",
   display: "swap",
 });
 
