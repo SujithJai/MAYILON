@@ -2,12 +2,10 @@ import Link from "next/link";
 import { ArrowRight, MessageCircle, Phone } from "lucide-react";
 import { Hero } from "@/components/home/Hero";
 import {
-  CategoryGrid,
   FAQAccordion,
   Features,
   QuickCalculator,
   ReviewCarousel,
-  StatStrip,
   WhyUs,
 } from "@/components/home/Sections";
 import { HOME_FAQS } from "@/lib/faqs";
@@ -50,40 +48,38 @@ export default async function HomePage() {
         stats={{ products: all.total, categories: categories.length }}
       />
 
-      <section className="shell -mt-6">
+      <Features />
+
+      {/* Instant Pricing Calculator moved right after Features */}
+      <section className="shell py-16">
+        <SectionHeading
+          eyebrow="Instant Pricing"
+          title={
+            <>
+              Quick <span className="gold-text">Estimate Calculator</span>
+            </>
+          }
+          sub="Search any product, set quantity, watch the factory total calculate instantly. No login required."
+        />
         <Reveal>
-          <StatStrip />
+          <QuickCalculator products={all.items} />
         </Reveal>
       </section>
 
-      <Features />
-
-      <section className="shell py-24">
-        <SectionHeading
-          eyebrow="Collections"
-          title={
-            <>
-              Ten curated <span className="gold-text">fireworks worlds</span>
-            </>
-          }
-          sub="From show-grade aerial repeaters to child-safe sparklers — every category is manufactured, tested and packed at our own Sivakasi facility."
-        />
-        <CategoryGrid categories={categories} />
-      </section>
-
+      {/* Featured Products */}
       <section className="shell py-16">
         <SectionHeading
           align="left"
           eyebrow="Featured"
           title={
             <>
-              This season&apos;s <span className="gold-text">most requested</span>
+              This Season&apos;s <span className="gold-text">Most Requested</span>
             </>
           }
           sub="Hand-picked by our sales desk based on live estimate volume."
           action={
             <Link href="/products" className="btn-ghost inline-flex items-center gap-2 px-6 py-3 text-sm uppercase">
-              View all products <ArrowRight size={15} />
+              View All Products <ArrowRight size={15} />
             </Link>
           }
         />
@@ -97,32 +93,32 @@ export default async function HomePage() {
       {/* Festival banner */}
       <section className="shell py-16">
         <Reveal>
-          <div className="relative overflow-hidden rounded-[36px] border border-gold/25">
+          <div className="relative overflow-hidden rounded-[36px] border border-red-500/20 bg-gradient-to-r from-red-900 to-red-600 text-white shadow-xl">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={IMAGE_POOL[4]}
               alt="Deepavali festival fireworks"
               loading="lazy"
-              className="h-[380px] w-full object-cover opacity-55"
+              className="h-[380px] w-full object-cover opacity-40 mix-blend-overlay"
             />
-            <div className="absolute inset-0 bg-[linear-gradient(100deg,rgba(5,5,5,0.95),rgba(5,5,5,0.55)_58%,transparent)]" />
+            <div className="absolute inset-0 bg-[linear-gradient(100deg,rgba(153,27,27,0.95),rgba(220,38,38,0.75)_58%,transparent)]" />
             <div className="absolute inset-0 flex flex-col justify-center gap-5 p-10 lg:p-16">
-              <span className="text-[11px] uppercase tracking-[4px] text-gold">
-                Deepavali 2026 · Booking open
+              <span className="text-[11px] font-bold uppercase tracking-[4px] text-red-200">
+                Deepavali 2026 · Booking Open
               </span>
-              <h3 className="max-w-xl font-display text-[32px] font-bold leading-tight sm:text-[44px]">
-                Book early. <span className="gold-text">Pay factory rates.</span>
+              <h3 className="max-w-xl font-display text-[32px] font-bold leading-tight text-white sm:text-[44px]">
+                Book Early. <span className="underline decoration-red-300">Pay Factory Rates.</span>
               </h3>
-              <p className="max-w-lg text-[14.5px] text-white/60">
+              <p className="max-w-lg text-[14.5px] text-red-100/90">
                 Early estimates submitted before the festival rush get priority packing slots,
                 guaranteed stock allocation and free transport above ₹50,000.
               </p>
               <div className="flex flex-wrap gap-4 pt-2">
                 <Link href="/estimate" className="btn-gold px-7 py-3.5 text-sm uppercase">
-                  Build my estimate
+                  Build My Estimate
                 </Link>
-                <Link href="/dealers" className="btn-ghost px-7 py-3.5 text-sm uppercase">
-                  Wholesale enquiry
+                <Link href="/dealers" className="btn-ghost !bg-white/10 !text-white !border-white/30 px-7 py-3.5 text-sm uppercase">
+                  Wholesale Enquiry
                 </Link>
               </div>
             </div>
@@ -130,12 +126,13 @@ export default async function HomePage() {
         </Reveal>
       </section>
 
-      <section className="shell py-24">
+      {/* Why Us */}
+      <section className="shell py-20">
         <SectionHeading
           eyebrow="Why Mayilon"
           title={
             <>
-              Three generations of <span className="gold-text">Sivakasi craft</span>
+              Three Generations of <span className="gold-text">Sivakasi Craft</span>
             </>
           }
           sub="A short history of how we removed the markup and kept the quality."
@@ -150,7 +147,7 @@ export default async function HomePage() {
           eyebrow="Gallery"
           title={
             <>
-              Inside the <span className="gold-text">factory & the night sky</span>
+              Inside the <span className="gold-text">Factory & Night Sky</span>
             </>
           }
           sub="Manufacturing floor, quality bench, packing lines and live customer shows."
@@ -160,7 +157,7 @@ export default async function HomePage() {
             <Reveal
               key={src}
               delay={i * 0.04}
-              className={`overflow-hidden rounded-[24px] border border-gold/15 ${
+              className={`overflow-hidden rounded-[24px] border border-red-500/15 shadow-sm ${
                 i === 0 || i === 5 ? "row-span-2 col-span-2" : ""
               }`}
             >
@@ -176,54 +173,42 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="shell py-24">
+      {/* Customer Reviews */}
+      <section className="shell py-20">
         <SectionHeading
-          eyebrow="Customer stories"
+          eyebrow="Customer Stories"
           title={
             <>
-              1,284 families & dealers <span className="gold-text">rate us 4.9</span>
+              1,284 Families & Dealers <span className="gold-text">Rate Us 4.9</span>
             </>
           }
         />
         <ReviewCarousel reviews={reviews} />
       </section>
 
-      <section className="shell py-16">
-        <SectionHeading
-          eyebrow="Instant pricing"
-          title={
-            <>
-              Quick <span className="gold-text">estimate calculator</span>
-            </>
-          }
-          sub="Search a product, set quantity, watch the total move. No login needed until you submit."
-        />
-        <Reveal>
-          <QuickCalculator products={all.items} />
-        </Reveal>
-      </section>
-
-      <section className="shell py-24">
+      {/* FAQ */}
+      <section className="shell py-20">
         <SectionHeading
           eyebrow="Answers"
           title={
             <>
-              Frequently asked <span className="gold-text">questions</span>
+              Frequently Asked <span className="gold-text">Questions</span>
             </>
           }
         />
         <FAQAccordion />
       </section>
 
-      <section className="shell pb-10">
+      {/* Contact Banner */}
+      <section className="shell pb-16">
         <Reveal>
           <div className="glass relative overflow-hidden rounded-[36px] p-10 text-center lg:p-16">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(212,175,55,0.18),transparent_60%)]" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(220,38,38,0.08),transparent_60%)]" />
             <div className="relative">
-              <h3 className="font-display text-[30px] font-bold leading-tight sm:text-[40px]">
-                Talk to a real <span className="gold-text">Sivakasi sales desk</span>
+              <h3 className="font-display text-[30px] font-bold leading-tight text-slate-900 sm:text-[40px]">
+                Talk to a Real <span className="gold-text">Sivakasi Sales Desk</span>
               </h3>
-              <p className="mx-auto mt-4 max-w-xl text-[14.5px] text-white/55">
+              <p className="mx-auto mt-4 max-w-xl text-[14.5px] text-slate-600">
                 Bulk orders, temple festivals, weddings or export enquiries — our team responds
                 within 30 minutes during business hours.
               </p>
@@ -240,7 +225,7 @@ export default async function HomePage() {
                   <MessageCircle size={16} /> WhatsApp
                 </a>
                 <Link href="/contact" className="btn-ghost px-7 py-3.5 text-sm uppercase">
-                  Request a quote
+                  Request a Quote
                 </Link>
               </div>
             </div>

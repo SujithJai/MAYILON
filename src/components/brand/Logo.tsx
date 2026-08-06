@@ -42,7 +42,7 @@ export function LogoLockup({
           <span className="gold-text font-display text-[18px] font-bold tracking-[2px] uppercase">
             மயிலோன்
           </span>
-          <span className="text-[10px] font-semibold uppercase tracking-[4px] text-white/65">
+          <span className="text-[10px] font-bold uppercase tracking-[4px] text-slate-800">
             PYROWORLD
           </span>
         </span>

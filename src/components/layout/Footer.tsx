@@ -59,17 +59,17 @@ export function Footer() {
   }
 
   return (
-    <footer className="relative mt-32 border-t border-gold/15 bg-black/60 backdrop-blur-xl print:hidden">
-      <div className="gold-rule absolute inset-x-0 top-0" />
+    <footer className="relative mt-24 border-t border-red-500/20 bg-slate-950 text-slate-300 print:hidden">
+      <div className="h-1 bg-gradient-to-r from-red-600 via-red-500 to-amber-500" />
       <div className="shell grid gap-12 py-16 lg:grid-cols-[1.4fr_repeat(3,1fr)_1.3fr]">
         <div>
           <LogoLockup size={48} />
-          <p className="mt-5 max-w-xs text-sm leading-relaxed text-white/55">
+          <p className="mt-5 max-w-xs text-sm leading-relaxed text-slate-400">
             Factory-direct premium fireworks from Sivakasi. PESO licensed manufacturing, cinematic
             quality, wholesale pricing and safe nationwide dispatch.
           </p>
-          <p className="mt-4 text-sm text-gold/80">{SITE.tagline}</p>
-          <div className="mt-5 space-y-1 text-xs text-white/45">
+          <p className="mt-4 text-sm font-bold text-red-400">{SITE.tagline}</p>
+          <div className="mt-5 space-y-1 text-xs text-slate-500">
             <p>GSTIN: {SITE.gst}</p>
             <p>Licence: {SITE.license}</p>
           </div>
@@ -77,7 +77,7 @@ export function Footer() {
 
         {COLS.map((col) => (
           <div key={col.title}>
-            <h4 className="mb-4 text-[11px] font-semibold uppercase tracking-[3px] text-gold">
+            <h4 className="mb-4 text-[11px] font-bold uppercase tracking-[3px] text-red-500">
               {col.title}
             </h4>
             <ul className="space-y-2.5">
@@ -85,7 +85,7 @@ export function Footer() {
                 <li key={l.href}>
                   <Link
                     href={l.href}
-                    className="text-sm text-white/55 transition-all duration-400 hover:translate-x-1 hover:text-gold inline-block"
+                    className="text-sm text-slate-400 transition-all duration-300 hover:translate-x-1 hover:text-white inline-block"
                   >
                     {l.label}
                   </Link>
@@ -96,49 +96,45 @@ export function Footer() {
         ))}
 
         <div>
-          <h4 className="mb-4 text-[11px] font-semibold uppercase tracking-[3px] text-gold">
+          <h4 className="mb-4 text-[11px] font-bold uppercase tracking-[3px] text-red-500">
             Festival Newsletter
           </h4>
-          <form onSubmit={subscribe} className="space-y-3">
+          <p className="text-xs text-slate-400">
+            Get exclusive early-booking price lists & Deepavali discounts straight to your inbox.
+          </p>
+          <form onSubmit={subscribe} className="mt-4 space-y-2">
             <input
+              type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              type="email"
-              placeholder="you@email.com"
-              className="field"
+              placeholder="Your email address"
+              className="field !border-slate-800 !bg-slate-900 !text-white placeholder:!text-slate-500 focus:!border-red-500"
             />
-            <button type="submit" className="btn-gold w-full px-4 py-2.5 text-sm">
-              Get Offers
-            </button>
-            {msg && <p className="text-xs text-gold/80">{msg}</p>}
-          </form>
-          <div className="mt-6 space-y-2 text-sm text-white/55">
-            <a href={`tel:${SITE.phoneRaw}`} className="block hover:text-gold">
-              {SITE.phone}
-            </a>
-            <a href={`mailto:${SITE.email}`} className="block hover:text-gold">
-              {SITE.email}
-            </a>
-            <a
-              href={waLink("Hi Mayilon Crackers!")}
-              target="_blank"
-              rel="noreferrer"
-              className="block hover:text-verde"
+            <button
+              type="submit"
+              className="btn-gold w-full py-2.5 text-[12px] font-bold uppercase tracking-wider"
             >
-              WhatsApp Sales Desk
-            </a>
-          </div>
+              Subscribe
+            </button>
+            {msg && <p className="text-xs text-red-400 font-medium">{msg}</p>}
+          </form>
         </div>
       </div>
 
-      <div className="border-t border-white/5">
-        <div className="shell flex flex-col items-center justify-between gap-3 py-6 text-xs text-white/35 md:flex-row">
-          <p>© {new Date().getFullYear()} Mayilon Crackers, Sivakasi. All rights reserved.</p>
-          <p className="max-w-xl text-center md:text-right">
-            As per Supreme Court order, online sale of firecrackers is prohibited. This platform
-            accepts estimate enquiries only — orders are confirmed offline through our Sivakasi
-            sales desk.
-          </p>
+      <div className="border-t border-slate-900 bg-slate-950 py-6 text-center text-xs text-slate-500">
+        <div className="shell flex flex-col items-center justify-between gap-4 sm:flex-row">
+          <p>© 2026 {SITE.name}. All rights reserved. Sivakasi, Tamil Nadu.</p>
+          <div className="flex gap-4 font-medium text-slate-400">
+            <Link href="/legal" className="hover:text-red-400">
+              Terms & Conditions
+            </Link>
+            <Link href="/legal" className="hover:text-red-400">
+              Privacy Policy
+            </Link>
+            <Link href="/safety" className="hover:text-red-400">
+              PESO Safety
+            </Link>
+          </div>
         </div>
       </div>
     </footer>

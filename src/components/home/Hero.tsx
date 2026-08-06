@@ -6,11 +6,11 @@ import { ArrowRight, ChevronLeft, ChevronRight, Play, ShieldCheck, Truck } from 
 import { useEffect, useState } from "react";
 
 const SHOWCASE = [
-  { label: "Sky Shots", tamil: "வான வெடி", image: "/categories/sky-shots.jpg", slug: "sky-shots", color: "#0057FF" },
-  { label: "Rockets", tamil: "ராக்கெட்", image: "/categories/rockets.jpg", slug: "rockets", color: "#FF8C00" },
-  { label: "Flower Pots", tamil: "பூச்சட்டி", image: "/categories/flower-pots.jpg", slug: "flower-pots", color: "#D4AF37" },
-  { label: "Ground Chakkar", tamil: "நிலச்சக்கரம்", image: "/categories/ground-chakkar.jpg", slug: "ground-chakkar", color: "#00D26A" },
-  { label: "Sparklers", tamil: "மத்தாப்பு", image: "/categories/sparklers.jpg", slug: "sparklers", color: "#FF3131" },
+  { label: "Sky Shots", tamil: "வான வெடி", image: "/categories/sky-shots.jpg", slug: "sky-shots", color: "#DC2626" },
+  { label: "Rockets", tamil: "ராக்கெட்", image: "/categories/rockets.jpg", slug: "rockets", color: "#EA580C" },
+  { label: "Flower Pots", tamil: "பூச்சட்டி", image: "/categories/flower-pots.jpg", slug: "flower-pots", color: "#D97706" },
+  { label: "Ground Chakkar", tamil: "நிலச்சக்கரம்", image: "/categories/ground-chakkar.jpg", slug: "ground-chakkar", color: "#16A34A" },
+  { label: "Sparklers", tamil: "மத்தாப்பு", image: "/categories/sparklers.jpg", slug: "sparklers", color: "#DC2626" },
 ];
 
 export function Hero({ stats }: { stats: { products: number; categories: number }; images?: string[] }) {
@@ -34,16 +34,16 @@ export function Hero({ stats }: { stats: { products: number; categories: number 
   };
 
   return (
-    <section className="relative overflow-hidden pb-24 pt-14 lg:pt-20">
+    <section className="relative overflow-hidden pb-20 pt-10 lg:pt-16">
       <div className="shell grid items-center gap-14 lg:grid-cols-[1.05fr_0.95fr]">
         <div>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
-            className="glass inline-flex items-center gap-2.5 rounded-full px-4 py-2 text-[11px] uppercase tracking-[3px] text-gold"
+            className="inline-flex items-center gap-2.5 rounded-full border border-red-500/20 bg-white/90 px-4 py-2 text-[11px] font-bold uppercase tracking-[3px] text-red-600 shadow-sm"
           >
-            <span className="h-1.5 w-1.5 animate-[pulseGlow_2s_ease-in-out_infinite] rounded-full bg-gold" />
+            <span className="h-2 w-2 animate-[pulseGlow_2s_ease-in-out_infinite] rounded-full bg-red-600" />
             Sivakasi · PESO Licensed · Since 1994
           </motion.div>
 
@@ -51,7 +51,7 @@ export function Hero({ stats }: { stats: { products: number; categories: number 
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-            className="mt-7 font-display text-[42px] font-bold leading-[1.05] tracking-[-1px] text-balance sm:text-[58px] lg:text-[66px]"
+            className="mt-6 font-display text-[42px] font-bold leading-[1.05] tracking-[-1px] text-slate-900 text-balance sm:text-[58px] lg:text-[66px]"
           >
             Celebrate Every Festival <br className="hidden sm:block" />
             with <span className="gold-text">Premium Sivakasi</span> Fireworks
@@ -61,7 +61,7 @@ export function Hero({ stats }: { stats: { products: number; categories: number 
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 1, delay: 0.28, ease: [0.16, 1, 0.3, 1] }}
-            className="mt-6 max-w-xl text-[15px] leading-relaxed text-white/60"
+            className="mt-6 max-w-xl text-[15px] leading-relaxed text-slate-600 font-medium"
           >
             Luxury fireworks collection direct from our Sivakasi factory. {stats.products}+ products
             across {stats.categories} categories at up to 80% off MRP — build an instant estimate,
@@ -87,7 +87,7 @@ export function Hero({ stats }: { stats: { products: number; categories: number 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 1.2, delay: 0.6 }}
-            className="mt-11 grid max-w-lg grid-cols-3 gap-5 border-t border-white/8 pt-7"
+            className="mt-11 grid max-w-lg grid-cols-3 gap-5 border-t border-slate-200 pt-7"
           >
             {[
               { k: "80%", v: "Off MRP" },
@@ -95,18 +95,18 @@ export function Hero({ stats }: { stats: { products: number; categories: number 
               { k: "12k+", v: "Happy Families" },
             ].map((s) => (
               <div key={s.k}>
-                <p className="font-display text-[26px] font-bold text-gold">{s.k}</p>
-                <p className="text-[11.5px] uppercase tracking-[2px] text-white/45">{s.v}</p>
+                <p className="font-display text-[28px] font-bold text-red-600">{s.k}</p>
+                <p className="text-[11.5px] font-bold uppercase tracking-[2px] text-slate-500">{s.v}</p>
               </div>
             ))}
           </motion.div>
 
-          <div className="mt-8 flex flex-wrap items-center gap-5 text-[12px] text-white/45">
+          <div className="mt-8 flex flex-wrap items-center gap-6 text-[12.5px] font-bold text-slate-600">
             <span className="flex items-center gap-2">
-              <ShieldCheck size={15} className="text-verde" /> Safe & sealed packing
+              <ShieldCheck size={16} className="text-emerald-600" /> Safe & sealed packing
             </span>
             <span className="flex items-center gap-2">
-              <Truck size={15} className="text-gold" /> Pan-India transport
+              <Truck size={16} className="text-red-600" /> Pan-India transport
             </span>
           </div>
         </div>
@@ -120,14 +120,14 @@ export function Hero({ stats }: { stats: { products: number; categories: number 
           onMouseEnter={() => setPaused(true)}
           onMouseLeave={() => setPaused(false)}
         >
-          {/* Background Glow */}
-          <div className="absolute h-80 w-80 rounded-full bg-[radial-gradient(circle,rgba(212,175,55,0.25),transparent_66%)] blur-3xl" />
+          {/* Background Ambient Glow */}
+          <div className="absolute h-80 w-80 rounded-full bg-[radial-gradient(circle,rgba(220,38,38,0.15),transparent_66%)] blur-3xl" />
 
           {/* Left / Right Nav Buttons */}
           <button
             aria-label="Previous slide"
             onClick={handlePrev}
-            className="glass absolute left-0 z-30 flex h-11 w-11 items-center justify-center rounded-full text-gold transition-all duration-300 hover:scale-110 hover:border-gold md:left-2"
+            className="absolute left-0 z-30 flex h-11 w-11 items-center justify-center rounded-full border border-red-500/20 bg-white/90 text-red-600 shadow-md transition-all duration-300 hover:scale-110 hover:border-red-600 md:left-2"
           >
             <ChevronLeft size={22} />
           </button>
@@ -135,7 +135,7 @@ export function Hero({ stats }: { stats: { products: number; categories: number 
           <button
             aria-label="Next slide"
             onClick={handleNext}
-            className="glass absolute right-0 z-30 flex h-11 w-11 items-center justify-center rounded-full text-gold transition-all duration-300 hover:scale-110 hover:border-gold md:right-2"
+            className="absolute right-0 z-30 flex h-11 w-11 items-center justify-center rounded-full border border-red-500/20 bg-white/90 text-red-600 shadow-md transition-all duration-300 hover:scale-110 hover:border-red-600 md:right-2"
           >
             <ChevronRight size={22} />
           </button>
@@ -143,7 +143,6 @@ export function Hero({ stats }: { stats: { products: number; categories: number 
           {/* Coverflow Slide Track */}
           <div className="relative flex h-[350px] w-full max-w-[420px] items-center justify-center perspective-1000">
             {SHOWCASE.map((item, index) => {
-              // Calculate offset relative to active card (-2, -1, 0, 1, 2)
               let offset = index - active;
               if (offset > 2) offset -= SHOWCASE.length;
               if (offset < -2) offset += SHOWCASE.length;
@@ -153,18 +152,17 @@ export function Hero({ stats }: { stats: { products: number; categories: number 
 
               if (!isVisible) return null;
 
-              // Coverflow transformations
-              const translateX = offset * 110; // offset in px
+              const translateX = offset * 110;
               const scale = isCenter ? 1 : 0.82;
-              const rotateY = offset * -25; // 3D rotation angle
+              const rotateY = offset * -25;
               const zIndex = 20 - Math.abs(offset) * 5;
-              const opacity = isCenter ? 1 : Math.abs(offset) === 1 ? 0.65 : 0.3;
+              const opacity = isCenter ? 1 : Math.abs(offset) === 1 ? 0.7 : 0.35;
 
               return (
                 <motion.div
                   key={item.label}
                   onClick={() => setActive(index)}
-                  className="absolute h-[340px] w-[240px] cursor-pointer overflow-hidden rounded-[32px] border glass transition-all duration-700 sm:h-[380px] sm:w-[270px]"
+                  className="absolute h-[340px] w-[240px] cursor-pointer overflow-hidden rounded-[32px] border bg-white transition-all duration-700 sm:h-[380px] sm:w-[270px]"
                   animate={{
                     x: translateX,
                     scale,
@@ -174,10 +172,10 @@ export function Hero({ stats }: { stats: { products: number; categories: number 
                   }}
                   transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
                   style={{
-                    borderColor: isCenter ? item.color : "rgba(212, 175, 55, 0.2)",
+                    borderColor: isCenter ? item.color : "rgba(220, 38, 38, 0.2)",
                     boxShadow: isCenter
-                      ? `0 25px 70px -20px ${item.color}bb, inset 0 0 20px ${item.color}33`
-                      : "0 10px 30px -15px rgba(0,0,0,0.8)",
+                      ? `0 25px 60px -20px ${item.color}88, 0 10px 30px -15px rgba(0,0,0,0.15)`
+                      : "0 10px 25px -15px rgba(0,0,0,0.12)",
                   }}
                 >
                   <img
@@ -185,11 +183,11 @@ export function Hero({ stats }: { stats: { products: number; categories: number 
                     alt={item.label}
                     className="h-full w-full object-cover transition-transform duration-700 hover:scale-105"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/25 to-transparent" />
 
                   <div
                     className="absolute inset-x-0 bottom-0 p-6"
-                    style={{ borderTop: isCenter ? `1px solid ${item.color}66` : "1px solid rgba(255,255,255,0.1)" }}
+                    style={{ borderTop: isCenter ? `1px solid ${item.color}66` : "1px solid rgba(255,255,255,0.15)" }}
                   >
                     <p className="text-[11px] font-bold uppercase tracking-[3px]" style={{ color: item.color }}>
                       {item.tamil}
@@ -198,7 +196,7 @@ export function Hero({ stats }: { stats: { products: number; categories: number 
                     {isCenter && (
                       <Link
                         href={`/products?category=${item.slug}`}
-                        className="mt-3 inline-flex items-center gap-1.5 text-[11.5px] uppercase tracking-[2px] text-gold hover:underline"
+                        className="mt-3 inline-flex items-center gap-1.5 text-[11.5px] font-bold uppercase tracking-[2px] text-red-400 hover:underline"
                       >
                         Browse Category <ArrowRight size={13} />
                       </Link>
@@ -218,8 +216,8 @@ export function Hero({ stats }: { stats: { products: number; categories: number 
                 onClick={() => setActive(index)}
                 className={`h-2.5 rounded-full transition-all duration-500 ${
                   active === index
-                    ? "w-8 bg-gold shadow-[0_0_12px_rgba(212,175,55,0.9)]"
-                    : "w-2.5 bg-white/20 hover:bg-white/40"
+                    ? "w-8 bg-red-600 shadow-[0_0_12px_rgba(220,38,38,0.7)]"
+                    : "w-2.5 bg-slate-300 hover:bg-slate-400"
                 }`}
               />
             ))}

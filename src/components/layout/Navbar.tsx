@@ -65,22 +65,22 @@ export function Navbar() {
     <>
       <div className="fixed inset-x-0 top-0 z-[300] print:hidden">
         {/* announcement ticker */}
-        <div className="relative h-8 overflow-hidden border-b border-gold/15 bg-black/70 backdrop-blur-md">
-          <div className="ticker-track flex w-max items-center gap-10 py-[7px] text-[10.5px] uppercase tracking-[3px] text-gold/80">
+        <div className="relative h-8 overflow-hidden bg-red-600 text-white font-bold border-b border-red-700 shadow-sm">
+          <div className="ticker-track flex w-max items-center gap-10 py-[7px] text-[11px] uppercase tracking-[3px]">
             {[...TICKER, ...TICKER].map((t, i) => (
               <span key={i} className="flex items-center gap-10 whitespace-nowrap">
                 {t}
-                <span className="text-gold/40">✦</span>
+                <span className="text-red-200">✦</span>
               </span>
             ))}
           </div>
         </div>
 
         <header
-          className={`transition-all duration-700 ${
+          className={`transition-all duration-500 ${
             scrolled
-              ? "border-b border-gold/20 bg-black/80 backdrop-blur-2xl shadow-[0_20px_60px_-40px_rgba(212,175,55,0.6)]"
-              : "border-b border-transparent bg-transparent"
+              ? "border-b border-red-500/20 bg-white/95 backdrop-blur-2xl shadow-md"
+              : "border-b border-slate-200/80 bg-white/85 backdrop-blur-md"
           }`}
         >
           <div className="shell flex h-[74px] items-center justify-between gap-4">
@@ -95,17 +95,16 @@ export function Navbar() {
                   <Link
                     key={l.href}
                     href={l.href}
-                    className="group relative rounded-xl px-3.5 py-2 text-[13px] font-medium tracking-[1px] text-white/75 transition-all duration-500 hover:text-gold"
+                    className={`group relative rounded-xl px-3.5 py-2 text-[13px] font-bold tracking-[1px] transition-all duration-300 ${
+                      active ? "text-red-600" : "text-slate-700 hover:text-red-600"
+                    }`}
                   >
                     {l.label}
                     <span
-                      className={`absolute inset-x-3 -bottom-0.5 h-px origin-left bg-gradient-to-r from-transparent via-gold to-transparent transition-transform duration-500 ${
+                      className={`absolute inset-x-3 -bottom-0.5 h-0.5 origin-left bg-red-600 transition-transform duration-300 ${
                         active ? "scale-x-100" : "scale-x-0 group-hover:scale-x-100"
                       }`}
                     />
-                    {active && (
-                      <span className="absolute -bottom-2 left-1/2 h-1 w-1 -translate-x-1/2 animate-[pulseGlow_2s_ease-in-out_infinite] rounded-full bg-gold" />
-                    )}
                   </Link>
                 );
               })}
@@ -115,77 +114,74 @@ export function Navbar() {
               <button
                 onClick={() => setSearchOpen(true)}
                 aria-label="Search products"
-                className="flex h-10 w-10 items-center justify-center rounded-xl border border-gold/20 text-white/70 transition-all duration-500 hover:border-gold/70 hover:text-gold"
+                className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm transition-all duration-300 hover:border-red-600 hover:text-red-600"
               >
                 <Search size={17} />
               </button>
               <a
                 href={`tel:${SITE.phoneRaw}`}
                 aria-label="Call Mayilon Crackers"
-                className="hidden h-10 w-10 items-center justify-center rounded-xl border border-gold/20 text-white/70 transition-all duration-500 hover:border-gold/70 hover:text-gold sm:flex"
+                className="hidden h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm transition-all duration-300 hover:border-red-600 hover:text-red-600 sm:flex"
               >
                 <Phone size={16} />
               </a>
               <Link
                 href="/estimate"
-                aria-label="Open estimate"
-                className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-gold/20 text-white/70 transition-all duration-500 hover:border-gold/70 hover:text-gold"
+                className="btn-gold relative flex h-10 items-center gap-2 px-4 text-[12.5px] uppercase font-bold"
               >
-                <ShoppingBag size={17} />
+                <ShoppingBag size={16} />
+                <span className="hidden sm:inline">Estimate</span>
                 {count > 0 && (
-                  <span className="absolute -right-1.5 -top-1.5 flex h-[19px] min-w-[19px] items-center justify-center rounded-full bg-gold px-1 text-[10px] font-bold text-black">
+                  <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-white px-1.5 text-[11px] font-bold text-red-600 shadow">
                     {count}
                   </span>
                 )}
               </Link>
-              <Link
-                href="/estimate"
-                className="btn-gold hidden px-5 py-2.5 text-[12.5px] uppercase md:inline-flex"
-              >
-                Quick Estimate
-              </Link>
+
               <button
-                onClick={() => setOpen((v) => !v)}
+                onClick={() => setOpen((o) => !o)}
                 aria-label="Toggle menu"
-                className="flex h-10 w-10 items-center justify-center rounded-xl border border-gold/20 text-gold lg:hidden"
+                className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 transition lg:hidden"
               >
-                {open ? <X size={18} /> : <Menu size={18} />}
+                {open ? <X size={20} /> : <Menu size={20} />}
               </button>
             </div>
           </div>
-        </header>
 
-        <AnimatePresence>
-          {open && (
-            <motion.nav
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-              className="overflow-hidden border-b border-gold/20 bg-black/95 backdrop-blur-2xl lg:hidden"
-            >
-              <div className="shell flex flex-col gap-1 py-5">
-                {LINKS.map((l) => (
-                  <Link
-                    key={l.href}
-                    href={l.href}
-                    className="rounded-xl px-3 py-3 text-sm tracking-wide text-white/80 transition hover:bg-gold/10 hover:text-gold"
-                  >
-                    {l.label}
-                  </Link>
-                ))}
-                <a
-                  href={waLink("Hi Mayilon Crackers, I would like a price list.")}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="btn-ghost mt-2 px-4 py-3 text-center text-sm"
-                >
-                  WhatsApp Us
-                </a>
-              </div>
-            </motion.nav>
-          )}
-        </AnimatePresence>
+          {/* Mobile menu */}
+          <AnimatePresence>
+            {open && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="overflow-hidden border-b border-slate-200 bg-white p-6 shadow-xl lg:hidden"
+              >
+                <nav className="flex flex-col gap-3">
+                  {LINKS.map((l) => (
+                    <Link
+                      key={l.href}
+                      href={l.href}
+                      className="rounded-xl p-3 text-[15px] font-bold text-slate-800 transition hover:bg-red-50 hover:text-red-600"
+                    >
+                      {l.label}
+                    </Link>
+                  ))}
+                  <div className="mt-4 border-t border-slate-100 pt-4 flex flex-col gap-3">
+                    <a
+                      href={waLink("Hi Mayilon Crackers!")}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="btn-ghost flex items-center justify-center gap-2 py-3 text-sm font-bold uppercase"
+                    >
+                      WhatsApp Us
+                    </a>
+                  </div>
+                </nav>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </header>
       </div>
 
       <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
