@@ -7,7 +7,7 @@ import { useState, useRef } from "react";
 import { useEstimate } from "@/components/estimate/EstimateProvider";
 import { formatINR } from "@/lib/estimate";
 
-type ProductProp = {
+export type CardProduct = {
   id: string;
   sku: string;
   slug: string;
@@ -27,7 +27,7 @@ type ProductProp = {
   stock: number;
 };
 
-export function ProductCard({ p, index = 0 }: { p: ProductProp; index?: number }) {
+export function ProductCard({ p, index = 0 }: { p: CardProduct; index?: number }) {
   const { add } = useEstimate();
   const ref = useRef<HTMLDivElement>(null);
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
