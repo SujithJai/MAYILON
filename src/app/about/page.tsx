@@ -14,42 +14,42 @@ export const metadata: Metadata = {
 };
 
 const VALUES = [
-  { t: "Quality without compromise", d: "Every batch is tested for fuse integrity, moisture resistance and burn consistency before it leaves the floor." },
-  { t: "Safety first, always", d: "PESO-compliant manufacturing, storage and transport. Safety leaflets ship with every carton." },
-  { t: "Fair, transparent pricing", d: "One price list for everyone. No inflated MRP games, no hidden transport markups." },
-  { t: "Tradition with technology", d: "Hand-rolled craft heritage combined with a modern digital estimate and dispatch platform." },
+  { t: "Quality Without Compromise", d: "Every batch is tested for fuse integrity, moisture resistance and burn consistency before it leaves the floor." },
+  { t: "Safety First, Always", d: "PESO-compliant manufacturing, storage and transport. Safety leaflets ship with every carton." },
+  { t: "Fair, Transparent Pricing", d: "One price list for everyone. No inflated MRP games, no hidden transport markups." },
+  { t: "Tradition With Technology", d: "Hand-rolled craft heritage combined with a modern digital estimate and dispatch platform." },
 ];
 
 export default function AboutPage() {
   return (
     <div className="shell py-10">
-      <nav className="flex items-center gap-2 text-[12px] text-white/40">
-        <Link href="/" className="hover:text-gold">Home</Link>
-        <span className="text-gold/50">/</span>
-        <span className="text-gold">About</span>
+      <nav className="flex items-center gap-2 text-[12px] font-medium text-slate-500">
+        <Link href="/" className="hover:text-red-600">Home</Link>
+        <span className="text-slate-300">/</span>
+        <span className="text-red-600 font-bold">About Us</span>
       </nav>
 
-      <Reveal className="relative mt-8 overflow-hidden rounded-[34px] border border-gold/20">
+      <Reveal className="relative mt-8 overflow-hidden rounded-[34px] border border-red-500/20 bg-slate-950 text-white shadow-xl">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={IMAGE_POOL[2]} alt="Mayilon Crackers Sivakasi" className="h-[340px] w-full object-cover opacity-45" />
-        <div className="absolute inset-0 bg-[linear-gradient(95deg,rgba(5,5,5,0.96),rgba(5,5,5,0.5))]" />
+        <img src={IMAGE_POOL[2]} alt="Mayilon Crackers Sivakasi" className="h-[340px] w-full object-cover opacity-35 mix-blend-overlay" />
+        <div className="absolute inset-0 bg-gradient-to-r from-red-950 via-red-900/80 to-slate-950/90" />
         <div className="absolute inset-0 flex flex-col justify-center gap-4 p-10 lg:p-16">
-          <span className="text-[11px] uppercase tracking-[4px] text-gold">Sivakasi · Est. 1994</span>
-          <h1 className="max-w-2xl font-display text-[34px] font-bold leading-tight sm:text-[48px]">
-            We make the light that <span className="gold-text">India celebrates with</span>
+          <span className="text-[11px] font-bold uppercase tracking-[4px] text-red-200">Sivakasi · Est. 1994</span>
+          <h1 className="max-w-2xl font-display text-[34px] font-bold leading-tight text-white sm:text-[48px]">
+            We Make the Light That <span className="underline decoration-red-400">India Celebrates With</span>
           </h1>
-          <p className="max-w-xl text-[14.5px] text-white/60">{SITE.tagline}</p>
+          <p className="max-w-xl text-[15px] font-medium text-red-100/90">{SITE.tagline}</p>
         </div>
       </Reveal>
 
-      <section className="grid gap-10 py-20 lg:grid-cols-2">
+      <section className="grid gap-10 py-16 lg:grid-cols-2">
         <Reveal>
-          <h2 className="font-display text-[30px] font-bold leading-tight">
+          <h2 className="font-display text-[30px] font-bold leading-tight text-slate-900">
             From a single hand-rolling shed to a <span className="gold-text">licensed manufacturing unit</span>
           </h2>
         </Reveal>
         <Reveal delay={0.08}>
-          <div className="space-y-4 text-[14.5px] leading-relaxed text-white/60">
+          <div className="space-y-4 text-[15px] leading-relaxed text-slate-600 font-medium">
             <p>
               Mayilon Crackers began in 1994 in a small shed off Sattur Main Road, Sivakasi — the
               town that produces the overwhelming majority of India&apos;s fireworks. What started
@@ -72,45 +72,45 @@ export default function AboutPage() {
 
       <section className="py-10">
         <SectionHeading
-          eyebrow="Our values"
+          eyebrow="Our Values"
           title={
             <>
-              What we refuse to <span className="gold-text">compromise on</span>
+              What We Refuse to <span className="gold-text">Compromise On</span>
             </>
           }
         />
         <div className="grid gap-6 sm:grid-cols-2">
           {VALUES.map((v, i) => (
             <Reveal key={v.t} delay={i * 0.06}>
-              <div className="glass lift-card h-full rounded-[28px] p-7">
-                <h3 className="font-display text-[18px] font-semibold text-gold">{v.t}</h3>
-                <p className="mt-3 text-[13.5px] leading-relaxed text-white/55">{v.d}</p>
+              <div className="glass lift-card h-full rounded-[28px] p-7 border border-red-500/15 bg-white shadow-md">
+                <h3 className="font-display text-[18px] font-bold text-red-600">{v.t}</h3>
+                <p className="mt-3 text-[14px] leading-relaxed text-slate-600 font-medium">{v.d}</p>
               </div>
             </Reveal>
           ))}
         </div>
       </section>
 
-      <section className="py-20">
+      <section className="py-16">
         <SectionHeading
           eyebrow="Milestones"
           title={
             <>
-              Three decades of <span className="gold-text">Sivakasi craft</span>
+              Three Decades of <span className="gold-text">Sivakasi Craft</span>
             </>
           }
         />
         <WhyUs />
       </section>
 
-      <section className="glass rounded-[30px] p-10 text-center">
-        <h3 className="font-display text-[26px] font-bold text-white">
-          Visit our <span className="gold-text">Sivakasi facility</span>
+      <section className="glass rounded-[30px] p-10 text-center border border-red-500/20 bg-white shadow-lg">
+        <h3 className="font-display text-[26px] font-bold text-slate-900">
+          Visit Our <span className="gold-text">Sivakasi Facility</span>
         </h3>
-        <p className="mx-auto mt-3 max-w-xl text-[14px] text-white/55">{SITE.address}</p>
+        <p className="mx-auto mt-3 max-w-xl text-[14.5px] font-medium text-slate-600">{SITE.address}</p>
         <div className="mt-7 flex flex-wrap justify-center gap-4">
-          <Link href="/contact" className="btn-gold px-7 py-3.5 text-sm uppercase">Contact us</Link>
-          <Link href="/dealers" className="btn-ghost px-7 py-3.5 text-sm uppercase">Become a dealer</Link>
+          <Link href="/contact" className="btn-gold px-7 py-3.5 text-sm uppercase font-bold">Contact Us</Link>
+          <Link href="/dealers" className="btn-ghost px-7 py-3.5 text-sm uppercase font-bold">Become a Dealer</Link>
         </div>
       </section>
     </div>
