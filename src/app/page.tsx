@@ -93,31 +93,31 @@ export default async function HomePage() {
       {/* Festival banner */}
       <section className="shell py-16">
         <Reveal>
-          <div className="relative overflow-hidden rounded-[36px] border border-red-500/20 bg-gradient-to-r from-red-900 to-red-600 text-white shadow-xl">
+          <div className="relative overflow-hidden rounded-[36px] border border-red-500/30 bg-slate-950 text-white shadow-2xl">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={IMAGE_POOL[4]}
               alt="Deepavali festival fireworks"
               loading="lazy"
-              className="h-[380px] w-full object-cover opacity-40 mix-blend-overlay"
+              className="h-[380px] w-full object-cover opacity-30 mix-blend-overlay"
             />
-            <div className="absolute inset-0 bg-[linear-gradient(100deg,rgba(153,27,27,0.95),rgba(220,38,38,0.75)_58%,transparent)]" />
+            <div className="absolute inset-0 bg-gradient-to-r from-red-950 via-red-900/90 to-slate-950/95" />
             <div className="absolute inset-0 flex flex-col justify-center gap-5 p-10 lg:p-16">
-              <span className="text-[11px] font-bold uppercase tracking-[4px] text-red-200">
+              <span className="text-[11px] font-bold uppercase tracking-[4px] text-amber-300">
                 Deepavali 2026 · Booking Open
               </span>
-              <h3 className="max-w-xl font-display text-[32px] font-bold leading-tight text-white sm:text-[44px]">
-                Book Early. <span className="underline decoration-red-300">Pay Factory Rates.</span>
+              <h3 className="max-w-xl font-display text-[32px] font-bold leading-tight !text-white sm:text-[44px]">
+                Book Early. <span className="text-amber-300 font-bold underline decoration-amber-400">Pay Factory Rates.</span>
               </h3>
-              <p className="max-w-lg text-[14.5px] text-red-100/90">
+              <p className="max-w-lg text-[15px] text-slate-200 font-medium leading-relaxed">
                 Early estimates submitted before the festival rush get priority packing slots,
                 guaranteed stock allocation and free transport above ₹50,000.
               </p>
               <div className="flex flex-wrap gap-4 pt-2">
-                <Link href="/estimate" className="btn-gold px-7 py-3.5 text-sm uppercase">
+                <Link href="/estimate" className="btn-gold px-7 py-3.5 text-sm uppercase font-bold">
                   Build My Estimate
                 </Link>
-                <Link href="/dealers" className="btn-ghost !bg-white/10 !text-white !border-white/30 px-7 py-3.5 text-sm uppercase">
+                <Link href="/dealers" className="btn-ghost !bg-white/10 !text-white !border-white/40 hover:!bg-white/20 px-7 py-3.5 text-sm uppercase font-bold">
                   Wholesale Enquiry
                 </Link>
               </div>

@@ -80,30 +80,30 @@ export default async function ProductsPage({ searchParams }: { searchParams: SP 
           )}
         </nav>
 
-        <Reveal className="relative mt-6 overflow-hidden rounded-[34px] border border-gold/20">
+        <Reveal className="relative mt-6 overflow-hidden rounded-[34px] border border-red-500/20 bg-slate-950 text-white shadow-xl">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={active?.imageUrl ?? categories[0]?.imageUrl ?? ""}
             alt={active?.name ?? "Fireworks collection"}
-            className="h-[280px] w-full object-cover opacity-50"
+            className="h-[280px] w-full object-cover opacity-35 mix-blend-overlay"
           />
-          <div className="absolute inset-0 bg-[linear-gradient(95deg,rgba(5,5,5,0.96),rgba(5,5,5,0.6)_60%,transparent)]" />
+          <div className="absolute inset-0 bg-gradient-to-r from-red-950 via-red-900/90 to-slate-950/95" />
           <div className="absolute inset-0 flex flex-col justify-center gap-3 p-9 lg:p-14">
-            <span className="text-[11px] uppercase tracking-[4px] text-gold">
-              {active?.nameTa ?? "Complete catalogue"} · {total} products
+            <span className="text-[11px] font-bold uppercase tracking-[4px] text-amber-300">
+              {active?.nameTa ?? "Complete Catalogue"} · {total} Products
             </span>
-            <h1 className="max-w-2xl font-display text-[32px] font-bold leading-tight sm:text-[46px]">
+            <h1 className="max-w-2xl font-display text-[32px] font-bold leading-tight !text-white sm:text-[46px]">
               {active ? (
                 <>
-                  {active.name} <span className="gold-text">Collection</span>
+                  {active.name} <span className="text-amber-300 font-bold underline decoration-amber-400">Collection</span>
                 </>
               ) : (
                 <>
-                  Every firework we <span className="gold-text">manufacture</span>
+                  Every Firework We <span className="text-amber-300 font-bold underline decoration-amber-400">Manufacture</span>
                 </>
               )}
             </h1>
-            <p className="max-w-xl text-[14px] text-white/55">
+            <p className="max-w-xl text-[14.5px] font-medium text-slate-200">
               {active?.description ??
                 "Factory-direct pricing on the full Mayilon range. Filter by category, price band or collection, then build an estimate in one click."}
             </p>

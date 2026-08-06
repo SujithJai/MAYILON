@@ -34,11 +34,11 @@ export default function AboutPage() {
         <img src={IMAGE_POOL[2]} alt="Mayilon Crackers Sivakasi" className="h-[340px] w-full object-cover opacity-35 mix-blend-overlay" />
         <div className="absolute inset-0 bg-gradient-to-r from-red-950 via-red-900/80 to-slate-950/90" />
         <div className="absolute inset-0 flex flex-col justify-center gap-4 p-10 lg:p-16">
-          <span className="text-[11px] font-bold uppercase tracking-[4px] text-red-200">Sivakasi · Est. 1994</span>
-          <h1 className="max-w-2xl font-display text-[34px] font-bold leading-tight text-white sm:text-[48px]">
-            We Make the Light That <span className="underline decoration-red-400">India Celebrates With</span>
+          <span className="text-[11px] font-bold uppercase tracking-[4px] text-amber-300">Sivakasi · Est. 1994</span>
+          <h1 className="max-w-2xl font-display text-[34px] font-bold leading-tight !text-white sm:text-[48px]">
+            We Make the Light That <span className="text-amber-300 font-bold underline decoration-amber-400">India Celebrates With</span>
           </h1>
-          <p className="max-w-xl text-[15px] font-medium text-red-100/90">{SITE.tagline}</p>
+          <p className="max-w-xl text-[15px] font-medium text-slate-200">{SITE.tagline}</p>
         </div>
       </Reveal>
 

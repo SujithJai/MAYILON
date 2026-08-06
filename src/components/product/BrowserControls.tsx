@@ -179,10 +179,27 @@ export function BrowserControls({
           <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-red-600" />
           <input
             value={q}
-            onChange={(e) => setQ(e.target.value)}
+            onChange={(e) => {
+              const val = e.target.value;
+              setQ(val);
+              setParam("q", val || null);
+            }}
             placeholder="Search product name or SKU code…"
-            className="field pl-11 !bg-slate-50 !border-red-500/25 !text-slate-900 focus:!border-red-600"
+            className="field pl-11 pr-10 !bg-slate-50 !border-red-500/25 !text-slate-900 font-bold focus:!border-red-600"
           />
+          {q && (
+            <button
+              type="button"
+              onClick={() => {
+                setQ("");
+                setParam("q", null);
+              }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-600"
+              aria-label="Clear search"
+            >
+              <X size={16} />
+            </button>
+          )}
         </form>
 
         <select

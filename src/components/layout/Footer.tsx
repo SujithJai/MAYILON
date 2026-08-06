@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { LogoLockup } from "@/components/brand/Logo";
+import { LogoMark } from "@/components/brand/Logo";
 import { SITE, waLink } from "@/lib/slug";
 
 const COLS = [
@@ -59,17 +59,27 @@ export function Footer() {
   }
 
   return (
-    <footer className="relative mt-24 border-t border-red-500/20 bg-slate-950 text-slate-300 print:hidden">
-      <div className="h-1 bg-gradient-to-r from-red-600 via-red-500 to-amber-500" />
+    <footer className="relative mt-24 border-t border-red-500/30 bg-slate-950 text-white print:hidden">
+      <div className="h-1 bg-gradient-to-r from-red-600 via-amber-500 to-rose-600" />
       <div className="shell grid gap-12 py-16 lg:grid-cols-[1.4fr_repeat(3,1fr)_1.3fr]">
         <div>
-          <LogoLockup size={48} />
-          <p className="mt-5 max-w-xs text-sm leading-relaxed text-slate-400">
+          <span className="group inline-flex items-center gap-3">
+            <LogoMark size={48} />
+            <span className="flex flex-col leading-none">
+              <span className="font-display text-[19px] font-bold tracking-[2px] uppercase text-white">
+                மயிலோன்
+              </span>
+              <span className="text-[10px] font-bold uppercase tracking-[4px] text-amber-400 mt-1">
+                PYROWORLD
+              </span>
+            </span>
+          </span>
+          <p className="mt-5 max-w-xs text-sm leading-relaxed text-slate-300 font-medium">
             Factory-direct premium fireworks from Sivakasi. PESO licensed manufacturing, cinematic
             quality, wholesale pricing and safe nationwide dispatch.
           </p>
-          <p className="mt-4 text-sm font-bold text-red-400">{SITE.tagline}</p>
-          <div className="mt-5 space-y-1 text-xs text-slate-500">
+          <p className="mt-4 text-sm font-bold text-amber-300">{SITE.tagline}</p>
+          <div className="mt-5 space-y-1 text-xs text-slate-400 font-medium">
             <p>GSTIN: {SITE.gst}</p>
             <p>Licence: {SITE.license}</p>
           </div>
@@ -77,15 +87,15 @@ export function Footer() {
 
         {COLS.map((col) => (
           <div key={col.title}>
-            <h4 className="mb-4 text-[11px] font-bold uppercase tracking-[3px] text-red-500">
+            <h4 className="mb-4 text-[11px] font-bold uppercase tracking-[3px] !text-amber-400">
               {col.title}
             </h4>
-            <ul className="space-y-2.5">
+            <ul className="space-y-3">
               {col.links.map((l) => (
                 <li key={l.href}>
                   <Link
                     href={l.href}
-                    className="text-sm text-slate-400 transition-all duration-300 hover:translate-x-1 hover:text-white inline-block"
+                    className="text-sm font-semibold !text-slate-200 transition-all duration-300 hover:translate-x-1 hover:!text-white inline-block"
                   >
                     {l.label}
                   </Link>
@@ -96,10 +106,10 @@ export function Footer() {
         ))}
 
         <div>
-          <h4 className="mb-4 text-[11px] font-bold uppercase tracking-[3px] text-red-500">
+          <h4 className="mb-4 text-[11px] font-bold uppercase tracking-[3px] !text-amber-400">
             Festival Newsletter
           </h4>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-slate-300 font-medium leading-relaxed">
             Get exclusive early-booking price lists & Deepavali discounts straight to your inbox.
           </p>
           <form onSubmit={subscribe} className="mt-4 space-y-2">
@@ -108,7 +118,7 @@ export function Footer() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Your email address"
-              className="field !border-slate-800 !bg-slate-900 !text-white placeholder:!text-slate-500 focus:!border-red-500"
+              className="field !border-slate-700 !bg-slate-900 !text-white placeholder:!text-slate-400 focus:!border-amber-400"
             />
             <button
               type="submit"
@@ -116,22 +126,22 @@ export function Footer() {
             >
               Subscribe
             </button>
-            {msg && <p className="text-xs text-red-400 font-medium">{msg}</p>}
+            {msg && <p className="text-xs text-amber-300 font-bold">{msg}</p>}
           </form>
         </div>
       </div>
 
-      <div className="border-t border-slate-900 bg-slate-950 py-6 text-center text-xs text-slate-500">
+      <div className="border-t border-slate-900 bg-slate-950 py-6 text-center text-xs text-slate-400">
         <div className="shell flex flex-col items-center justify-between gap-4 sm:flex-row">
           <p>© 2026 {SITE.name}. All rights reserved. Sivakasi, Tamil Nadu.</p>
-          <div className="flex gap-4 font-medium text-slate-400">
-            <Link href="/legal" className="hover:text-red-400">
+          <div className="flex gap-4 font-semibold text-slate-300">
+            <Link href="/legal" className="hover:text-white">
               Terms & Conditions
             </Link>
-            <Link href="/legal" className="hover:text-red-400">
+            <Link href="/legal" className="hover:text-white">
               Privacy Policy
             </Link>
-            <Link href="/safety" className="hover:text-red-400">
+            <Link href="/safety" className="hover:text-white">
               PESO Safety
             </Link>
           </div>
