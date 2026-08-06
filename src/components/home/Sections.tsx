@@ -344,7 +344,7 @@ export function QuickCalculator({ products }: { products: CalcProduct[] }) {
               </div>
               <div className="flex justify-between text-slate-600">
                 <span>Total item count</span>
-                <span className="font-bold text-slate-900">{totals.totalItems} pcs</span>
+                <span className="font-bold text-slate-900">{totals.units} pcs</span>
               </div>
             </div>
           </div>
