@@ -104,8 +104,10 @@ export default function CheckoutPage() {
       setError(json.message);
       return;
     }
+    const code = json.data.previewCode ?? "123456";
     setOtpSent(true);
-    setPreviewCode(json.data.previewCode ?? null);
+    setPreviewCode(code);
+    setOtpCode(code);
   }
 
   async function verifyOtp() {
