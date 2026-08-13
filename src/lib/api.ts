@@ -10,8 +10,9 @@ export function fail(message: string, errors: unknown[] = [], status = 400) {
 }
 
 export function zodFail(err: ZodError) {
+  const firstIssueMessage = err.issues[0]?.message || "Invalid input details";
   return fail(
-    "Validation Failed",
+    firstIssueMessage,
     err.issues.map((i) => ({ path: i.path.join("."), message: i.message })),
     422,
   );
