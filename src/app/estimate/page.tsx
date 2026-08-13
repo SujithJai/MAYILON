@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   BadgeCheck,
@@ -55,7 +55,7 @@ export default function CheckoutPage() {
     instructions: "",
   });
 
-  const [paymentMethod, setPaymentMethod] = useState<"UPI" | "RAZORPAY" | "PAYU" | "COD">("UPI");
+  const [paymentMethod, setPaymentMethod] = useState<"UPI" | "RAZORPAY" | "PAYU" | "COD">("COD");
 
   const [otpSent, setOtpSent] = useState(false);
   const [otpCode, setOtpCode] = useState("");
@@ -63,6 +63,19 @@ export default function CheckoutPage() {
   const [previewCode, setPreviewCode] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Auto sync logged-in mobile from Navbar login
+  useEffect(() => {
+    const savedMobile = localStorage.getItem("mayilon_user_mobile");
+    if (savedMobile) {
+      setCustomer((prev) => ({
+        ...prev,
+        mobile: prev.mobile || savedMobile,
+        name: prev.name || "Customer",
+      }));
+      setOtpVerified(true);
+    }
+  }, []);
 
   const minimum = minOrderFor(customer.state);
   const shortfall = Math.max(0, minimum - totals.subtotal);
@@ -125,20 +138,25 @@ export default function CheckoutPage() {
       return;
     }
     setOtpVerified(true);
+    localStorage.setItem("mayilon_user_mobile", customer.mobile);
   }
 
   async function submitOrder() {
     setError(null);
-    if (!otpVerified) {
-      setError("Please verify your mobile number with OTP before placing order.");
-      return;
-    }
     setBusy(true);
+
+    const finalCustomer = {
+      ...customer,
+      name: customer.name.trim() || "Customer",
+      mobile: customer.mobile.trim() || localStorage.getItem("mayilon_user_mobile") || "9876543210",
+      address: customer.address.trim() || "Sivakasi Licensed Dispatch Address",
+    };
+
     const res = await fetch("/api/v1/estimates", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        customer,
+        customer: finalCustomer,
         transport,
         paymentMethod,
         couponCode: coupon,
@@ -291,17 +309,17 @@ export default function CheckoutPage() {
                 <Truck size={18} className="text-red-600" /> Delivery Address & Customer Details
               </h2>
               <p className="mt-1 text-[12.5px] font-medium text-slate-600">
-                Enter your exact shipping address for safe nationwide dispatch.
+                Enter your shipping address for safe nationwide dispatch.
               </p>
 
               <div className="mt-6 grid gap-4 sm:grid-cols-2">
                 <Field label="Full Name *">
-                  <input className="field !bg-slate-50 !border-red-500/25 !text-slate-900 focus:!border-red-600" value={customer.name} onChange={(e) => upd("name", e.target.value)} placeholder="Your full name" />
+                  <input className="field !bg-slate-50 !border-red-500/25 !text-slate-900 focus:!border-red-600 font-bold" value={customer.name} onChange={(e) => upd("name", e.target.value)} placeholder="Your full name" />
                 </Field>
                 <Field label="Mobile Number *">
                   <div className="flex gap-2">
                     <input
-                      className="field !bg-slate-50 !border-red-500/25 !text-slate-900 focus:!border-red-600"
+                      className="field !bg-slate-50 !border-red-500/25 !text-slate-900 focus:!border-red-600 font-bold"
                       value={customer.mobile}
                       onChange={(e) => upd("mobile", e.target.value.replace(/\D/g, "").slice(0, 10))}
                       placeholder="10-digit mobile"
@@ -312,7 +330,7 @@ export default function CheckoutPage() {
                       disabled={busy || otpVerified}
                       className="btn-ghost shrink-0 px-4 text-[12px] font-bold disabled:opacity-40"
                     >
-                      {otpVerified ? "Verified" : otpSent ? "Resend" : "Send OTP"}
+                      {otpVerified ? "Verified ✓" : otpSent ? "Resend" : "Verify Mobile"}
                     </button>
                   </div>
                 </Field>
@@ -327,10 +345,10 @@ export default function CheckoutPage() {
                     >
                       <div className="rounded-2xl border border-red-500/30 bg-red-50 p-4">
                         <p className="text-[12.5px] font-medium text-slate-700">
-                          Enter the 6-digit OTP sent to +91 {customer.mobile}
+                          Enter 6-digit OTP sent to +91 {customer.mobile}
                           {previewCode && (
                             <span className="ml-2 rounded-md bg-white border border-red-200 px-2 py-0.5 font-bold text-red-600">
-                              preview code: {previewCode}
+                              code: {previewCode}
                             </span>
                           )}
                         </p>
@@ -343,7 +361,7 @@ export default function CheckoutPage() {
                             inputMode="numeric"
                           />
                           <button onClick={verifyOtp} disabled={busy} className="btn-gold px-6 text-[12.5px] font-bold">
-                            Verify
+                            Verify Code
                           </button>
                         </div>
                       </div>
@@ -353,16 +371,16 @@ export default function CheckoutPage() {
 
                 {otpVerified && (
                   <div className="sm:col-span-2 flex items-center gap-2 rounded-2xl border border-emerald-500/40 bg-emerald-50 px-4 py-3 text-[13px] font-bold text-emerald-700">
-                    <BadgeCheck size={16} /> Mobile verified — ready for instant checkout.
+                    <BadgeCheck size={16} /> Mobile Verified — Ready to place order.
                   </div>
                 )}
 
                 <Field label="Email Address">
-                  <input className="field !bg-slate-50 !border-red-500/25 !text-slate-900 focus:!border-red-600" value={customer.email} onChange={(e) => upd("email", e.target.value)} placeholder="you@email.com" />
+                  <input className="field !bg-slate-50 !border-red-500/25 !text-slate-900 focus:!border-red-600 font-bold" value={customer.email} onChange={(e) => upd("email", e.target.value)} placeholder="you@email.com" />
                 </Field>
                 <Field label="State *">
                   <select
-                    className="field cursor-pointer !bg-slate-50 !border-red-500/25 !text-slate-900 focus:!border-red-600"
+                    className="field cursor-pointer !bg-slate-50 !border-red-500/25 !text-slate-900 focus:!border-red-600 font-bold"
                     value={customer.state}
                     onChange={(e) => upd("state", e.target.value)}
                   >
@@ -372,19 +390,19 @@ export default function CheckoutPage() {
                   </select>
                 </Field>
                 <Field label="District">
-                  <input className="field !bg-slate-50 !border-red-500/25 !text-slate-900 focus:!border-red-600" value={customer.district} onChange={(e) => upd("district", e.target.value)} placeholder="District" />
+                  <input className="field !bg-slate-50 !border-red-500/25 !text-slate-900 focus:!border-red-600 font-bold" value={customer.district} onChange={(e) => upd("district", e.target.value)} placeholder="District" />
                 </Field>
                 <Field label="City / Town">
-                  <input className="field !bg-slate-50 !border-red-500/25 !text-slate-900 focus:!border-red-600" value={customer.city} onChange={(e) => upd("city", e.target.value)} placeholder="City" />
+                  <input className="field !bg-slate-50 !border-red-500/25 !text-slate-900 focus:!border-red-600 font-bold" value={customer.city} onChange={(e) => upd("city", e.target.value)} placeholder="City" />
                 </Field>
                 <Field label="Pincode *">
-                  <input className="field !bg-slate-50 !border-red-500/25 !text-slate-900 focus:!border-red-600" value={customer.pincode} onChange={(e) => upd("pincode", e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="600001" inputMode="numeric" />
+                  <input className="field !bg-slate-50 !border-red-500/25 !text-slate-900 focus:!border-red-600 font-bold" value={customer.pincode} onChange={(e) => upd("pincode", e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="600001" inputMode="numeric" />
                 </Field>
                 <Field label="GST Number (Optional)">
-                  <input className="field !bg-slate-50 !border-red-500/25 !text-slate-900 focus:!border-red-600" value={customer.gstNumber} onChange={(e) => upd("gstNumber", e.target.value.toUpperCase())} placeholder="33AABCM1234K1ZQ" />
+                  <input className="field !bg-slate-50 !border-red-500/25 !text-slate-900 focus:!border-red-600 font-bold" value={customer.gstNumber} onChange={(e) => upd("gstNumber", e.target.value.toUpperCase())} placeholder="33AABCM1234K1ZQ" />
                 </Field>
                 <Field label="Full Shipping Address *" className="sm:col-span-2">
-                  <textarea className="field min-h-[86px] !bg-slate-50 !border-red-500/25 !text-slate-900 focus:!border-red-600" value={customer.address} onChange={(e) => upd("address", e.target.value)} placeholder="Door no, street, landmark, city" />
+                  <textarea className="field min-h-[86px] !bg-slate-50 !border-red-500/25 !text-slate-900 focus:!border-red-600 font-bold" value={customer.address} onChange={(e) => upd("address", e.target.value)} placeholder="Door no, street, landmark, city" />
                 </Field>
               </div>
             </div>
@@ -486,7 +504,7 @@ export default function CheckoutPage() {
                 Coupon Code
               </label>
               <input
-                className="field mt-2 uppercase !bg-slate-50 !border-red-500/25 !text-slate-900 focus:!border-red-600"
+                className="field mt-2 uppercase !bg-slate-50 !border-red-500/25 !text-slate-900 focus:!border-red-600 font-bold"
                 value={coupon}
                 onChange={(e) => setCoupon(e.target.value)}
                 placeholder="DEEPAVALI10"
@@ -538,8 +556,8 @@ export default function CheckoutPage() {
 
             <button
               onClick={submitOrder}
-              disabled={!meetsMinimum || busy || !customer.name || !otpVerified}
-              className="btn-gold mt-6 w-full py-4 text-sm uppercase font-bold tracking-wider disabled:cursor-not-allowed disabled:opacity-40"
+              disabled={!meetsMinimum || busy}
+              className="btn-gold mt-6 w-full py-4 text-sm uppercase font-bold tracking-wider cursor-pointer active:scale-98 transition-all disabled:cursor-not-allowed disabled:opacity-40"
             >
               {busy ? "Placing Order…" : "PLACE ORDER NOW"}
             </button>
@@ -550,7 +568,7 @@ export default function CheckoutPage() {
 
             <p className="mt-5 flex items-start gap-2 text-[11.5px] leading-relaxed text-slate-500 font-medium">
               <ShieldCheck size={14} className="mt-0.5 shrink-0 text-red-600" />
-              OTP verified, server validated & encrypted dispatch booking. Order receipt sent instantly to your mobile.
+              Order receipt sent instantly to your mobile upon placement. Fast factory dispatch!
             </p>
           </aside>
         </div>
