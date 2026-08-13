@@ -5,13 +5,16 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  AlertTriangle,
   BadgeCheck,
   CheckCircle2,
+  CreditCard,
   Minus,
   Plus,
+  QrCode,
   ShieldCheck,
+  ShoppingBag,
   Trash2,
+  Truck,
 } from "lucide-react";
 import { useEstimate } from "@/components/estimate/EstimateProvider";
 import { COUPONS, formatINR, minOrderFor, STATES } from "@/lib/estimate";
@@ -29,7 +32,7 @@ type Customer = {
   dealerName: string;
 };
 
-export default function EstimatePage() {
+export default function CheckoutPage() {
   const router = useRouter();
   const { items, setQty, remove, clear, totals, coupon, setCoupon, state, setState } = useEstimate();
 
@@ -45,11 +48,14 @@ export default function EstimatePage() {
     gstNumber: "",
     dealerName: "",
   });
+
   const [transport, setTransport] = useState({
     transportName: "",
     deliveryLocation: "",
     instructions: "",
   });
+
+  const [paymentMethod, setPaymentMethod] = useState<"UPI" | "RAZORPAY" | "PAYU" | "COD">("UPI");
 
   const [otpSent, setOtpSent] = useState(false);
   const [otpCode, setOtpCode] = useState("");
@@ -119,10 +125,10 @@ export default function EstimatePage() {
     setOtpVerified(true);
   }
 
-  async function submit() {
+  async function submitOrder() {
     setError(null);
     if (!otpVerified) {
-      setError("Please verify your mobile number with OTP before submitting.");
+      setError("Please verify your mobile number with OTP before placing order.");
       return;
     }
     setBusy(true);
@@ -132,6 +138,7 @@ export default function EstimatePage() {
       body: JSON.stringify({
         customer,
         transport,
+        paymentMethod,
         couponCode: coupon,
         items: items.map((i) => ({ productId: i.id, quantity: i.quantity })),
       }),
@@ -151,51 +158,42 @@ export default function EstimatePage() {
       <nav className="flex items-center gap-2 text-[12px] font-medium text-slate-500">
         <Link href="/" className="hover:text-red-600">Home</Link>
         <span className="text-slate-300">/</span>
-        <span className="text-red-600 font-bold">Quick Estimate</span>
+        <span className="text-red-600 font-bold">Direct Online Checkout</span>
       </nav>
-
-      <div className="glass mt-6 flex flex-wrap items-center gap-3 rounded-2xl border border-red-500/25 bg-white px-5 py-3 text.5px] font-medium text-slate-700 shadow-sm">
-        <AlertTriangle size={16} className="text-red-600" />
-        Online sale of firecrackers is restricted by law. This is an{" "}
-        <span className="font-bold text-red-600">Estimate Request</span> — our Sivakasi desk confirms stock,
-        pricing and dispatch offline. No online payment is collected.
-      </div>
 
       <header className="mt-8">
         <h1 className="font-display text-[34px] font-bold leading-tight text-slate-900 sm:text-[44px]">
-          Build Your <span className="gold-text">Estimate</span>
+          Complete Your <span className="gold-text">Online Order</span>
         </h1>
         <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-slate-600 font-medium">
-          Adjust quantities, apply a festival coupon, verify your mobile and submit. You will get a
-          reference number instantly plus a WhatsApp confirmation from our sales desk.
+          Review your items, enter delivery address, select your payment method (All-UPI QR / Razorpay / PayU / Direct), and place your order. Fast factory-direct dispatch from Sivakasi!
         </p>
       </header>
 
       {items.length === 0 ? (
         <div className="glass mt-10 rounded-[30px] p-16 text-center border border-red-500/15 bg-white shadow-md">
-          <p className="font-display text-2xl font-bold text-slate-900">Your Estimate Is Empty</p>
+          <p className="font-display text-2xl font-bold text-slate-900">Your Cart Is Empty</p>
           <p className="mx-auto mt-3 max-w-md text-[14.5px] text-slate-600 font-medium">
-            Add products from the catalogue and they will appear here with live pricing, savings and
-            transport calculation.
+            Add your favourite fireworks from our catalogue and proceed to instant online checkout.
           </p>
           <Link href="/products" className="btn-gold mt-7 inline-block px-8 py-3.5 text-sm uppercase font-bold">
-            Browse Products
+            Browse Products & Order
           </Link>
         </div>
       ) : (
-        <div className="mt-10 grid items-start gap-8 lg:grid-cols-[1fr_390px]">
+        <div className="mt-10 grid items-start gap-8 lg:grid-cols-[1fr_400px]">
           <div className="space-y-8">
-            {/* Items */}
+            {/* Selected Items Table */}
             <div className="glass overflow-hidden rounded-[30px] border border-red-500/15 bg-white shadow-md">
               <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
-                <h2 className="font-display text-[17px] font-bold text-slate-900">
-                  Selected Products ({items.length})
+                <h2 className="font-display text-[17px] font-bold text-slate-900 flex items-center gap-2">
+                  <ShoppingBag size={18} className="text-red-600" /> Order Items ({items.length})
                 </h2>
                 <button
                   onClick={clear}
                   className="text-[12px] font-bold text-slate-500 transition hover:text-red-600"
                 >
-                  Clear All
+                  Clear Cart
                 </button>
               </div>
 
@@ -203,7 +201,7 @@ export default function EstimatePage() {
                 <span>Image</span>
                 <span>Product</span>
                 <span className="text-right">MRP</span>
-                <span className="text-right">Offer</span>
+                <span className="text-right">Offer Price</span>
                 <span className="text-center">Qty</span>
                 <span />
               </div>
@@ -285,18 +283,18 @@ export default function EstimatePage() {
               </AnimatePresence>
             </div>
 
-            {/* Customer */}
+            {/* Delivery Address & Customer Details */}
             <div className="glass rounded-[30px] p-7 border border-red-500/15 bg-white shadow-md">
-              <h2 className="font-display text-[17px] font-bold text-slate-900">
-                Customer Details
+              <h2 className="font-display text-[17px] font-bold text-slate-900 flex items-center gap-2">
+                <Truck size={18} className="text-red-600" /> Delivery Address & Customer Details
               </h2>
               <p className="mt-1 text-[12.5px] font-medium text-slate-600">
-                Required so our sales desk can confirm stock and arrange transport.
+                Enter your exact shipping address for safe nationwide dispatch.
               </p>
 
               <div className="mt-6 grid gap-4 sm:grid-cols-2">
                 <Field label="Full Name *">
-                  <input className="field !bg-slate-50 !border-red-500/25 !text-slate-900 focus:!border-red-600" value={customer.name} onChange={(e) => upd("name", e.target.value)} placeholder="Your name" />
+                  <input className="field !bg-slate-50 !border-red-500/25 !text-slate-900 focus:!border-red-600" value={customer.name} onChange={(e) => upd("name", e.target.value)} placeholder="Your full name" />
                 </Field>
                 <Field label="Mobile Number *">
                   <div className="flex gap-2">
@@ -353,11 +351,11 @@ export default function EstimatePage() {
 
                 {otpVerified && (
                   <div className="sm:col-span-2 flex items-center gap-2 rounded-2xl border border-emerald-500/40 bg-emerald-50 px-4 py-3 text-[13px] font-bold text-emerald-700">
-                    <BadgeCheck size={16} /> Mobile verified — you can submit this estimate.
+                    <BadgeCheck size={16} /> Mobile verified — ready for instant checkout.
                   </div>
                 )}
 
-                <Field label="Email">
+                <Field label="Email Address">
                   <input className="field !bg-slate-50 !border-red-500/25 !text-slate-900 focus:!border-red-600" value={customer.email} onChange={(e) => upd("email", e.target.value)} placeholder="you@email.com" />
                 </Field>
                 <Field label="State *">
@@ -377,40 +375,87 @@ export default function EstimatePage() {
                 <Field label="City / Town">
                   <input className="field !bg-slate-50 !border-red-500/25 !text-slate-900 focus:!border-red-600" value={customer.city} onChange={(e) => upd("city", e.target.value)} placeholder="City" />
                 </Field>
-                <Field label="Pincode">
+                <Field label="Pincode *">
                   <input className="field !bg-slate-50 !border-red-500/25 !text-slate-900 focus:!border-red-600" value={customer.pincode} onChange={(e) => upd("pincode", e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="600001" inputMode="numeric" />
                 </Field>
-                <Field label="GST Number (optional)">
+                <Field label="GST Number (Optional)">
                   <input className="field !bg-slate-50 !border-red-500/25 !text-slate-900 focus:!border-red-600" value={customer.gstNumber} onChange={(e) => upd("gstNumber", e.target.value.toUpperCase())} placeholder="33AABCM1234K1ZQ" />
                 </Field>
-                <Field label="Full Address" className="sm:col-span-2">
-                  <textarea className="field min-h-[86px] !bg-slate-50 !border-red-500/25 !text-slate-900 focus:!border-red-600" value={customer.address} onChange={(e) => upd("address", e.target.value)} placeholder="Door no, street, landmark" />
+                <Field label="Full Shipping Address *" className="sm:col-span-2">
+                  <textarea className="field min-h-[86px] !bg-slate-50 !border-red-500/25 !text-slate-900 focus:!border-red-600" value={customer.address} onChange={(e) => upd("address", e.target.value)} placeholder="Door no, street, landmark, city" />
                 </Field>
               </div>
             </div>
 
-            {/* Transport */}
+            {/* Payment Method Selector */}
             <div className="glass rounded-[30px] p-7 border border-red-500/15 bg-white shadow-md">
-              <h2 className="font-display text-[17px] font-bold text-slate-900">
-                Transport Preference
+              <h2 className="font-display text-[17px] font-bold text-slate-900 flex items-center gap-2">
+                <CreditCard size={18} className="text-red-600" /> Select Payment Method
               </h2>
-              <div className="mt-5 grid gap-4 sm:grid-cols-2">
-                <Field label="Preferred Transport Company">
-                  <input className="field !bg-slate-50 !border-red-500/25 !text-slate-900 focus:!border-red-600" value={transport.transportName} onChange={(e) => setTransport((t) => ({ ...t, transportName: e.target.value }))} placeholder="e.g. KPN / SRMT / ARC" />
-                </Field>
-                <Field label="Nearest Delivery Office">
-                  <input className="field !bg-slate-50 !border-red-500/25 !text-slate-900 focus:!border-red-600" value={transport.deliveryLocation} onChange={(e) => setTransport((t) => ({ ...t, deliveryLocation: e.target.value }))} placeholder="Transport office / location" />
-                </Field>
-                <Field label="Special Instructions" className="sm:col-span-2">
-                  <textarea className="field min-h-[80px] !bg-slate-50 !border-red-500/25 !text-slate-900 focus:!border-red-600" value={transport.instructions} onChange={(e) => setTransport((t) => ({ ...t, instructions: e.target.value }))} placeholder="Delivery timing, contact person, packing notes…" />
-                </Field>
+              <p className="mt-1 text-[12.5px] font-medium text-slate-600">
+                Choose your preferred payment mode for instant order processing.
+              </p>
+
+              <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                {[
+                  {
+                    id: "UPI",
+                    title: "Dynamic All-UPI QR Scanner",
+                    desc: "Scan & Pay via GPay, PhonePe, Paytm, BHIM",
+                    icon: QrCode,
+                    badge: "Most Popular",
+                  },
+                  {
+                    id: "RAZORPAY",
+                    title: "Razorpay Online Payment",
+                    desc: "Credit / Debit Cards, Netbanking, Wallets",
+                    icon: CreditCard,
+                    badge: "Instant",
+                  },
+                  {
+                    id: "PAYU",
+                    title: "PayU Gateway",
+                    desc: "Cards, Banking, EMI & Buy Now Pay Later",
+                    icon: CreditCard,
+                    badge: "Secure",
+                  },
+                  {
+                    id: "COD",
+                    title: "Factory Transport Billing / COD",
+                    desc: "Pay freight upon transport delivery",
+                    icon: Truck,
+                    badge: "Flexible",
+                  },
+                ].map((pm) => {
+                  const selected = paymentMethod === pm.id;
+                  return (
+                    <div
+                      key={pm.id}
+                      onClick={() => setPaymentMethod(pm.id as "UPI" | "RAZORPAY" | "PAYU" | "COD")}
+                      className={`cursor-pointer rounded-2xl p-5 border transition-all duration-300 ${
+                        selected
+                          ? "border-red-600 bg-red-50/60 shadow-md ring-2 ring-red-500/20"
+                          : "border-slate-200 bg-white hover:border-red-300"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between">
+                        <pm.icon size={20} className={selected ? "text-red-600" : "text-slate-400"} />
+                        <span className="rounded-full bg-red-100 px-2.5 py-0.5 text-[10px] font-bold text-red-600">
+                          {pm.badge}
+                        </span>
+                      </div>
+                      <p className="mt-3 font-display text-[15px] font-bold text-slate-900">{pm.title}</p>
+                      <p className="mt-1 text-[12px] font-medium text-slate-600">{pm.desc}</p>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
 
-          {/* Sticky summary */}
+          {/* Sticky Summary & Order Submit */}
           <aside className="glass sticky top-28 rounded-[30px] p-7 border border-red-500/20 bg-white shadow-xl">
-            <h2 className="font-display text-[17px] font-bold text-slate-900">Estimate Summary</h2>
+            <h2 className="font-display text-[17px] font-bold text-slate-900">Order Summary</h2>
 
             <div className="mt-5 space-y-2.5 text-[13.5px]">
               <Row label={`Items (${totals.itemCount} products / ${totals.units} units)`} value={formatINR(totals.mrpTotal)} muted />
@@ -433,7 +478,7 @@ export default function EstimatePage() {
               </span>
             </div>
 
-            {/* coupon */}
+            {/* Coupon */}
             <div className="mt-6">
               <label className="text-[11px] font-bold uppercase tracking-[2px] text-slate-700">
                 Coupon Code
@@ -462,7 +507,7 @@ export default function EstimatePage() {
               </div>
             </div>
 
-            {/* minimum order */}
+            {/* Minimum order check */}
             <div
               className={`mt-6 rounded-2xl border p-4 text-[12.5px] font-bold ${
                 meetsMinimum
@@ -476,9 +521,9 @@ export default function EstimatePage() {
                 </span>
               ) : (
                 <span className="flex items-start gap-2">
-                  <AlertTriangle size={15} className="mt-0.5 shrink-0" />
+                  <ShoppingBag size={15} className="mt-0.5 shrink-0" />
                   Minimum order for {customer.state} is {formatINR(minimum)}. Add{" "}
-                  {formatINR(shortfall)} more to submit.
+                  {formatINR(shortfall)} more to checkout.
                 </span>
               )}
             </div>
@@ -490,11 +535,11 @@ export default function EstimatePage() {
             )}
 
             <button
-              onClick={submit}
+              onClick={submitOrder}
               disabled={!meetsMinimum || busy || !customer.name || !otpVerified}
-              className="btn-gold mt-6 w-full py-3.5 text-sm uppercase font-bold disabled:cursor-not-allowed disabled:opacity-40"
+              className="btn-gold mt-6 w-full py-4 text-sm uppercase font-bold tracking-wider disabled:cursor-not-allowed disabled:opacity-40"
             >
-              {busy ? "Submitting…" : "Submit Estimate"}
+              {busy ? "Placing Order…" : "PLACE ORDER NOW"}
             </button>
 
             <Link href="/products" className="btn-ghost mt-3 block w-full py-3 text-center text-[13px] uppercase font-bold">
@@ -503,8 +548,7 @@ export default function EstimatePage() {
 
             <p className="mt-5 flex items-start gap-2 text-[11.5px] leading-relaxed text-slate-500 font-medium">
               <ShieldCheck size={14} className="mt-0.5 shrink-0 text-red-600" />
-              OTP verified, rate-limited and server-revalidated. Prices are recalculated on our
-              server at submission — displayed totals are indicative until confirmed.
+              OTP verified, server validated & encrypted dispatch booking. Order receipt sent instantly to your mobile.
             </p>
           </aside>
         </div>

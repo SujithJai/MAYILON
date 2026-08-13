@@ -130,7 +130,7 @@ export function Navbar() {
                 className="btn-gold relative flex h-10 items-center gap-2 px-4 text-[12.5px] uppercase font-bold"
               >
                 <ShoppingBag size={16} />
-                <span className="hidden sm:inline">Estimate</span>
+                <span className="hidden sm:inline">Cart / Order</span>
                 {count > 0 && (
                   <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-white px-1.5 text-[11px] font-bold text-red-600 shadow">
                     {count}
