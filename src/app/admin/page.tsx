@@ -873,15 +873,44 @@ export default function AdminPage() {
                   </label>
                 </div>
 
-                <label className="block">
-                  <span className="text-[11px] font-bold uppercase tracking-[2px] text-slate-700">Image URL / Path</span>
+                {/* Direct Image Upload */}
+                <div>
+                  <span className="text-[11px] font-bold uppercase tracking-[2px] text-slate-700 block mb-1.5">
+                    Product Image (Direct File Upload / Supabase Storage)
+                  </span>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const fd = new FormData();
+                        fd.append("file", file);
+                        const res = await fetch("/api/v1/admin/upload", { method: "POST", body: fd });
+                        const json = await res.json();
+                        if (json.success) {
+                          setProductForm((prev) => ({ ...prev, imageUrl: json.data.url }));
+                          setNotificationToast("📸 Product image uploaded & stored successfully!");
+                          setTimeout(() => setNotificationToast(null), 3000);
+                        }
+                      }}
+                      className="field !bg-slate-50 !border-slate-300 !text-slate-900 font-bold file:mr-3 file:rounded-xl file:border-0 file:bg-red-600 file:px-4 file:py-1.5 file:text-xs file:font-bold file:text-white cursor-pointer"
+                    />
+                    {productForm.imageUrl && (
+                      <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100 shadow-sm">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={productForm.imageUrl} alt="Preview" className="h-full w-full object-cover" />
+                      </div>
+                    )}
+                  </div>
                   <input
                     value={productForm.imageUrl}
                     onChange={(e) => setProductForm({ ...productForm, imageUrl: e.target.value })}
-                    placeholder="/images/products/..."
-                    className="field mt-1.5 !bg-slate-50 !border-slate-300 !text-slate-900 font-bold"
+                    placeholder="Or paste direct image URL..."
+                    className="field mt-2 !bg-slate-50 !border-slate-300 !text-slate-900 font-bold text-xs"
                   />
-                </label>
+                </div>
 
                 <div className="flex flex-wrap gap-4 pt-2">
                   <label className="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
