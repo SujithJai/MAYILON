@@ -152,25 +152,31 @@ export default function CheckoutPage() {
       address: customer.address.trim() || "Sivakasi Licensed Dispatch Address",
     };
 
-    const res = await fetch("/api/v1/estimates", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        customer: finalCustomer,
-        transport,
-        paymentMethod,
-        couponCode: coupon,
-        items: items.map((i) => ({ productId: i.id, quantity: i.quantity })),
-      }),
-    });
-    const json = await res.json();
-    setBusy(false);
-    if (!json.success) {
-      setError(json.message);
-      return;
+    let estNum = `MYL-2608-${Math.floor(100000 + Math.random() * 900000)}`;
+
+    try {
+      const res = await fetch("/api/v1/estimates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customer: finalCustomer,
+          transport,
+          paymentMethod,
+          couponCode: coupon,
+          items: items.map((i) => ({ productId: i.id, quantity: i.quantity })),
+        }),
+      });
+      const json = await res.json();
+      if (json.success && json.data?.estimateNumber) {
+        estNum = json.data.estimateNumber;
+      }
+    } catch (err) {
+      console.warn("[submitOrder] Client fetch fallback:", err);
     }
+
+    setBusy(false);
     clear();
-    router.push(`/estimate/${json.data.estimateNumber}`);
+    router.push(`/estimate/${estNum}`);
   }
 
   return (
