@@ -23,7 +23,7 @@ export default async function HomePage() {
     getCategories(),
     getFeaturedProducts(8),
     getReviews(6),
-    getProducts({ limit: 12, sort: "best" }),
+    getProducts({ limit: 200, sort: "alpha" }),
   ]);
 
   const faqSchema = {

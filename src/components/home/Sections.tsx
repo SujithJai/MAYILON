@@ -244,15 +244,17 @@ export function QuickCalculator({ products }: { products: CalcProduct[] }) {
 
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
-    const list = term
+    return term
       ? products.filter(
-          (p) => p.name.toLowerCase().includes(term) || p.sku.toLowerCase().includes(term),
+          (p) =>
+            p.name.toLowerCase().includes(term) ||
+            p.sku.toLowerCase().includes(term) ||
+            p.categoryName.toLowerCase().includes(term),
         )
       : products;
-    return list.slice(0, 6);
   }, [q, products]);
 
-  const runningTotal = filtered.reduce(
+  const runningTotal = products.reduce(
     (s, p) => s + Number(p.offerPrice) * (qty[p.id] ?? 0),
     0,
   );
@@ -266,60 +268,89 @@ export function QuickCalculator({ products }: { products: CalcProduct[] }) {
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Search a product to price it instantly…"
-              className="field pl-11 !border-red-500/25 !bg-slate-50 !text-slate-900 focus:!border-red-600"
+              placeholder="Search all 110 products to price instantly..."
+              className="field pl-11 pr-10 !border-red-500/25 !bg-slate-50 !text-slate-900 focus:!border-red-600 font-bold"
             />
+            {q && (
+              <button
+                onClick={() => setQ("")}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 hover:text-red-600"
+              >
+                <X size={15} />
+              </button>
+            )}
           </div>
 
-          <div className="mt-5 space-y-3">
-            {filtered.map((p) => {
-              const n = qty[p.id] ?? 0;
-              return (
-                <div
-                  key={p.id}
-                  className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-slate-50/80 p-3 transition-all duration-300 hover:border-red-500/40 hover:bg-red-50/30"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={p.imageUrl ?? ""}
-                    alt={p.name}
-                    loading="lazy"
-                    className="h-12 w-12 rounded-xl object-cover border border-slate-200"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13.5px] font-bold text-slate-900">{p.name}</p>
-                    <div className="flex flex-wrap items-center gap-2 text-[11px]">
-                      <span className="font-bold text-red-600 sm:hidden">
-                        {formatINR(Number(p.offerPrice))}
-                      </span>
-                      <span className="uppercase tracking-[1.5px] text-slate-500 font-medium">
-                        {p.sku} · {p.packing}
-                      </span>
+          <div className="mt-2 flex items-center justify-between px-1 text-[11px] font-bold uppercase tracking-[1px] text-slate-500">
+            <span>Showing {filtered.length} of {products.length} products</span>
+            {q && <button onClick={() => setQ("")} className="text-red-600 hover:underline">Clear Search</button>}
+          </div>
+
+          <div className="mt-3 max-h-[500px] space-y-3 overflow-y-auto pr-1.5 hide-scrollbar">
+            {filtered.length === 0 ? (
+              <div className="p-10 text-center text-slate-500 font-medium">
+                No products match &quot;{q}&quot;. Try searching for &quot;Laxmi&quot;, &quot;Sparklers&quot;, or &quot;Fancy&quot;.
+              </div>
+            ) : (
+              filtered.map((p) => {
+                const n = qty[p.id] ?? 0;
+                return (
+                  <div
+                    key={p.id}
+                    className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-slate-50/80 p-3 transition-all duration-300 hover:border-red-500/40 hover:bg-red-50/30"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={p.imageUrl ?? ""}
+                      alt={p.name}
+                      loading="lazy"
+                      className="h-12 w-12 rounded-xl object-cover border border-slate-200"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[13.5px] font-bold text-slate-900">{p.name}</p>
+                      <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                        <span className="font-bold text-red-600 sm:hidden">
+                          {formatINR(Number(p.offerPrice))}
+                        </span>
+                        <span className="uppercase tracking-[1.5px] text-slate-500 font-medium">
+                          {p.sku} · {p.packing}
+                        </span>
+                      </div>
+                    </div>
+                    <p className="hidden text-sm font-bold text-red-600 sm:block">
+                      {formatINR(Number(p.offerPrice))}
+                    </p>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        aria-label="decrease"
+                        onClick={() => {
+                          const next = Math.max(0, n - 1);
+                          setQty((s) => ({ ...s, [p.id]: next }));
+                          if (next > 0) {
+                            add(p as any, next);
+                          }
+                        }}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-500/30 text-red-600 transition hover:bg-red-600 hover:text-white active:scale-90"
+                      >
+                        <Minus size={14} />
+                      </button>
+                      <span className="w-8 text-center text-sm font-bold tabular-nums text-slate-900">{n}</span>
+                      <button
+                        aria-label="increase"
+                        onClick={() => {
+                          const next = n + 1;
+                          setQty((s) => ({ ...s, [p.id]: next }));
+                          add(p as any, next);
+                        }}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-500/30 text-red-600 transition hover:bg-red-600 hover:text-white active:scale-90"
+                      >
+                        <Plus size={14} />
+                      </button>
                     </div>
                   </div>
-                  <p className="hidden text-sm font-bold text-red-600 sm:block">
-                    {formatINR(Number(p.offerPrice))}
-                  </p>
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      aria-label="decrease"
-                      onClick={() => setQty((s) => ({ ...s, [p.id]: Math.max(0, n - 1) }))}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-500/30 text-red-600 transition hover:bg-red-600 hover:text-white active:scale-90"
-                    >
-                      <Minus size={14} />
-                    </button>
-                    <span className="w-8 text-center text-sm font-bold tabular-nums text-slate-900">{n}</span>
-                    <button
-                      aria-label="increase"
-                      onClick={() => setQty((s) => ({ ...s, [p.id]: n + 1 }))}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-500/30 text-red-600 transition hover:bg-red-600 hover:text-white active:scale-90"
-                    >
-                      <Plus size={14} />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
         </div>
 
