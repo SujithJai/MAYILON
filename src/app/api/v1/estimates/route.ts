@@ -6,6 +6,22 @@ import { calculateTotals, makeEstimateNumber } from "@/lib/estimate";
 
 export const dynamic = "force-dynamic";
 
+type LineItem = {
+  product: {
+    id: string;
+    sku: string;
+    name: string;
+    categoryName: string;
+    packing: string;
+    imageUrl: string;
+    mrp: string | number;
+    offerPrice: string | number;
+  };
+  quantity: number;
+  mrp: number;
+  price: number;
+};
+
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const rawCustomer = body.customer || {};
@@ -36,7 +52,7 @@ export async function POST(req: Request) {
   const products = await getProductsByIds(items.map((i: any) => i.productId));
   const byId = new Map(products.map((p) => [p.id, p]));
 
-  const lines = items.map((i: any) => {
+  const lines: LineItem[] = items.map((i: any) => {
     const p = byId.get(i.productId);
     return {
       product: p || {
@@ -56,7 +72,7 @@ export async function POST(req: Request) {
   });
 
   const totals = calculateTotals(
-    lines.map((l) => ({ mrp: l.mrp, price: l.price, quantity: l.quantity })),
+    lines.map((l: LineItem) => ({ mrp: l.mrp, price: l.price, quantity: l.quantity })),
     { state: customer.state, couponCode },
   );
 
@@ -126,7 +142,7 @@ export async function POST(req: Request) {
 
     if (estimate?.id) {
       await db.insert(estimateItems).values(
-        lines.map((l) => ({
+        lines.map((l: LineItem) => ({
           estimateId: estimate.id,
           productId: String(l.product.id),
           sku: l.product.sku,
