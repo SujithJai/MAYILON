@@ -403,34 +403,59 @@ export default function AdminPage() {
       </aside>
 
       {/* Main Content Area */}
-      <div className="min-w-0 flex-1 p-6 sm:p-10">
-        <header className="mb-8 flex flex-wrap items-center justify-between gap-4">
+      <div className="min-w-0 flex-1 p-4 sm:p-10">
+        <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h1 className="font-display text-[28px] font-bold capitalize text-slate-900">{tab}</h1>
-            <p className="text-[13px] font-medium text-slate-500">
+            <h1 className="font-display text-[26px] font-bold capitalize text-slate-900 sm:text-[32px]">{tab}</h1>
+            <p className="text-[12.5px] font-medium text-slate-500">
               Mayilon Crackers Operations · Live Inventory, Orders & Payment Processing
             </p>
           </div>
-          <div className="glass flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-50 px-4 py-2 text-[12px] font-bold text-emerald-700 shadow-sm">
-            <ShieldCheck size={16} /> SUPER_ADMIN Session Active
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href="/"
+              className="flex items-center gap-2 rounded-2xl border border-red-500/30 bg-red-600 px-4 py-2.5 text-[12.5px] font-bold text-white shadow-md transition hover:bg-red-700"
+            >
+              <ShoppingBag size={16} /> View Storefront ↗
+            </Link>
+            <div className="glass hidden items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-50 px-4 py-2 text-[12px] font-bold text-emerald-700 shadow-sm sm:flex">
+              <ShieldCheck size={16} /> SUPER_ADMIN Active
+            </div>
+            <button
+              onClick={async () => {
+                await fetch("/api/v1/admin/session", { method: "DELETE" });
+                setAuthed(false);
+              }}
+              className="flex items-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-[12px] font-bold text-slate-600 hover:text-red-600 lg:hidden"
+            >
+              <LogOut size={15} /> Exit
+            </button>
           </div>
         </header>
 
-        {/* Mobile Navigation Tabs */}
-        <div className="mb-6 flex gap-2 overflow-x-auto hide-scrollbar lg:hidden">
-          {TABS.map((t) => (
-            <button
-              key={t.k}
-              onClick={() => setTab(t.k)}
-              className={`shrink-0 rounded-full px-4 py-2 text-[12.5px] font-bold ${
-                tab === t.k
-                  ? "bg-red-600 text-white shadow-sm"
-                  : "border border-slate-200 bg-white text-slate-700"
-              }`}
-            >
-              {t.l}
-            </button>
-          ))}
+        {/* Mobile Navigation Tabs & Storefront Button */}
+        <div className="mb-6 flex items-center justify-between gap-2 overflow-x-auto hide-scrollbar lg:hidden pb-1">
+          <div className="flex items-center gap-2">
+            {TABS.map((t) => (
+              <button
+                key={t.k}
+                onClick={() => setTab(t.k)}
+                className={`shrink-0 rounded-full px-4 py-2 text-[12.5px] font-bold ${
+                  tab === t.k
+                    ? "bg-red-600 text-white shadow-sm"
+                    : "border border-slate-200 bg-white text-slate-700"
+                }`}
+              >
+                {t.l}
+              </button>
+            ))}
+          </div>
+          <Link
+            href="/"
+            className="shrink-0 flex items-center gap-1.5 rounded-full border border-red-500/30 bg-red-50 px-4 py-2 text-[12px] font-bold text-red-600 shadow-sm transition hover:bg-red-600 hover:text-white"
+          >
+            <ShoppingBag size={14} /> Storefront ↗
+          </Link>
         </div>
 
         <AnimatePresence mode="wait">
