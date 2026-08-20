@@ -142,16 +142,35 @@ export default function AdminPage() {
   const load = useCallback(async () => {
     try {
       const pRes = await fetch("/api/v1/products?limit=250&sort=alpha").then((r) => r.json()).catch(() => null);
-      if (pRes?.success && Array.isArray(pRes?.data?.items) && pRes.data.items.length > 0) {
+      let list = pRes?.success && Array.isArray(pRes?.data?.items) ? pRes.data.items : [];
+
+      try {
+        const localRaw = typeof window !== "undefined" ? localStorage.getItem("mayilon_custom_products") : null;
+        if (localRaw) {
+          const localProds = JSON.parse(localRaw);
+          if (Array.isArray(localProds)) {
+            const map = new Map();
+            for (const p of list) map.set(p.id, p);
+            for (const p of localProds) {
+              if (p && p.id && !map.has(p.id)) {
+                map.set(p.id, p);
+              }
+            }
+            list = Array.from(map.values());
+          }
+        }
+      } catch (localErr) {}
+
+      if (list.length > 0) {
         setProducts(
-          pRes.data.items.map((it: Record<string, unknown>) => ({
+          list.map((it: Record<string, unknown>) => ({
             id: String(it.id),
             sku: String(it.sku),
             name: String(it.name),
-            categoryName: String(it.categoryName),
+            categoryName: String(it.categoryName || "Special Fireworks"),
             mrp: Number(it.mrp),
             offerPrice: Number(it.offerPrice),
-            packing: String(it.packing),
+            packing: String(it.packing || "1 Box"),
             moq: Number(it.moq || 1),
             stock: Number(it.stock || 100),
             imageUrl: String(it.imageUrl || ""),
@@ -307,28 +326,47 @@ export default function AdminPage() {
     setTimeout(() => setNotificationToast(null), 5000);
   }
 
-  function handleSaveProduct(e: React.FormEvent) {
+  async function handleSaveProduct(e: React.FormEvent) {
     e.preventDefault();
+    const prodPayload = {
+      id: editingProduct ? editingProduct.id : `prod-${Date.now()}`,
+      ...productForm,
+      discountPercent: Math.round(((productForm.mrp - productForm.offerPrice) / productForm.mrp) * 100),
+    };
+
     if (editingProduct) {
       setProducts((prev) =>
-        prev.map((p) =>
-          p.id === editingProduct.id
-            ? { ...p, ...productForm, discountPercent: Math.round(((productForm.mrp - productForm.offerPrice) / productForm.mrp) * 100) }
-            : p,
-        ),
+        prev.map((p) => (p.id === editingProduct.id ? prodPayload : p)),
       );
       setNotificationToast(`✏️ Product "${productForm.name}" updated successfully!`);
     } else {
-      const newP: ProductItem = {
-        id: `prod-${Date.now()}`,
-        ...productForm,
-      };
-      setProducts((prev) => [newP, ...prev]);
+      setProducts((prev) => [prodPayload, ...prev]);
       setNotificationToast(`🎉 New Product "${productForm.name}" added to catalogue!`);
     }
+
+    // Save to Local Backup Storage
+    try {
+      const localRaw = typeof window !== "undefined" ? localStorage.getItem("mayilon_custom_products") : null;
+      const existing = localRaw ? JSON.parse(localRaw) : [];
+      const updatedArr = [prodPayload, ...existing.filter((p: any) => p.id !== prodPayload.id)];
+      localStorage.setItem("mayilon_custom_products", JSON.stringify(updatedArr));
+    } catch (err) {}
+
+    // POST to API
+    try {
+      await fetch("/api/v1/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(prodPayload),
+      });
+    } catch (apiErr) {
+      console.warn("[handleSaveProduct] API post note:", apiErr);
+    }
+
     setTimeout(() => setNotificationToast(null), 4000);
     setProductModalOpen(false);
     setEditingProduct(null);
+    void load();
   }
 
   function openEditProduct(p: ProductItem) {
