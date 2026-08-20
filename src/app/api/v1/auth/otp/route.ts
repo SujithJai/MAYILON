@@ -25,14 +25,46 @@ export async function POST(req: Request) {
   // 1. Dispatch via Fast2SMS Gateway (Live Active Key)
   if (fast2smsKey) {
     try {
-      const url = `https://www.fast2sms.com/dev/bulkV2?authorization=${encodeURIComponent(fast2smsKey)}&route=otp&variables_values=${code}&flash=0&numbers=${mobile}`;
-      const res = await fetch(url, {
-        headers: { authorization: fast2smsKey },
+      const cleanMobile = mobile.replace(/\D/g, "").slice(-10);
+
+      // Fast2SMS OTP route
+      const res = await fetch("https://www.fast2sms.com/dev/bulkV2", {
+        method: "POST",
+        headers: {
+          authorization: fast2smsKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          route: "otp",
+          variables_values: code,
+          numbers: cleanMobile,
+        }),
       });
       const json = await res.json();
+
       if (json.return === true || json.status_code === 200) {
         smsSent = true;
         provider = "fast2sms";
+      } else {
+        // Fallback to Quick SMS route if DLT template is pending
+        const qRes = await fetch("https://www.fast2sms.com/dev/bulkV2", {
+          method: "POST",
+          headers: {
+            authorization: fast2smsKey,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            route: "q",
+            message: `Your Mayilon Pyroworld login OTP code is ${code}. Valid for 5 minutes.`,
+            numbers: cleanMobile,
+            flash: "0",
+          }),
+        });
+        const qJson = await qRes.json();
+        if (qJson.return === true || qJson.status_code === 200) {
+          smsSent = true;
+          provider = "fast2sms";
+        }
       }
     } catch (err) {
       console.warn("[SMS Gateway Fast2SMS error]", err);
@@ -58,7 +90,6 @@ export async function POST(req: Request) {
     sent: true,
     expiresInSeconds: 300,
     channel: provider,
-    previewCode: provider === "preview" ? code : undefined,
   });
 }
 

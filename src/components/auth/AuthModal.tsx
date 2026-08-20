@@ -110,10 +110,7 @@ export function AuthModal({
       setError(json.message);
       return;
     }
-    const code = json.data.previewCode ?? "123456";
-    setPreviewCode(code);
-    const codeArray = code.slice(0, 6).split("");
-    setOtpDigits(codeArray);
+    setOtpDigits(["", "", "", "", "", ""]);
     setStep("OTP");
     setResendTimer(60);
   };
@@ -332,11 +329,6 @@ export function AuthModal({
                   <p className="mt-1 text-xs font-medium text-slate-600">
                     OTP sent to <span className="font-bold text-red-600">+91 {mobile}</span>
                   </p>
-                  {previewCode && (
-                    <div className="mt-2 inline-block rounded-xl border border-red-500/20 bg-red-50 px-3 py-1 text-xs font-bold text-red-600">
-                      Code: {previewCode}
-                    </div>
-                  )}
                 </div>
 
                 {/* 6 Individual Digit Inputs */}
