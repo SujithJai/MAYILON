@@ -156,7 +156,7 @@ export async function POST(req: Request) {
 
     if (estimate?.id) {
       await db.insert(estimateItems).values(
-        lines.map((l) => ({
+        lines.map((l: any) => ({
           estimateId: estimate.id,
           productId: String(l.id),
           sku: l.sku,
