@@ -21,53 +21,50 @@ export async function POST(req: Request) {
 
   let smsSent = false;
   let provider = "preview";
+  let apiLog = "";
 
   // 1. Dispatch via Fast2SMS Gateway (Live Active Key)
   if (fast2smsKey) {
+    const cleanMobile = mobile.replace(/\D/g, "").slice(-10);
+
+    // Method A: Fast2SMS GET Quick Route (No DLT template needed)
     try {
-      const cleanMobile = mobile.replace(/\D/g, "").slice(-10);
-
-      // Fast2SMS OTP route
-      const res = await fetch("https://www.fast2sms.com/dev/bulkV2", {
-        method: "POST",
-        headers: {
-          authorization: fast2smsKey,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          route: "otp",
-          variables_values: code,
-          numbers: cleanMobile,
-        }),
-      });
+      const msg = encodeURIComponent(`Your Mayilon Pyroworld OTP for login is ${code}. Valid for 5 minutes.`);
+      const getUrl = `https://www.fast2sms.com/dev/bulkV2?authorization=${encodeURIComponent(fast2smsKey)}&route=q&message=${msg}&language=english&flash=0&numbers=${cleanMobile}`;
+      const res = await fetch(getUrl);
       const json = await res.json();
-
+      apiLog = JSON.stringify(json);
       if (json.return === true || json.status_code === 200) {
         smsSent = true;
         provider = "fast2sms";
-      } else {
-        // Fallback to Quick SMS route if DLT template is pending
-        const qRes = await fetch("https://www.fast2sms.com/dev/bulkV2", {
+      }
+    } catch (err) {
+      console.warn("[Fast2SMS GET error]", err);
+    }
+
+    // Method B: Fast2SMS POST OTP Route if GET didn't flag success
+    if (!smsSent) {
+      try {
+        const postRes = await fetch("https://www.fast2sms.com/dev/bulkV2", {
           method: "POST",
           headers: {
             authorization: fast2smsKey,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            route: "q",
-            message: `Your Mayilon Pyroworld login OTP code is ${code}. Valid for 5 minutes.`,
+            route: "otp",
+            variables_values: code,
             numbers: cleanMobile,
-            flash: "0",
           }),
         });
-        const qJson = await qRes.json();
-        if (qJson.return === true || qJson.status_code === 200) {
+        const postJson = await postRes.json();
+        if (postJson.return === true || postJson.status_code === 200) {
           smsSent = true;
           provider = "fast2sms";
         }
+      } catch (err) {
+        console.warn("[Fast2SMS POST error]", err);
       }
-    } catch (err) {
-      console.warn("[SMS Gateway Fast2SMS error]", err);
     }
   }
 
@@ -90,6 +87,7 @@ export async function POST(req: Request) {
     sent: true,
     expiresInSeconds: 300,
     channel: provider,
+    log: apiLog,
   });
 }
 
