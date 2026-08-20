@@ -132,36 +132,50 @@ export default function AdminPage() {
   const [paymentModalOrder, setPaymentModalOrder] = useState<EstimateRow | null>(null);
 
   const load = useCallback(async () => {
-    const [s, e, d, q, p] = await Promise.all([
-      fetch("/api/v1/admin/stats").then((r) => r.json()),
-      fetch("/api/v1/estimates").then((r) => r.json()),
-      fetch("/api/v1/dealers").then((r) => r.json()),
-      fetch("/api/v1/enquiries").then((r) => r.json()),
-      fetch("/api/v1/products?limit=60&sort=alpha").then((r) => r.json()),
-    ]);
-    if (s.success) setStats(s.data);
-    if (e.success) setEstimates(e.data.items);
-    if (d.success) setDealers(d.data.items);
-    if (q.success) setEnquiries(q.data.items);
-    if (p.success) {
-      setProducts(
-        p.data.items.map((it: Record<string, unknown>) => ({
-          id: String(it.id),
-          sku: String(it.sku),
-          name: String(it.name),
-          categoryName: String(it.categoryName),
-          mrp: Number(it.mrp),
-          offerPrice: Number(it.offerPrice),
-          packing: String(it.packing),
-          moq: Number(it.moq || 1),
-          stock: Number(it.stock || 100),
-          imageUrl: String(it.imageUrl || ""),
-          isNewArrival: Boolean(it.isNewArrival),
-          isBestSeller: Boolean(it.isBestSeller),
-          isPremium: Boolean(it.isPremium),
-        })),
-      );
+    try {
+      const pRes = await fetch("/api/v1/products?limit=250&sort=alpha").then((r) => r.json()).catch(() => null);
+      if (pRes?.success && Array.isArray(pRes?.data?.items) && pRes.data.items.length > 0) {
+        setProducts(
+          pRes.data.items.map((it: Record<string, unknown>) => ({
+            id: String(it.id),
+            sku: String(it.sku),
+            name: String(it.name),
+            categoryName: String(it.categoryName),
+            mrp: Number(it.mrp),
+            offerPrice: Number(it.offerPrice),
+            packing: String(it.packing),
+            moq: Number(it.moq || 1),
+            stock: Number(it.stock || 100),
+            imageUrl: String(it.imageUrl || ""),
+            isNewArrival: Boolean(it.isNewArrival),
+            isBestSeller: Boolean(it.isBestSeller),
+            isPremium: Boolean(it.isPremium),
+          })),
+        );
+      }
+    } catch (err) {
+      console.warn("[Admin load] Error loading products:", err);
     }
+
+    try {
+      const s = await fetch("/api/v1/admin/stats").then((r) => r.json()).catch(() => null);
+      if (s?.success) setStats(s.data);
+    } catch {}
+
+    try {
+      const e = await fetch("/api/v1/estimates").then((r) => r.json()).catch(() => null);
+      if (e?.success) setEstimates(e.data.items);
+    } catch {}
+
+    try {
+      const d = await fetch("/api/v1/dealers").then((r) => r.json()).catch(() => null);
+      if (d?.success) setDealers(d.data.items);
+    } catch {}
+
+    try {
+      const q = await fetch("/api/v1/enquiries").then((r) => r.json()).catch(() => null);
+      if (q?.success) setEnquiries(q.data.items);
+    } catch {}
   }, []);
 
   useEffect(() => {

@@ -41,7 +41,7 @@ type Ctx = {
 };
 
 const EstimateCtx = createContext<Ctx | null>(null);
-const LS_KEY = "mayilon:estimate:v1";
+const LS_KEY = "mayilon:estimate:v2";
 
 export function EstimateProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<EstimateLine[]>([]);
@@ -50,65 +50,100 @@ export function EstimateProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
+  // 1. Initial Load from localStorage (runs once on mount)
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(LS_KEY);
+      const raw = localStorage.getItem(LS_KEY) || localStorage.getItem("mayilon:estimate:v1");
       if (raw) {
         const parsed = JSON.parse(raw) as {
           items?: EstimateLine[];
           coupon?: string;
           state?: string;
         };
-        setItems(parsed.items ?? []);
-        setCoupon(parsed.coupon ?? "");
-        setState(parsed.state ?? "Tamil Nadu");
+        if (Array.isArray(parsed.items) && parsed.items.length > 0) {
+          setItems(parsed.items);
+        }
+        if (parsed.coupon) setCoupon(parsed.coupon);
+        if (parsed.state) setState(parsed.state);
       }
-    } catch {
-      /* ignore corrupt storage */
+    } catch (err) {
+      console.warn("[EstimateProvider] Error loading cart from localStorage:", err);
+    } finally {
+      setReady(true);
     }
-    setReady(true);
   }, []);
 
+  // 2. Save to localStorage ONLY AFTER ready is true
   useEffect(() => {
     if (!ready) return;
-    localStorage.setItem(LS_KEY, JSON.stringify({ items, coupon, state }));
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify({ items, coupon, state }));
+    } catch (err) {
+      console.warn("[EstimateProvider] Error saving cart to localStorage:", err);
+    }
   }, [items, coupon, state, ready]);
 
+  // 3. Auto hide toast
   useEffect(() => {
     if (!toast) return;
     const t = window.setTimeout(() => setToast(null), 2600);
     return () => window.clearTimeout(t);
   }, [toast]);
 
+  // 4. Add item with robust ID & SKU matching
   const add = useCallback<Ctx["add"]>((line, qty) => {
     setItems((prev) => {
-      const found = prev.find((p) => p.id === line.id);
+      const lineIdStr = String(line.id);
+      const found = prev.find(
+        (p) => String(p.id) === lineIdStr || (p.sku && line.sku && p.sku === line.sku),
+      );
       const step = qty ?? line.moq ?? 1;
+
       if (found) {
-        return prev.map((p) => (p.id === line.id ? { ...p, quantity: p.quantity + step } : p));
+        return prev.map((p) =>
+          String(p.id) === lineIdStr || (p.sku && line.sku && p.sku === line.sku)
+            ? { ...p, quantity: p.quantity + step }
+            : p,
+        );
       }
-      return [...prev, { ...line, quantity: step }];
+      return [...prev, { ...line, id: lineIdStr, quantity: step }];
     });
     setToast(`${line.name} added to estimate`);
   }, []);
 
+  // 5. Update quantity
   const setQty = useCallback<Ctx["setQty"]>((id, qty) => {
+    const idStr = String(id);
     setItems((prev) =>
-      prev.flatMap((p) => (p.id === id ? (qty <= 0 ? [] : [{ ...p, quantity: qty }]) : [p])),
+      prev.flatMap((p) =>
+        String(p.id) === idStr ? (qty <= 0 ? [] : [{ ...p, quantity: qty }]) : [p],
+      ),
     );
   }, []);
 
+  // 6. Remove item
   const remove = useCallback<Ctx["remove"]>((id) => {
-    setItems((prev) => prev.filter((p) => p.id !== id));
+    const idStr = String(id);
+    setItems((prev) => prev.filter((p) => String(p.id) !== idStr));
   }, []);
 
-  const clear = useCallback(() => setItems([]), []);
+  // 7. Clear cart
+  const clear = useCallback(() => {
+    setItems([]);
+    try {
+      localStorage.removeItem(LS_KEY);
+    } catch {}
+  }, []);
 
   const totals = useMemo(
-    () => calculateTotals(items.map((i) => ({ mrp: i.mrp, price: i.price, quantity: i.quantity })), {
-      state,
-      couponCode: coupon,
-    }),
+    () =>
+      calculateTotals(
+        items.map((i) => ({ mrp: Number(i.mrp), price: Number(i.price), quantity: Number(i.quantity) })),
+        {
+          state,
+          couponCode: coupon,
+        },
+      ),
     [items, state, coupon],
   );
 
