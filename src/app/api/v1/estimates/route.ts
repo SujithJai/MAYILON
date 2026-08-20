@@ -53,7 +53,7 @@ export async function POST(req: Request) {
     { state: customer.state, couponCode },
   );
 
-  const estimateNumber = makeEstimateNumber();
+  const estimateNumber = String(body.estimateNumber || "").trim() || makeEstimateNumber();
   const createdAt = new Date().toISOString();
 
   const newOrder: OrderRecord = {

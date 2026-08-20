@@ -31,10 +31,19 @@ export function OrderInvoiceView({
 
     if (isFallback) {
       try {
-        const localRaw = localStorage.getItem(`mayilon_order_${number}`);
+        let localRaw = localStorage.getItem(`mayilon_order_${number}`);
+        if (!localRaw) {
+          const recentsRaw = localStorage.getItem("mayilon_recent_orders");
+          if (recentsRaw) {
+            const recents = JSON.parse(recentsRaw);
+            if (Array.isArray(recents) && recents.length > 0) {
+              localRaw = JSON.stringify(recents[0]);
+            }
+          }
+        }
         if (localRaw) {
           const parsed = JSON.parse(localRaw);
-          if (parsed && parsed.estimateNumber === number) {
+          if (parsed) {
             setEstimate(parsed);
             if (Array.isArray(parsed.items) && parsed.items.length > 0) {
               setItems(parsed.items);
