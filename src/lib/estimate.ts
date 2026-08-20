@@ -31,10 +31,24 @@ export function minOrderFor(state?: string | null): number {
   return MIN_ORDER_RULES[state] ?? MIN_ORDER_RULES.DEFAULT;
 }
 
+/** Robust Helper to safely extract clean finite numbers from any input type */
+export function extractNumber(...args: any[]): number {
+  for (const a of args) {
+    if (a !== undefined && a !== null && a !== "") {
+      const parsed = typeof a === "number" ? a : parseFloat(String(a).replace(/[^0-9.-]+/g, ""));
+      if (!isNaN(parsed) && isFinite(parsed)) {
+        return parsed;
+      }
+    }
+  }
+  return 0;
+}
+
 export type CalcLine = {
-  mrp: number;
-  price: number;
-  quantity: number;
+  mrp: number | string;
+  price: number | string;
+  offerPrice?: number | string;
+  quantity: number | string;
 };
 
 export type EstimateTotals = {
@@ -58,11 +72,12 @@ export function calculateTotals(
   lines: CalcLine[],
   opts: { state?: string | null; couponCode?: string | null } = {},
 ): EstimateTotals {
-  const safeLines = (lines || []).map((l) => ({
-    mrp: Number(l.mrp) || 0,
-    price: Number(l.price) || 0,
-    quantity: Number(l.quantity) || 0,
-  }));
+  const safeLines = (lines || []).map((l) => {
+    const p = extractNumber(l.price, l.offerPrice, l.mrp);
+    const m = extractNumber(l.mrp, l.offerPrice, p);
+    const q = Math.max(1, extractNumber(l.quantity, 1));
+    return { mrp: m, price: p, quantity: q };
+  });
 
   const mrpTotal = round(safeLines.reduce((s, l) => s + l.mrp * l.quantity, 0));
   const subtotal = round(safeLines.reduce((s, l) => s + l.price * l.quantity, 0));
@@ -88,27 +103,24 @@ export function calculateTotals(
   return {
     itemCount: safeLines.length,
     units,
-    mrpTotal: isNaN(mrpTotal) ? 0 : mrpTotal,
-    subtotal: isNaN(subtotal) ? 0 : subtotal,
-    savings: isNaN(mrpTotal - subtotal + discount) ? 0 : round(mrpTotal - subtotal + discount),
-    discount: isNaN(discount) ? 0 : discount,
-    transportCharge: isNaN(transportCharge) ? 0 : transportCharge,
-    gstAmount: isNaN(gstAmount) ? 0 : gstAmount,
-    grandTotal: isNaN(grandTotal) ? 0 : grandTotal,
+    mrpTotal,
+    subtotal,
+    savings: round(mrpTotal - subtotal + discount),
+    discount,
+    transportCharge,
+    gstAmount,
+    grandTotal,
     couponLabel: couponValid && coupon ? coupon.label : null,
   };
 }
 
 function round(n: number) {
-  if (isNaN(n)) return 0;
-  return Math.round((n + Number.EPSILON) * 100) / 100;
+  const num = extractNumber(n);
+  return Math.round((num + Number.EPSILON) * 100) / 100;
 }
 
-export function formatINR(value: number, opts: { compact?: boolean } = {}) {
-  const num = Number(value);
-  if (isNaN(num) || num === null || num === undefined) {
-    return "₹0";
-  }
+export function formatINR(value: any, opts: { compact?: boolean } = {}) {
+  const num = extractNumber(value);
   if (opts.compact && num >= 100000) {
     return `₹${(num / 100000).toFixed(num >= 1000000 ? 1 : 2)}L`;
   }

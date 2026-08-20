@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { calculateTotals, formatINR, type EstimateTotals } from "@/lib/estimate";
+import { calculateTotals, extractNumber, formatINR, type EstimateTotals } from "@/lib/estimate";
 
 export type EstimateLine = {
   id: string;
@@ -43,6 +43,26 @@ type Ctx = {
 const EstimateCtx = createContext<Ctx | null>(null);
 const LS_KEY = "mayilon:estimate:v2";
 
+function sanitizeLine(it: any): EstimateLine {
+  const p = extractNumber(it.price, it.offerPrice, it.mrp);
+  const m = extractNumber(it.mrp, it.offerPrice, p);
+  const q = Math.max(1, extractNumber(it.quantity, 1));
+  return {
+    ...it,
+    id: String(it.id || it.sku || Math.random()),
+    sku: String(it.sku || ""),
+    slug: String(it.slug || ""),
+    name: String(it.name || "Item"),
+    categoryName: String(it.categoryName || ""),
+    packing: String(it.packing || ""),
+    imageUrl: it.imageUrl ? String(it.imageUrl) : null,
+    mrp: m,
+    price: p,
+    moq: extractNumber(it.moq, 1),
+    quantity: q,
+  };
+}
+
 export function EstimateProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<EstimateLine[]>([]);
   const [coupon, setCoupon] = useState("");
@@ -56,17 +76,12 @@ export function EstimateProvider({ children }: { children: ReactNode }) {
       const raw = localStorage.getItem(LS_KEY) || localStorage.getItem("mayilon:estimate:v1");
       if (raw) {
         const parsed = JSON.parse(raw) as {
-          items?: EstimateLine[];
+          items?: any[];
           coupon?: string;
           state?: string;
         };
         if (Array.isArray(parsed.items) && parsed.items.length > 0) {
-          const sanitized = parsed.items.map((it) => ({
-            ...it,
-            mrp: Number(it.mrp || (it as any).offerPrice || 0),
-            price: Number(it.price || (it as any).offerPrice || 0),
-            quantity: Number(it.quantity) || 1,
-          }));
+          const sanitized = parsed.items.map(sanitizeLine);
           setItems(sanitized);
         }
         if (parsed.coupon) setCoupon(parsed.coupon);
@@ -98,11 +113,7 @@ export function EstimateProvider({ children }: { children: ReactNode }) {
 
   // 4. Add item with robust ID & SKU matching
   const add = useCallback<Ctx["add"]>((rawLine, qty) => {
-    const line = {
-      ...rawLine,
-      mrp: Number(rawLine.mrp || (rawLine as any).offerPrice || 0),
-      price: Number(rawLine.price || (rawLine as any).offerPrice || 0),
-    };
+    const line = sanitizeLine(rawLine);
     setItems((prev) => {
       const lineIdStr = String(line.id);
       const found = prev.find(
@@ -113,16 +124,11 @@ export function EstimateProvider({ children }: { children: ReactNode }) {
       if (found) {
         return prev.map((p) =>
           String(p.id) === lineIdStr || (p.sku && line.sku && p.sku === line.sku)
-            ? {
-                ...p,
-                price: Number(p.price || line.price || 0),
-                mrp: Number(p.mrp || line.mrp || 0),
-                quantity: p.quantity + step,
-              }
+            ? sanitizeLine({ ...p, quantity: p.quantity + step })
             : p,
         );
       }
-      return [...prev, { ...line, id: lineIdStr, quantity: step }];
+      return [...prev, sanitizeLine({ ...line, quantity: step })];
     });
     setToast(`${line.name} added to estimate`);
   }, []);
@@ -130,9 +136,14 @@ export function EstimateProvider({ children }: { children: ReactNode }) {
   // 5. Update quantity
   const setQty = useCallback<Ctx["setQty"]>((id, qty) => {
     const idStr = String(id);
+    const numQty = extractNumber(qty, 0);
     setItems((prev) =>
       prev.flatMap((p) =>
-        String(p.id) === idStr ? (qty <= 0 ? [] : [{ ...p, quantity: qty }]) : [p],
+        String(p.id) === idStr
+          ? numQty <= 0
+            ? []
+            : [sanitizeLine({ ...p, quantity: numQty })]
+          : [p],
       ),
     );
   }, []);
@@ -148,13 +159,18 @@ export function EstimateProvider({ children }: { children: ReactNode }) {
     setItems([]);
     try {
       localStorage.removeItem(LS_KEY);
+      localStorage.removeItem("mayilon:estimate:v1");
     } catch {}
   }, []);
 
   const totals = useMemo(
     () =>
       calculateTotals(
-        items.map((i) => ({ mrp: Number(i.mrp), price: Number(i.price), quantity: Number(i.quantity) })),
+        items.map((i) => ({
+          mrp: extractNumber(i.mrp, (i as any).offerPrice),
+          price: extractNumber(i.price, (i as any).offerPrice, i.mrp),
+          quantity: extractNumber(i.quantity, 1),
+        })),
         {
           state,
           couponCode: coupon,

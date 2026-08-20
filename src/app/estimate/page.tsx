@@ -17,7 +17,7 @@ import {
   Truck,
 } from "lucide-react";
 import { useEstimate } from "@/components/estimate/EstimateProvider";
-import { COUPONS, formatINR, minOrderFor, STATES } from "@/lib/estimate";
+import { COUPONS, extractNumber, formatINR, minOrderFor, STATES } from "@/lib/estimate";
 
 type Customer = {
   name: string;
@@ -243,67 +243,74 @@ export default function CheckoutPage() {
                     transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
                     className="border-b border-slate-100 last:border-0"
                   >
-                    <div className="grid grid-cols-[64px_1fr] items-center gap-3 px-6 py-4 md:grid-cols-[64px_1fr_110px_110px_130px_44px]">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={it.imageUrl ?? ""}
-                        alt={it.name}
-                        className="h-14 w-14 rounded-xl object-cover border border-slate-200"
-                        loading="lazy"
-                      />
-                      <div className="min-w-0">
-                        <Link
-                          href={`/products/${it.slug}`}
-                          className="truncate text-[14px] font-bold text-slate-900 hover:text-red-600"
-                        >
-                          {it.name}
-                        </Link>
-                        <p className="text-[11px] font-bold uppercase tracking-[1.6px] text-slate-500">
-                          {it.sku} · {it.packing} · {it.categoryName}
-                        </p>
-                        <p className="mt-1 text-[12.5px] font-bold text-red-600 md:hidden">
-                          {formatINR(it.price)} × {it.quantity} ={" "}
-                          {formatINR(it.price * it.quantity)}
-                        </p>
-                      </div>
-                      <p className="hidden text-right text-[13px] text-slate-400 line-through md:block">
-                        {formatINR(it.mrp)}
-                      </p>
-                      <p className="hidden text-right text-[14.5px] font-bold text-red-600 md:block">
-                        {formatINR(it.price)}
-                      </p>
-                      <div className="col-span-2 flex items-center justify-center gap-2 md:col-span-1">
-                        <motion.button
-                          whileTap={{ scale: 0.85 }}
-                          aria-label="Decrease"
-                          onClick={() => setQty(it.id, it.quantity - 1)}
-                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-500/30 text-red-600 transition hover:bg-red-600 hover:text-white"
-                        >
-                          <Minus size={13} />
-                        </motion.button>
-                        <input
-                          value={it.quantity}
-                          onChange={(e) => setQty(it.id, Number(e.target.value) || 0)}
-                          className="no-spin w-14 rounded-lg border border-slate-200 bg-slate-50 py-1.5 text-center text-[14px] font-bold text-slate-900 outline-none focus:border-red-600"
-                          inputMode="numeric"
-                        />
-                        <motion.button
-                          whileTap={{ scale: 0.85 }}
-                          aria-label="Increase"
-                          onClick={() => setQty(it.id, it.quantity + 1)}
-                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-500/30 text-red-600 transition hover:bg-red-600 hover:text-white"
-                        >
-                          <Plus size={13} />
-                        </motion.button>
-                      </div>
-                      <button
-                        onClick={() => remove(it.id)}
-                        aria-label={`Remove ${it.name}`}
-                        className="hidden justify-self-end text-slate-400 transition hover:text-red-600 md:block"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
+                    {(() => {
+                      const itemPrice = extractNumber(it.price, (it as any).offerPrice, it.mrp);
+                      const itemMrp = extractNumber(it.mrp, (it as any).offerPrice, itemPrice);
+                      const itemQty = Math.max(1, extractNumber(it.quantity, 1));
+                      return (
+                        <div className="grid grid-cols-[64px_1fr] items-center gap-3 px-6 py-4 md:grid-cols-[64px_1fr_110px_110px_130px_44px]">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={it.imageUrl ?? ""}
+                            alt={it.name}
+                            className="h-14 w-14 rounded-xl object-cover border border-slate-200"
+                            loading="lazy"
+                          />
+                          <div className="min-w-0">
+                            <Link
+                              href={`/products/${it.slug}`}
+                              className="truncate text-[14px] font-bold text-slate-900 hover:text-red-600"
+                            >
+                              {it.name}
+                            </Link>
+                            <p className="text-[11px] font-bold uppercase tracking-[1.6px] text-slate-500">
+                              {it.sku} · {it.packing} · {it.categoryName}
+                            </p>
+                            <p className="mt-1 text-[12.5px] font-bold text-red-600 md:hidden">
+                              {formatINR(itemPrice)} × {itemQty} ={" "}
+                              {formatINR(itemPrice * itemQty)}
+                            </p>
+                          </div>
+                          <p className="hidden text-right text-[13px] text-slate-400 line-through md:block">
+                            {formatINR(itemMrp)}
+                          </p>
+                          <p className="hidden text-right text-[14.5px] font-bold text-red-600 md:block">
+                            {formatINR(itemPrice)}
+                          </p>
+                          <div className="col-span-2 flex items-center justify-center gap-2 md:col-span-1">
+                            <motion.button
+                              whileTap={{ scale: 0.85 }}
+                              aria-label="Decrease"
+                              onClick={() => setQty(it.id, itemQty - 1)}
+                              className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-500/30 text-red-600 transition hover:bg-red-600 hover:text-white"
+                            >
+                              <Minus size={13} />
+                            </motion.button>
+                            <input
+                              value={itemQty}
+                              onChange={(e) => setQty(it.id, Number(e.target.value) || 0)}
+                              className="no-spin w-14 rounded-lg border border-slate-200 bg-slate-50 py-1.5 text-center text-[14px] font-bold text-slate-900 outline-none focus:border-red-600"
+                              inputMode="numeric"
+                            />
+                            <motion.button
+                              whileTap={{ scale: 0.85 }}
+                              aria-label="Increase"
+                              onClick={() => setQty(it.id, itemQty + 1)}
+                              className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-500/30 text-red-600 transition hover:bg-red-600 hover:text-white"
+                            >
+                              <Plus size={13} />
+                            </motion.button>
+                          </div>
+                          <button
+                            onClick={() => remove(it.id)}
+                            aria-label={`Remove ${it.name}`}
+                            className="hidden justify-self-end text-slate-400 transition hover:text-red-600 md:block"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      );
+                    })()}
                   </motion.div>
                 ))}
               </AnimatePresence>
