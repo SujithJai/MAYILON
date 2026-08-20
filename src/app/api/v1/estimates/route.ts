@@ -161,6 +161,52 @@ export async function POST(req: Request) {
     console.warn("[POST /estimates] DB write fallback to memory:", err);
   }
 
+  // Save to in-memory cache for instant confirmation rendering
+  try {
+    const { saveOrderToCache } = await import("@/lib/orders-cache");
+    saveOrderToCache({
+      estimateNumber,
+      customerName: customer.name,
+      mobile: customer.mobile,
+      email: customer.email,
+      state: customer.state,
+      district: customer.district,
+      city: customer.city,
+      pincode: customer.pincode,
+      address: customer.address,
+      gstNumber: customer.gstNumber,
+      dealerName: customer.dealerName,
+      transportName: transport?.transportName || "Direct Factory Transport",
+      deliveryLocation: transport?.deliveryLocation || "Sivakasi Licensed Dispatch",
+      instructions: transport?.instructions,
+      paymentMethod,
+      paymentStatus: paymentMethod === "COD" ? "UNPAID" : "PENDING VERIFICATION",
+      status: "NEW",
+      mrpTotal: totals.mrpTotal.toFixed(2),
+      subtotal: totals.subtotal.toFixed(2),
+      savings: totals.savings.toFixed(2),
+      discount: totals.discount.toFixed(2),
+      transportCharge: totals.transportCharge.toFixed(2),
+      gstAmount: totals.gstAmount.toFixed(2),
+      grandTotal: totals.grandTotal.toFixed(2),
+      createdAt: new Date(),
+      items: lines.map((l: LineItem, idx: number) => ({
+        id: `item-${idx + 1}`,
+        name: l.product.name,
+        categoryName: l.product.categoryName,
+        packing: l.product.packing,
+        sku: l.product.sku,
+        imageUrl: l.product.imageUrl || "",
+        mrp: l.mrp.toFixed(2),
+        price: l.price.toFixed(2),
+        quantity: l.quantity,
+        lineTotal: (l.price * l.quantity).toFixed(2),
+      })),
+    });
+  } catch (cacheErr) {
+    console.warn("[saveOrderToCache error]", cacheErr);
+  }
+
   return ok(
     { estimateNumber, totals, status: "NEW", paymentMethod },
     "Order placed successfully",

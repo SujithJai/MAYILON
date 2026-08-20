@@ -40,8 +40,17 @@ export default async function EstimateConfirmation({ params }: { params: Params 
         .from(estimateItems)
         .where(eq(estimateItems.estimateId, estimate.id));
     }
-  } catch (err) {
-    console.warn("[EstimateConfirmation] DB read fallback:", err);
+  if (!estimate) {
+    try {
+      const { getOrderFromCache } = await import("@/lib/orders-cache");
+      const cached = getOrderFromCache(number);
+      if (cached) {
+        estimate = cached;
+        items = cached.items;
+      }
+    } catch (cacheErr) {
+      console.warn("[getOrderFromCache read error]", cacheErr);
+    }
   }
 
   if (!estimate) {
