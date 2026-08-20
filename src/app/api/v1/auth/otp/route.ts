@@ -87,6 +87,7 @@ export async function POST(req: Request) {
     sent: true,
     expiresInSeconds: 300,
     channel: provider,
+    previewCode: !smsSent ? code : undefined,
     log: apiLog,
   });
 }

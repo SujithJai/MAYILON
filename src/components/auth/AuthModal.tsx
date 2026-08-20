@@ -10,6 +10,7 @@ import {
   Heart,
   Lock,
   LogOut,
+  Mail,
   MapPin,
   Package,
   Phone,
@@ -19,14 +20,6 @@ import {
   X,
 } from "lucide-react";
 import { LogoLockup } from "@/components/brand/Logo";
-
-type AuthModalProps = {
-  isOpen: boolean;
-  onClose: () => void;
-  userMobile: string | null;
-  onLoginSuccess: (mobile: string) => void;
-  onLogout: () => void;
-};
 
 export function AuthModal({
   isOpen,
@@ -41,8 +34,11 @@ export function AuthModal({
   onLoginSuccess: (mobile: string) => void;
   onLogout: () => void;
 }) {
+  const [authType, setAuthType] = useState<"PHONE" | "EMAIL">("PHONE");
   const [step, setStep] = useState<"MOBILE" | "OTP">("MOBILE");
   const [mobile, setMobile] = useState("");
+  const [userEmailInput, setUserEmailInput] = useState("");
+  const [emailSent, setEmailSent] = useState(false);
   const [otpDigits, setOtpDigits] = useState(["", "", "", "", "", ""]);
   const [resendTimer, setResendTimer] = useState(60);
   const [canResend, setCanResend] = useState(false);
@@ -110,9 +106,26 @@ export function AuthModal({
       setError(json.message);
       return;
     }
+    if (json.data?.previewCode) {
+      setPreviewCode(json.data.previewCode);
+    } else {
+      setPreviewCode(null);
+    }
     setOtpDigits(["", "", "", "", "", ""]);
     setStep("OTP");
     setResendTimer(60);
+  };
+
+  const handleSendEmailAuth = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    if (!userEmailInput.includes("@")) {
+      setError("Please enter a valid email address");
+      return;
+    }
+    setEmailSent(true);
+    setEmail(userEmailInput);
+    onLoginSuccess(userEmailInput);
   };
 
   const handleOtpChange = (index: number, value: string) => {
@@ -198,12 +211,12 @@ export function AuthModal({
                 </div>
                 <div>
                   <h2 className="font-display text-xl font-bold text-slate-900">{fullName}</h2>
-                  <p className="text-xs font-bold text-red-600">+91 {userMobile}</p>
+                  <p className="text-xs font-bold text-red-600">{userMobile.includes("@") ? userMobile : `+91 ${userMobile}`}</p>
                 </div>
               </div>
 
               <div className="rounded-2xl border border-emerald-500/30 bg-emerald-50 p-4 text-xs font-bold text-emerald-700 flex items-center gap-2">
-                <BadgeCheck size={18} /> Supabase Phone Auth Session Active
+                <BadgeCheck size={18} /> Verified Account Session Active
               </div>
 
               <div className="space-y-3 pt-2">
@@ -268,51 +281,100 @@ export function AuthModal({
               </div>
             </div>
           ) : (
-            /* STEP 1: MOBILE NUMBER ENTRY */
+            /* STEP 1: LOGIN TYPE (PHONE OR EMAIL) */
             step === "MOBILE" ? (
-              <form onSubmit={handleSendOtp} className="space-y-6">
+              <div className="space-y-6">
                 <div>
                   <LogoLockup size={40} />
                   <h2 className="mt-4 font-display text-2xl font-bold text-slate-900">Welcome Back</h2>
                   <p className="mt-1 text-xs font-medium text-slate-600">
-                    Login to continue shopping & access instant order tracking.
+                    Login via Phone OTP or Email to track & place orders.
                   </p>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-[11px] font-bold uppercase tracking-[2px] text-slate-700 block">
-                    Mobile Number *
-                  </label>
-                  <div className="flex gap-2">
-                    <div className="flex items-center justify-center rounded-2xl border border-slate-300 bg-slate-100 px-4 font-bold text-slate-800 text-sm">
-                      +91
-                    </div>
-                    <input
-                      type="tel"
-                      required
-                      value={mobile}
-                      onChange={(e) => setMobile(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                      placeholder="Enter mobile number"
-                      inputMode="numeric"
-                      className="field flex-1 !bg-slate-50 !border-slate-300 !text-slate-900 font-bold text-base tracking-wider"
-                    />
-                  </div>
+                {/* Tab Switcher: Phone vs Email */}
+                <div className="grid grid-cols-2 gap-2 rounded-2xl border border-slate-200 bg-slate-100 p-1 text-xs font-bold">
+                  <button
+                    onClick={() => setAuthType("PHONE")}
+                    className={`flex items-center justify-center gap-1.5 rounded-xl py-2.5 transition-all ${
+                      authType === "PHONE" ? "bg-white text-red-600 shadow-sm" : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    <Phone size={14} /> Phone OTP
+                  </button>
+                  <button
+                    onClick={() => setAuthType("EMAIL")}
+                    className={`flex items-center justify-center gap-1.5 rounded-xl py-2.5 transition-all ${
+                      authType === "EMAIL" ? "bg-white text-red-600 shadow-sm" : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    <Mail size={14} /> Email Login
+                  </button>
                 </div>
 
-                {error && <p className="text-xs font-bold text-red-600">{error}</p>}
+                {authType === "PHONE" ? (
+                  <form onSubmit={handleSendOtp} className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-[11px] font-bold uppercase tracking-[2px] text-slate-700 block">
+                        Mobile Number *
+                      </label>
+                      <div className="flex gap-2">
+                        <div className="flex items-center justify-center rounded-2xl border border-slate-300 bg-slate-100 px-4 font-bold text-slate-800 text-sm">
+                          +91
+                        </div>
+                        <input
+                          type="tel"
+                          required
+                          value={mobile}
+                          onChange={(e) => setMobile(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                          placeholder="Enter mobile number"
+                          inputMode="numeric"
+                          className="field flex-1 !bg-slate-50 !border-slate-300 !text-slate-900 font-bold text-base tracking-wider"
+                        />
+                      </div>
+                    </div>
 
-                <button
-                  type="submit"
-                  disabled={busy}
-                  className="btn-gold w-full py-4 text-sm uppercase font-bold tracking-wider"
-                >
-                  {busy ? "Sending OTP…" : "CONTINUE WITH OTP"}
-                </button>
+                    {error && <p className="text-xs font-bold text-red-600">{error}</p>}
+
+                    <button
+                      type="submit"
+                      disabled={busy}
+                      className="btn-gold w-full py-4 text-sm uppercase font-bold tracking-wider"
+                    >
+                      {busy ? "Sending OTP…" : "CONTINUE WITH OTP"}
+                    </button>
+                  </form>
+                ) : (
+                  <form onSubmit={handleSendEmailAuth} className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-[11px] font-bold uppercase tracking-[2px] text-slate-700 block">
+                        Email Address *
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        value={userEmailInput}
+                        onChange={(e) => setUserEmailInput(e.target.value)}
+                        placeholder="you@domain.com"
+                        className="field w-full !bg-slate-50 !border-slate-300 !text-slate-900 font-bold text-sm"
+                      />
+                    </div>
+
+                    {error && <p className="text-xs font-bold text-red-600">{error}</p>}
+
+                    <button
+                      type="submit"
+                      className="btn-gold w-full py-4 text-sm uppercase font-bold tracking-wider"
+                    >
+                      LOGIN WITH EMAIL
+                    </button>
+                  </form>
+                )}
 
                 <p className="flex items-center justify-center gap-1.5 text-center text-xs font-bold text-slate-500 pt-2">
-                  <Lock size={14} className="text-red-600" /> Secure Passwordless Phone Auth
+                  <Lock size={14} className="text-red-600" /> Secure Supabase & SMS Auth
                 </p>
-              </form>
+              </div>
             ) : (
               /* STEP 2: 6-DIGIT OTP VERIFICATION SCREEN */
               <form onSubmit={handleVerifyOtp} className="space-y-6">
@@ -329,6 +391,12 @@ export function AuthModal({
                   <p className="mt-1 text-xs font-medium text-slate-600">
                     OTP sent to <span className="font-bold text-red-600">+91 {mobile}</span>
                   </p>
+
+                  {previewCode && (
+                    <div className="mt-3 rounded-2xl border border-amber-500/30 bg-amber-50 p-3 text-[11.5px] font-bold text-amber-800">
+                      💡 Fast2SMS Note: Fast2SMS account requires ₹100 initial recharge to send SMS to phone. Use test code <span className="underline decoration-amber-600 font-extrabold text-red-600">[{previewCode}]</span> to verify!
+                    </div>
+                  )}
                 </div>
 
                 {/* 6 Individual Digit Inputs */}
