@@ -49,7 +49,7 @@ export async function POST(req: Request) {
   });
 
   const totals = calculateTotals(
-    lines.map((l) => ({ mrp: l.mrp, price: l.price, quantity: l.quantity })),
+    lines.map((l: any) => ({ mrp: l.mrp, price: l.price, quantity: l.quantity })),
     { state: customer.state, couponCode },
   );
 
