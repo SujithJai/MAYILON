@@ -10,10 +10,12 @@ import {
   CheckCircle2,
   Clock,
   Edit,
+  ExternalLink,
   Handshake,
   LayoutDashboard,
   LogOut,
   Mail,
+  MessageCircle,
   Package,
   Plus,
   QrCode,
@@ -238,6 +240,36 @@ export default function AdminPage() {
     setNotificationToast(msg);
     setTimeout(() => setNotificationToast(null), 5000);
 
+    void load();
+  }
+
+  async function togglePaymentStatus(estimateNumber: string, targetPaymentStatus: "PAID" | "UNPAID") {
+    setEstimates((prev) =>
+      prev.map((e) =>
+        e.estimateNumber === estimateNumber
+          ? {
+              ...e,
+              paymentStatus: targetPaymentStatus,
+              paymentMethod: targetPaymentStatus === "PAID" ? e.paymentMethod || "UPI Verification" : undefined,
+              status: targetPaymentStatus === "PAID" ? "PAYMENT RECEIVED" : "NEW",
+            }
+          : e,
+      ),
+    );
+    await fetch(`/api/v1/estimates/${estimateNumber}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        paymentStatus: targetPaymentStatus,
+        status: targetPaymentStatus === "PAID" ? "PAYMENT RECEIVED" : "NEW",
+      }),
+    });
+
+    const msg = targetPaymentStatus === "PAID"
+      ? `🟢 Payment Received confirmed for Order ${estimateNumber}! Order moved to Packaging stage. 📦`
+      : `🔴 Order ${estimateNumber} payment marked UNPAID.`;
+    setNotificationToast(msg);
+    setTimeout(() => setNotificationToast(null), 5000);
     void load();
   }
 
@@ -565,84 +597,142 @@ export default function AdminPage() {
                 )}
                 <div className="overflow-x-auto">
                   {estimates.length > 0 && (
-                    <table className="w-full min-w-[920px] text-[13.5px]">
+                    <table className="w-full min-w-[1080px] text-[13.5px]">
                       <thead>
                         <tr className="border-b border-slate-200 text-left text-[11px] font-bold uppercase tracking-[2px] text-slate-500">
-                          <th className="py-3">Reference</th>
-                          <th className="py-3">Customer</th>
-                          <th className="py-3">Location</th>
-                          <th className="py-3 text-center">Items</th>
-                          <th className="py-3 text-right">Value</th>
-                          <th className="py-3">Payment</th>
-                          <th className="py-3">Workflow Action</th>
+                          <th className="py-3 px-3">Order Ref</th>
+                          <th className="py-3 px-3">Customer & Contact</th>
+                          <th className="py-3 px-3">Full Delivery Address</th>
+                          <th className="py-3 px-3 text-center">Items</th>
+                          <th className="py-3 px-3 text-right">Grand Total</th>
+                          <th className="py-3 px-3">Payment Status & Action</th>
+                          <th className="py-3 px-3">Fulfillment Workflow Buttons</th>
                         </tr>
                       </thead>
                       <tbody>
                         {estimates.map((e) => (
-                          <tr key={e.id} className="border-b border-slate-100 hover:bg-slate-50">
-                            <td className="py-3.5 font-bold">
-                              <Link href={`/estimate/${e.estimateNumber}`} className="text-red-600 hover:underline">
-                                {e.estimateNumber}
+                          <tr key={e.id} className="border-b border-slate-100 hover:bg-slate-50/80">
+                            {/* 1. Order Ref */}
+                            <td className="py-4 px-3 font-bold">
+                              <Link href={`/estimate/${e.estimateNumber}`} target="_blank" className="text-red-600 hover:underline flex items-center gap-1">
+                                {e.estimateNumber} <ExternalLink size={12} />
                               </Link>
                               <p className="text-[11px] font-medium text-slate-400">
                                 {new Date(e.createdAt).toLocaleDateString("en-IN")}
                               </p>
+                              <span className="mt-1.5 inline-block rounded-full bg-slate-100 border border-slate-200 px-2.5 py-0.5 text-[10.5px] font-bold text-slate-700 uppercase">
+                                {e.status}
+                              </span>
                             </td>
-                            <td className="py-3.5">
+
+                            {/* 2. Customer & Contact */}
+                            <td className="py-4 px-3">
                               <p className="font-bold text-slate-900">{e.customerName}</p>
-                              <p className="text-[11.5px] font-medium text-slate-500">{e.mobile}</p>
+                              <a href={`https://wa.me/91${e.mobile}`} target="_blank" rel="noreferrer" className="text-[11.5px] font-bold text-emerald-600 hover:underline flex items-center gap-1 mt-0.5">
+                                <MessageCircle size={13} /> +91 {e.mobile}
+                              </a>
                             </td>
-                            <td className="py-3.5 text-slate-700 font-medium">
-                              {e.city ? `${e.city}, ` : ""}{e.state}
+
+                            {/* 3. Delivery Address */}
+                            <td className="py-4 px-3 text-slate-700 text-xs font-medium max-w-[220px]">
+                              <p className="line-clamp-2">{e.address || "Direct Factory Address"}</p>
+                              <p className="text-[11px] text-slate-400 font-bold mt-0.5">
+                                {[e.city, e.district, e.state].filter(Boolean).join(", ")}
+                              </p>
                             </td>
-                            <td className="py-3.5 text-center font-bold text-slate-700">{e.itemCount}</td>
-                            <td className="py-3.5 text-right font-bold text-red-600">
+
+                            {/* 4. Items */}
+                            <td className="py-4 px-3 text-center font-bold text-slate-800">{e.itemCount} pcs</td>
+
+                            {/* 5. Grand Total */}
+                            <td className="py-4 px-3 text-right font-bold text-red-600 font-display text-base">
                               {formatINR(Number(e.grandTotal))}
                             </td>
-                            <td className="py-3.5">
-                              {e.paymentStatus === "PAID" ? (
-                                <span className="rounded-full bg-emerald-50 border border-emerald-300 px-3 py-1 text-[11px] font-bold text-emerald-700">
-                                  ✓ PAID ({e.paymentMethod || "UPI"})
-                                </span>
-                              ) : (
-                                <button
-                                  onClick={() => setPaymentModalOrder(e)}
-                                  className="rounded-full bg-amber-50 border border-amber-300 px-3 py-1 text-[11px] font-bold text-amber-700 hover:bg-amber-100"
-                                >
-                                  💳 Pay Now / Confirm
-                                </button>
-                              )}
+
+                            {/* 6. Payment Status & Action */}
+                            <td className="py-4 px-3 min-w-[160px]">
+                              <div className="flex flex-col gap-1.5">
+                                {e.paymentStatus === "PAID" ? (
+                                  <>
+                                    <span className="rounded-xl bg-emerald-100 border border-emerald-300 px-3 py-1.5 text-[10.5px] font-extrabold text-emerald-800 text-center">
+                                      ✓ PAYMENT RECEIVED ({e.paymentMethod || "UPI"})
+                                    </span>
+                                    <button
+                                      onClick={() => togglePaymentStatus(e.estimateNumber, "UNPAID")}
+                                      className="text-[10px] font-bold text-slate-400 hover:text-red-600 underline text-center"
+                                    >
+                                      Mark Unreceived
+                                    </button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <button
+                                      onClick={() => togglePaymentStatus(e.estimateNumber, "PAID")}
+                                      className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 text-[11px] font-bold shadow-sm flex items-center justify-center gap-1"
+                                    >
+                                      <CheckCircle2 size={13} /> Mark Payment Received
+                                    </button>
+                                    <button
+                                      onClick={() => setPaymentModalOrder(e)}
+                                      className="rounded-xl bg-amber-50 border border-amber-300 px-2 py-1 text-[10px] font-bold text-amber-800 hover:bg-amber-100 text-center"
+                                    >
+                                      💳 Pay Gateway Modal
+                                    </button>
+                                  </>
+                                )}
+                              </div>
                             </td>
-                            <td className="py-3.5">
-                              <div className="flex flex-wrap items-center gap-2">
-                                {/* PACKAGE READY QUICK BUTTON */}
-                                {e.status !== "PACKAGE READY" && e.status !== "SHIPPED" && e.status !== "DELIVERED" && (
-                                  <button
-                                    onClick={() => updateStatus(e.estimateNumber, "PACKAGE READY", e.mobile)}
-                                    className="flex items-center gap-1 rounded-xl bg-red-600 px-3 py-1.5 text-[11px] font-bold text-white shadow-sm hover:bg-red-700"
-                                  >
-                                    <Package size={13} /> Package Ready
-                                  </button>
-                                )}
-                                {e.status === "PACKAGE READY" && (
-                                  <button
-                                    onClick={() => updateStatus(e.estimateNumber, "SHIPPED", e.mobile)}
-                                    className="flex items-center gap-1 rounded-xl bg-blue-600 px-3 py-1.5 text-[11px] font-bold text-white shadow-sm hover:bg-blue-700"
-                                  >
-                                    <Truck size={13} /> Mark Shipped
-                                  </button>
-                                )}
-                                <select
-                                  value={e.status}
-                                  onChange={(ev) => updateStatus(e.estimateNumber, ev.target.value, e.mobile)}
-                                  className="rounded-xl border border-slate-300 bg-white px-2.5 py-1.5 text-[12px] font-bold text-slate-800 outline-none focus:border-red-600"
+
+                            {/* 7. Fulfillment Workflow Action Buttons */}
+                            <td className="py-4 px-3">
+                              <div className="flex flex-col gap-1.5 min-w-[165px]">
+                                {/* Step A: Package Ready */}
+                                <button
+                                  onClick={() => updateStatus(e.estimateNumber, "PACKAGE READY", e.mobile)}
+                                  className={`flex items-center justify-center gap-1 rounded-xl px-3 py-1.5 text-[11px] font-bold transition ${
+                                    e.status === "PACKAGE READY"
+                                      ? "bg-purple-600 text-white ring-2 ring-purple-300 shadow-sm"
+                                      : "bg-purple-50 border border-purple-200 text-purple-700 hover:bg-purple-600 hover:text-white"
+                                  }`}
                                 >
-                                  {STATUSES.map((s) => (
-                                    <option key={s} value={s}>
-                                      {s}
-                                    </option>
-                                  ))}
-                                </select>
+                                  <Package size={13} /> {e.status === "PACKAGE READY" ? "✓ Packaged" : "Mark Packaged"}
+                                </button>
+
+                                {/* Step B: Shipped */}
+                                <button
+                                  onClick={() => updateStatus(e.estimateNumber, "SHIPPED", e.mobile)}
+                                  className={`flex items-center justify-center gap-1 rounded-xl px-3 py-1.5 text-[11px] font-bold transition ${
+                                    e.status === "SHIPPED"
+                                      ? "bg-blue-600 text-white ring-2 ring-blue-300 shadow-sm"
+                                      : "bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-600 hover:text-white"
+                                  }`}
+                                >
+                                  <Truck size={13} /> {e.status === "SHIPPED" ? "✓ Shipped" : "Mark Shipped"}
+                                </button>
+
+                                {/* Step C: Out for Delivery */}
+                                <button
+                                  onClick={() => updateStatus(e.estimateNumber, "OUT FOR DELIVERY", e.mobile)}
+                                  className={`flex items-center justify-center gap-1 rounded-xl px-3 py-1.5 text-[11px] font-bold transition ${
+                                    e.status === "OUT FOR DELIVERY"
+                                      ? "bg-amber-600 text-white ring-2 ring-amber-300 shadow-sm"
+                                      : "bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-600 hover:text-white"
+                                  }`}
+                                >
+                                  <Truck size={13} /> {e.status === "OUT FOR DELIVERY" ? "✓ Out for Delivery" : "Mark Out for Delivery"}
+                                </button>
+
+                                {/* Step D: Delivered */}
+                                <button
+                                  onClick={() => updateStatus(e.estimateNumber, "DELIVERED", e.mobile)}
+                                  className={`flex items-center justify-center gap-1 rounded-xl px-3 py-1.5 text-[11px] font-bold transition ${
+                                    e.status === "DELIVERED"
+                                      ? "bg-emerald-600 text-white ring-2 ring-emerald-300 shadow-sm"
+                                      : "bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-600 hover:text-white"
+                                  }`}
+                                >
+                                  <CheckCircle2 size={13} /> {e.status === "DELIVERED" ? "✓ Delivered" : "Mark Delivered"}
+                                </button>
                               </div>
                             </td>
                           </tr>
