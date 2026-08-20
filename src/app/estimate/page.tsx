@@ -201,7 +201,23 @@ export default function CheckoutPage() {
           transport,
           paymentMethod,
           couponCode: coupon,
-          items: items.map((i) => ({ productId: i.id, quantity: i.quantity })),
+          items: items.map((i) => {
+            const itemPrice = extractNumber(i.price, (i as any).offerPrice, i.mrp);
+            const itemMrp = extractNumber(i.mrp, (i as any).offerPrice, itemPrice);
+            const itemQty = Math.max(1, extractNumber(i.quantity, 1));
+            return {
+              id: i.id,
+              sku: i.sku,
+              name: i.name,
+              categoryName: i.categoryName,
+              packing: i.packing,
+              imageUrl: i.imageUrl,
+              mrp: itemMrp,
+              price: itemPrice,
+              quantity: itemQty,
+              lineTotal: itemPrice * itemQty,
+            };
+          }),
         }),
       });
       const json = await res.json();

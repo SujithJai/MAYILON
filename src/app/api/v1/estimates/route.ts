@@ -1,26 +1,10 @@
 import { db } from "@/db";
 import { customers, estimateItems, estimates } from "@/db/schema";
 import { ok } from "@/lib/api";
-import { getProductsByIds } from "@/lib/data";
-import { calculateTotals, makeEstimateNumber } from "@/lib/estimate";
+import { calculateTotals, extractNumber, makeEstimateNumber } from "@/lib/estimate";
+import { getAllOrdersFromStore, saveOrderToStore, type OrderRecord } from "@/lib/orders-store";
 
 export const dynamic = "force-dynamic";
-
-type LineItem = {
-  product: {
-    id: string;
-    sku: string;
-    name: string;
-    categoryName: string;
-    packing: string;
-    imageUrl: string;
-    mrp: string | number;
-    offerPrice: string | number;
-  };
-  quantity: number;
-  mrp: number;
-  price: number;
-};
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
@@ -31,53 +15,83 @@ export async function POST(req: Request) {
   const transport = body.transport || {};
 
   const customer = {
-    name: String(rawCustomer.name || "Customer").trim() || "Customer",
+    name: String(rawCustomer.name || "Valued Customer").trim() || "Valued Customer",
     mobile: String(rawCustomer.mobile || "9876543210").replace(/\D/g, "") || "9876543210",
     email: String(rawCustomer.email || ""),
     state: String(rawCustomer.state || "Tamil Nadu"),
     district: String(rawCustomer.district || ""),
     city: String(rawCustomer.city || ""),
     pincode: String(rawCustomer.pincode || ""),
-    address: String(rawCustomer.address || "Direct Factory Shipping Address"),
+    address: String(rawCustomer.address || "Direct Sivakasi Licensed Dispatch Address"),
     gstNumber: String(rawCustomer.gstNumber || ""),
     dealerName: String(rawCustomer.dealerName || ""),
   };
 
-  const items = rawItems.map((i: any) => ({
-    productId: String(i.productId || "prod-1"),
-    quantity: Number(i.quantity) || 1,
-  }));
+  // Build clean detailed product lines
+  const lines = rawItems.map((i: any, idx: number) => {
+    const mrpVal = extractNumber(i.mrp, i.offerPrice, 100);
+    const priceVal = extractNumber(i.price, i.offerPrice, mrpVal);
+    const qtyVal = Math.max(1, extractNumber(i.quantity, 1));
+    const lineTotalVal = priceVal * qtyVal;
 
-  // Re-price products
-  const products = await getProductsByIds(items.map((i: any) => i.productId));
-  const byId = new Map(products.map((p) => [p.id, p]));
-
-  const lines: LineItem[] = items.map((i: any) => {
-    const p = byId.get(i.productId);
     return {
-      product: p || {
-        id: i.productId,
-        sku: `MYL-PROD`,
-        name: "Sivakasi Premium Fireworks Pack",
-        categoryName: "Fireworks",
-        packing: "1 Box",
-        imageUrl: "/images/placeholder.jpg",
-        mrp: "500.00",
-        offerPrice: "100.00",
-      },
-      quantity: i.quantity,
-      mrp: p ? Number(p.mrp) : 500,
-      price: p ? Number(p.offerPrice) : 100,
+      id: String(i.id || `item-${idx + 1}`),
+      sku: String(i.sku || `MYL-PROD-${idx + 1}`),
+      name: String(i.name || "Sivakasi Fireworks Item"),
+      categoryName: String(i.categoryName || "Fireworks"),
+      packing: String(i.packing || "1 Pack"),
+      imageUrl: String(i.imageUrl || "/images/placeholder.jpg"),
+      mrp: mrpVal.toFixed(2),
+      price: priceVal.toFixed(2),
+      quantity: qtyVal,
+      lineTotal: lineTotalVal.toFixed(2),
     };
   });
 
   const totals = calculateTotals(
-    lines.map((l: LineItem) => ({ mrp: l.mrp, price: l.price, quantity: l.quantity })),
+    lines.map((l) => ({ mrp: l.mrp, price: l.price, quantity: l.quantity })),
     { state: customer.state, couponCode },
   );
 
   const estimateNumber = makeEstimateNumber();
+  const createdAt = new Date().toISOString();
 
+  const newOrder: OrderRecord = {
+    id: `est-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    estimateNumber,
+    customerName: customer.name,
+    mobile: customer.mobile,
+    email: customer.email,
+    state: customer.state,
+    district: customer.district,
+    city: customer.city,
+    pincode: customer.pincode,
+    address: customer.address,
+    gstNumber: customer.gstNumber,
+    dealerName: customer.dealerName,
+    transportName: transport.transportName || "Direct Factory Transport",
+    deliveryLocation: transport.deliveryLocation || "Sivakasi Licensed Dispatch",
+    instructions: transport.instructions || "",
+    paymentMethod,
+    paymentStatus: paymentMethod === "COD" ? "UNPAID" : "PENDING VERIFICATION",
+    status: "NEW",
+    itemCount: lines.length,
+    mrpTotal: totals.mrpTotal.toFixed(2),
+    subtotal: totals.subtotal.toFixed(2),
+    savings: totals.savings.toFixed(2),
+    discount: totals.discount.toFixed(2),
+    transportCharge: totals.transportCharge.toFixed(2),
+    gstAmount: totals.gstAmount.toFixed(2),
+    grandTotal: totals.grandTotal.toFixed(2),
+    couponCode: couponCode || undefined,
+    createdAt,
+    items: lines,
+  };
+
+  // 1. Save to Universal Store FIRST (Instant Guaranteed Availability)
+  saveOrderToStore(newOrder);
+
+  // 2. Background DB Insert (Best Effort Sync)
   try {
     const [customerRow] = await db
       .insert(customers)
@@ -124,11 +138,11 @@ export async function POST(req: Request) {
         address: customer.address || null,
         gstNumber: customer.gstNumber || null,
         dealerName: customer.dealerName || null,
-        transportName: transport?.transportName || null,
-        deliveryLocation: transport?.deliveryLocation || null,
-        instructions: transport?.instructions || null,
+        transportName: transport.transportName || null,
+        deliveryLocation: transport.deliveryLocation || null,
+        instructions: transport.instructions || null,
         couponCode: couponCode || null,
-        itemCount: totals.itemCount,
+        itemCount: lines.length,
         mrpTotal: totals.mrpTotal.toFixed(2),
         subtotal: totals.subtotal.toFixed(2),
         savings: totals.savings.toFixed(2),
@@ -142,90 +156,61 @@ export async function POST(req: Request) {
 
     if (estimate?.id) {
       await db.insert(estimateItems).values(
-        lines.map((l: LineItem) => ({
+        lines.map((l) => ({
           estimateId: estimate.id,
-          productId: String(l.product.id),
-          sku: l.product.sku,
-          name: l.product.name,
-          categoryName: l.product.categoryName,
-          packing: l.product.packing,
-          imageUrl: l.product.imageUrl || "",
-          mrp: l.mrp.toFixed(2),
-          price: l.price.toFixed(2),
+          productId: String(l.id),
+          sku: l.sku,
+          name: l.name,
+          categoryName: l.categoryName,
+          packing: l.packing,
+          imageUrl: l.imageUrl || "",
+          mrp: String(l.mrp),
+          price: String(l.price),
           quantity: l.quantity,
-          lineTotal: (l.price * l.quantity).toFixed(2),
+          lineTotal: String(l.lineTotal),
         })),
       );
     }
   } catch (err) {
-    console.warn("[POST /estimates] DB write fallback to memory:", err);
-  }
-
-  // Save to in-memory cache for instant confirmation rendering
-  try {
-    const { saveOrderToCache } = await import("@/lib/orders-cache");
-    saveOrderToCache({
-      estimateNumber,
-      customerName: customer.name,
-      mobile: customer.mobile,
-      email: customer.email,
-      state: customer.state,
-      district: customer.district,
-      city: customer.city,
-      pincode: customer.pincode,
-      address: customer.address,
-      gstNumber: customer.gstNumber,
-      dealerName: customer.dealerName,
-      transportName: transport?.transportName || "Direct Factory Transport",
-      deliveryLocation: transport?.deliveryLocation || "Sivakasi Licensed Dispatch",
-      instructions: transport?.instructions,
-      paymentMethod,
-      paymentStatus: paymentMethod === "COD" ? "UNPAID" : "PENDING VERIFICATION",
-      status: "NEW",
-      mrpTotal: totals.mrpTotal.toFixed(2),
-      subtotal: totals.subtotal.toFixed(2),
-      savings: totals.savings.toFixed(2),
-      discount: totals.discount.toFixed(2),
-      transportCharge: totals.transportCharge.toFixed(2),
-      gstAmount: totals.gstAmount.toFixed(2),
-      grandTotal: totals.grandTotal.toFixed(2),
-      createdAt: new Date(),
-      items: lines.map((l: LineItem, idx: number) => ({
-        id: `item-${idx + 1}`,
-        name: l.product.name,
-        categoryName: l.product.categoryName,
-        packing: l.product.packing,
-        sku: l.product.sku,
-        imageUrl: l.product.imageUrl || "",
-        mrp: l.mrp.toFixed(2),
-        price: l.price.toFixed(2),
-        quantity: l.quantity,
-        lineTotal: (l.price * l.quantity).toFixed(2),
-      })),
-    });
-  } catch (cacheErr) {
-    console.warn("[saveOrderToCache error]", cacheErr);
+    console.warn("[POST /estimates] DB background sync note:", err);
   }
 
   return ok(
-    { estimateNumber, totals, status: "NEW", paymentMethod },
+    { estimateNumber, totals, status: "NEW", paymentMethod, order: newOrder },
     "Order placed successfully",
     201,
   );
 }
 
-/** Admin listing */
+/** Admin listing (Merges Store + DB) */
 export async function GET() {
+  const storeOrders = getAllOrdersFromStore();
+  let dbRows: any[] = [];
+
   try {
-    const rows = await db
+    dbRows = await db
       .select()
       .from(estimates)
       .orderBy(estimates.createdAt)
       .limit(100);
-
-    return ok({ items: rows, total: rows.length });
   } catch (err) {
     console.warn("[GET /estimates] DB read fallback:", err);
-    return ok({ items: [], total: 0 });
   }
+
+  // Merge store orders and db rows, avoiding duplicates by estimateNumber
+  const map = new Map<string, any>();
+  for (const o of storeOrders) {
+    map.set(o.estimateNumber, o);
+  }
+  for (const r of dbRows) {
+    if (!map.has(r.estimateNumber)) {
+      map.set(r.estimateNumber, r);
+    }
+  }
+
+  const items = Array.from(map.values()).sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  );
+
+  return ok({ items, total: items.length });
 }
