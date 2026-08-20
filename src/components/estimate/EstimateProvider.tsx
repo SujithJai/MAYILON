@@ -61,7 +61,13 @@ export function EstimateProvider({ children }: { children: ReactNode }) {
           state?: string;
         };
         if (Array.isArray(parsed.items) && parsed.items.length > 0) {
-          setItems(parsed.items);
+          const sanitized = parsed.items.map((it) => ({
+            ...it,
+            mrp: Number(it.mrp || (it as any).offerPrice || 0),
+            price: Number(it.price || (it as any).offerPrice || 0),
+            quantity: Number(it.quantity) || 1,
+          }));
+          setItems(sanitized);
         }
         if (parsed.coupon) setCoupon(parsed.coupon);
         if (parsed.state) setState(parsed.state);
@@ -91,7 +97,12 @@ export function EstimateProvider({ children }: { children: ReactNode }) {
   }, [toast]);
 
   // 4. Add item with robust ID & SKU matching
-  const add = useCallback<Ctx["add"]>((line, qty) => {
+  const add = useCallback<Ctx["add"]>((rawLine, qty) => {
+    const line = {
+      ...rawLine,
+      mrp: Number(rawLine.mrp || (rawLine as any).offerPrice || 0),
+      price: Number(rawLine.price || (rawLine as any).offerPrice || 0),
+    };
     setItems((prev) => {
       const lineIdStr = String(line.id);
       const found = prev.find(
@@ -102,7 +113,12 @@ export function EstimateProvider({ children }: { children: ReactNode }) {
       if (found) {
         return prev.map((p) =>
           String(p.id) === lineIdStr || (p.sku && line.sku && p.sku === line.sku)
-            ? { ...p, quantity: p.quantity + step }
+            ? {
+                ...p,
+                price: Number(p.price || line.price || 0),
+                mrp: Number(p.mrp || line.mrp || 0),
+                quantity: p.quantity + step,
+              }
             : p,
         );
       }

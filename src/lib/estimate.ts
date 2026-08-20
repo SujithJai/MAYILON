@@ -58,16 +58,22 @@ export function calculateTotals(
   lines: CalcLine[],
   opts: { state?: string | null; couponCode?: string | null } = {},
 ): EstimateTotals {
-  const mrpTotal = round(lines.reduce((s, l) => s + l.mrp * l.quantity, 0));
-  const subtotal = round(lines.reduce((s, l) => s + l.price * l.quantity, 0));
-  const units = lines.reduce((s, l) => s + l.quantity, 0);
+  const safeLines = (lines || []).map((l) => ({
+    mrp: Number(l.mrp) || 0,
+    price: Number(l.price) || 0,
+    quantity: Number(l.quantity) || 0,
+  }));
+
+  const mrpTotal = round(safeLines.reduce((s, l) => s + l.mrp * l.quantity, 0));
+  const subtotal = round(safeLines.reduce((s, l) => s + l.price * l.quantity, 0));
+  const units = safeLines.reduce((s, l) => s + l.quantity, 0);
 
   const code = opts.couponCode?.trim().toUpperCase() ?? "";
   const coupon = COUPONS[code];
   const couponValid = Boolean(coupon && subtotal >= coupon.minValue);
   const discount = couponValid && coupon ? round((subtotal * coupon.percent) / 100) : 0;
 
-  const netAfterDiscount = subtotal - discount;
+  const netAfterDiscount = Math.max(0, subtotal - discount);
   // Transport: free above ₹50,000, otherwise ~3.5% of net capped at ₹2,400 (min ₹250)
   const transportCharge =
     netAfterDiscount <= 0
@@ -80,32 +86,37 @@ export function calculateTotals(
   const grandTotal = round(netAfterDiscount + transportCharge + gstAmount);
 
   return {
-    itemCount: lines.length,
+    itemCount: safeLines.length,
     units,
-    mrpTotal,
-    subtotal,
-    savings: round(mrpTotal - subtotal + discount),
-    discount,
-    transportCharge,
-    gstAmount,
-    grandTotal,
+    mrpTotal: isNaN(mrpTotal) ? 0 : mrpTotal,
+    subtotal: isNaN(subtotal) ? 0 : subtotal,
+    savings: isNaN(mrpTotal - subtotal + discount) ? 0 : round(mrpTotal - subtotal + discount),
+    discount: isNaN(discount) ? 0 : discount,
+    transportCharge: isNaN(transportCharge) ? 0 : transportCharge,
+    gstAmount: isNaN(gstAmount) ? 0 : gstAmount,
+    grandTotal: isNaN(grandTotal) ? 0 : grandTotal,
     couponLabel: couponValid && coupon ? coupon.label : null,
   };
 }
 
 function round(n: number) {
+  if (isNaN(n)) return 0;
   return Math.round((n + Number.EPSILON) * 100) / 100;
 }
 
 export function formatINR(value: number, opts: { compact?: boolean } = {}) {
-  if (opts.compact && value >= 100000) {
-    return `₹${(value / 100000).toFixed(value >= 1000000 ? 1 : 2)}L`;
+  const num = Number(value);
+  if (isNaN(num) || num === null || num === undefined) {
+    return "₹0";
+  }
+  if (opts.compact && num >= 100000) {
+    return `₹${(num / 100000).toFixed(num >= 1000000 ? 1 : 2)}L`;
   }
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
-    maximumFractionDigits: value % 1 === 0 ? 0 : 2,
-  }).format(value);
+    maximumFractionDigits: num % 1 === 0 ? 0 : 2,
+  }).format(num);
 }
 
 export function makeEstimateNumber() {

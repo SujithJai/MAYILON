@@ -328,7 +328,7 @@ export function QuickCalculator({ products }: { products: CalcProduct[] }) {
                           const next = Math.max(0, n - 1);
                           setQty((s) => ({ ...s, [p.id]: next }));
                           if (next > 0) {
-                            add(p as any, next);
+                            add({ ...p, price: p.offerPrice } as any, next);
                           }
                         }}
                         className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-500/30 text-red-600 transition hover:bg-red-600 hover:text-white active:scale-90"
@@ -341,7 +341,7 @@ export function QuickCalculator({ products }: { products: CalcProduct[] }) {
                         onClick={() => {
                           const next = n + 1;
                           setQty((s) => ({ ...s, [p.id]: next }));
-                          add(p as any, next);
+                          add({ ...p, price: p.offerPrice } as any, next);
                         }}
                         className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-500/30 text-red-600 transition hover:bg-red-600 hover:text-white active:scale-90"
                       >
