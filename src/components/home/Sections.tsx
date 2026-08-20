@@ -16,6 +16,7 @@ import {
   Star,
   Truck,
   Users,
+  X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useEstimate } from "@/components/estimate/EstimateProvider";
