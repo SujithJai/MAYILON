@@ -192,6 +192,73 @@ export default function CheckoutPage() {
 
     let estNum = `MYL-2608-${Math.floor(100000 + Math.random() * 900000)}`;
 
+    const preparedItems = items.map((i) => {
+      const itemPrice = extractNumber(i.price, (i as any).offerPrice, i.mrp);
+      const itemMrp = extractNumber(i.mrp, (i as any).offerPrice, itemPrice);
+      const itemQty = Math.max(1, extractNumber(i.quantity, 1));
+      return {
+        id: i.id,
+        sku: i.sku,
+        name: i.name,
+        categoryName: i.categoryName,
+        packing: i.packing,
+        imageUrl: i.imageUrl || "",
+        mrp: itemMrp.toFixed(2),
+        price: itemPrice.toFixed(2),
+        quantity: itemQty,
+        lineTotal: (itemPrice * itemQty).toFixed(2),
+      };
+    });
+
+    const orderBackup = {
+      id: `est-${Date.now()}`,
+      estimateNumber: estNum,
+      customerName: finalCustomer.name,
+      mobile: finalCustomer.mobile,
+      email: finalCustomer.email,
+      state: finalCustomer.state,
+      district: finalCustomer.district,
+      city: finalCustomer.city,
+      pincode: finalCustomer.pincode,
+      address: finalCustomer.address,
+      gstNumber: finalCustomer.gstNumber,
+      dealerName: finalCustomer.dealerName,
+      transportName: transport.transportName || "Direct Factory Transport",
+      deliveryLocation: transport.deliveryLocation || "Sivakasi Licensed Dispatch",
+      instructions: transport.instructions || "",
+      paymentMethod,
+      paymentStatus: paymentMethod === "COD" ? "UNPAID" : "PENDING VERIFICATION",
+      status: "NEW",
+      itemCount: preparedItems.length,
+      mrpTotal: totals.mrpTotal.toFixed(2),
+      subtotal: totals.subtotal.toFixed(2),
+      savings: totals.savings.toFixed(2),
+      discount: totals.discount.toFixed(2),
+      transportCharge: totals.transportCharge.toFixed(2),
+      gstAmount: totals.gstAmount.toFixed(2),
+      grandTotal: totals.grandTotal.toFixed(2),
+      couponCode: coupon || undefined,
+      createdAt: new Date().toISOString(),
+      items: preparedItems,
+    };
+
+    // Save order backup in client localStorage
+    try {
+      localStorage.setItem(`mayilon_order_${estNum}`, JSON.stringify(orderBackup));
+
+      const existingRaw = localStorage.getItem("mayilon_recent_orders");
+      const existingArr = existingRaw ? JSON.parse(existingRaw) : [];
+      const updatedArr = [orderBackup, ...existingArr.filter((o: any) => o.estimateNumber !== estNum)];
+      localStorage.setItem("mayilon_recent_orders", JSON.stringify(updatedArr));
+
+      localStorage.setItem("mayilon_user_name", finalCustomer.name);
+      localStorage.setItem("mayilon_user_mobile", finalCustomer.mobile);
+      localStorage.setItem("mayilon_user_email", finalCustomer.email);
+      localStorage.setItem("mayilon_user_address", finalCustomer.address);
+    } catch (localErr) {
+      console.warn("[submitOrder] Local backup save note:", localErr);
+    }
+
     try {
       const res = await fetch("/api/v1/estimates", {
         method: "POST",
@@ -201,23 +268,7 @@ export default function CheckoutPage() {
           transport,
           paymentMethod,
           couponCode: coupon,
-          items: items.map((i) => {
-            const itemPrice = extractNumber(i.price, (i as any).offerPrice, i.mrp);
-            const itemMrp = extractNumber(i.mrp, (i as any).offerPrice, itemPrice);
-            const itemQty = Math.max(1, extractNumber(i.quantity, 1));
-            return {
-              id: i.id,
-              sku: i.sku,
-              name: i.name,
-              categoryName: i.categoryName,
-              packing: i.packing,
-              imageUrl: i.imageUrl,
-              mrp: itemMrp,
-              price: itemPrice,
-              quantity: itemQty,
-              lineTotal: itemPrice * itemQty,
-            };
-          }),
+          items: preparedItems,
         }),
       });
       const json = await res.json();

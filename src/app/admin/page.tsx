@@ -175,7 +175,28 @@ export default function AdminPage() {
 
     try {
       const e = await fetch("/api/v1/estimates").then((r) => r.json()).catch(() => null);
-      if (e?.success) setEstimates(e.data.items);
+      let list = e?.success && Array.isArray(e?.data?.items) ? e.data.items : [];
+
+      try {
+        const localRaw = typeof window !== "undefined" ? localStorage.getItem("mayilon_recent_orders") : null;
+        if (localRaw) {
+          const localOrders = JSON.parse(localRaw);
+          if (Array.isArray(localOrders)) {
+            const map = new Map();
+            for (const o of list) map.set(o.estimateNumber, o);
+            for (const o of localOrders) {
+              if (o && o.estimateNumber && !map.has(o.estimateNumber)) {
+                map.set(o.estimateNumber, o);
+              }
+            }
+            list = Array.from(map.values());
+          }
+        }
+      } catch (localErr) {
+        console.warn("[Admin load] Local order backup merge note:", localErr);
+      }
+
+      setEstimates(list);
     } catch {}
 
     try {
