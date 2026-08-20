@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { CheckCircle2 } from "lucide-react";
 import { db } from "@/db";
@@ -40,6 +39,10 @@ export default async function EstimateConfirmation({ params }: { params: Params 
         .from(estimateItems)
         .where(eq(estimateItems.estimateId, estimate.id));
     }
+  } catch (err) {
+    console.warn("[EstimateConfirmation] DB read fallback:", err);
+  }
+
   if (!estimate) {
     try {
       const { getOrderFromCache } = await import("@/lib/orders-cache");
