@@ -78,6 +78,9 @@ type ProductItem = {
   moq: number;
   stock: number;
   imageUrl?: string;
+  imageUrl2?: string;
+  imageUrl3?: string;
+  videoUrl?: string;
   isNewArrival?: boolean;
   isBestSeller?: boolean;
   isPremium?: boolean;
@@ -120,6 +123,9 @@ export default function AdminPage() {
     moq: 1,
     stock: 250,
     imageUrl: "",
+    imageUrl2: "",
+    imageUrl3: "",
+    videoUrl: "",
     isNewArrival: false,
     isBestSeller: true,
     isPremium: false,
@@ -147,6 +153,9 @@ export default function AdminPage() {
             moq: Number(it.moq || 1),
             stock: Number(it.stock || 100),
             imageUrl: String(it.imageUrl || ""),
+            imageUrl2: String(it.imageUrl2 || ""),
+            imageUrl3: String(it.imageUrl3 || ""),
+            videoUrl: String(it.videoUrl || ""),
             isNewArrival: Boolean(it.isNewArrival),
             isBestSeller: Boolean(it.isBestSeller),
             isPremium: Boolean(it.isPremium),
@@ -281,6 +290,9 @@ export default function AdminPage() {
       moq: p.moq,
       stock: p.stock,
       imageUrl: p.imageUrl || "",
+      imageUrl2: p.imageUrl2 || "",
+      imageUrl3: p.imageUrl3 || "",
+      videoUrl: p.videoUrl || "",
       isNewArrival: Boolean(p.isNewArrival),
       isBestSeller: Boolean(p.isBestSeller),
       isPremium: Boolean(p.isPremium),
@@ -300,6 +312,9 @@ export default function AdminPage() {
       moq: 1,
       stock: 250,
       imageUrl: "",
+      imageUrl2: "",
+      imageUrl3: "",
+      videoUrl: "",
       isNewArrival: true,
       isBestSeller: false,
       isPremium: false,
@@ -913,15 +928,133 @@ export default function AdminPage() {
                   </label>
                 </div>
 
-                {/* Direct Image Upload */}
-                <div>
-                  <span className="text-[11px] font-bold uppercase tracking-[2px] text-slate-700 block mb-1.5">
-                    Product Image (Direct File Upload / Supabase Storage)
+                {/* Product Images (Image 1, Image 2, Image 3) */}
+                <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                  <span className="text-[11px] font-bold uppercase tracking-[2px] text-red-600 block">
+                    📸 Product Photos (Upload up to 3 Images)
                   </span>
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+
+                  {/* Primary Cover Image 1 */}
+                  <div>
+                    <span className="text-[10.5px] font-bold text-slate-700 block mb-1">1. Primary Cover Photo *</span>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          const fd = new FormData();
+                          fd.append("file", file);
+                          const res = await fetch("/api/v1/admin/upload", { method: "POST", body: fd });
+                          const json = await res.json();
+                          if (json.success) {
+                            setProductForm((prev) => ({ ...prev, imageUrl: json.data.url }));
+                            setNotificationToast("📸 Main Cover Photo 1 uploaded!");
+                            setTimeout(() => setNotificationToast(null), 3000);
+                          }
+                        }}
+                        className="field !bg-white !border-slate-300 font-bold text-xs file:mr-3 file:rounded-xl file:border-0 file:bg-red-600 file:px-3 file:py-1 file:text-xs file:font-bold file:text-white cursor-pointer"
+                      />
+                      {productForm.imageUrl && (
+                        <div className="h-10 w-10 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100 shadow-sm">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={productForm.imageUrl} alt="P1" className="h-full w-full object-cover" />
+                        </div>
+                      )}
+                    </div>
+                    <input
+                      value={productForm.imageUrl}
+                      onChange={(e) => setProductForm({ ...productForm, imageUrl: e.target.value })}
+                      placeholder="Or paste Cover Photo 1 URL..."
+                      className="field mt-1.5 !bg-white !border-slate-300 font-bold text-xs"
+                    />
+                  </div>
+
+                  {/* Gallery Image 2 */}
+                  <div>
+                    <span className="text-[10.5px] font-bold text-slate-700 block mb-1">2. Second Gallery Photo (Optional)</span>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          const fd = new FormData();
+                          fd.append("file", file);
+                          const res = await fetch("/api/v1/admin/upload", { method: "POST", body: fd });
+                          const json = await res.json();
+                          if (json.success) {
+                            setProductForm((prev) => ({ ...prev, imageUrl2: json.data.url }));
+                            setNotificationToast("📸 Gallery Photo 2 uploaded!");
+                            setTimeout(() => setNotificationToast(null), 3000);
+                          }
+                        }}
+                        className="field !bg-white !border-slate-300 font-bold text-xs file:mr-3 file:rounded-xl file:border-0 file:bg-slate-700 file:px-3 file:py-1 file:text-xs file:font-bold file:text-white cursor-pointer"
+                      />
+                      {productForm.imageUrl2 && (
+                        <div className="h-10 w-10 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100 shadow-sm">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={productForm.imageUrl2} alt="P2" className="h-full w-full object-cover" />
+                        </div>
+                      )}
+                    </div>
+                    <input
+                      value={productForm.imageUrl2}
+                      onChange={(e) => setProductForm({ ...productForm, imageUrl2: e.target.value })}
+                      placeholder="Or paste Gallery Photo 2 URL..."
+                      className="field mt-1.5 !bg-white !border-slate-300 font-bold text-xs"
+                    />
+                  </div>
+
+                  {/* Gallery Image 3 */}
+                  <div>
+                    <span className="text-[10.5px] font-bold text-slate-700 block mb-1">3. Third Gallery Photo (Optional)</span>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          const fd = new FormData();
+                          fd.append("file", file);
+                          const res = await fetch("/api/v1/admin/upload", { method: "POST", body: fd });
+                          const json = await res.json();
+                          if (json.success) {
+                            setProductForm((prev) => ({ ...prev, imageUrl3: json.data.url }));
+                            setNotificationToast("📸 Gallery Photo 3 uploaded!");
+                            setTimeout(() => setNotificationToast(null), 3000);
+                          }
+                        }}
+                        className="field !bg-white !border-slate-300 font-bold text-xs file:mr-3 file:rounded-xl file:border-0 file:bg-slate-700 file:px-3 file:py-1 file:text-xs file:font-bold file:text-white cursor-pointer"
+                      />
+                      {productForm.imageUrl3 && (
+                        <div className="h-10 w-10 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100 shadow-sm">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={productForm.imageUrl3} alt="P3" className="h-full w-full object-cover" />
+                        </div>
+                      )}
+                    </div>
+                    <input
+                      value={productForm.imageUrl3}
+                      onChange={(e) => setProductForm({ ...productForm, imageUrl3: e.target.value })}
+                      placeholder="Or paste Gallery Photo 3 URL..."
+                      className="field mt-1.5 !bg-white !border-slate-300 font-bold text-xs"
+                    />
+                  </div>
+                </div>
+
+                {/* Product Demo Video Section */}
+                <div className="rounded-2xl border border-amber-500/30 bg-amber-50/50 p-4 space-y-2">
+                  <span className="text-[11px] font-bold uppercase tracking-[2px] text-amber-800 block">
+                    🎬 Product Demo Video (Video File Upload / MP4 / YouTube Link)
+                  </span>
+                  <div className="flex items-center gap-3">
                     <input
                       type="file"
-                      accept="image/*"
+                      accept="video/*"
                       onChange={async (e) => {
                         const file = e.target.files?.[0];
                         if (!file) return;
@@ -930,26 +1063,25 @@ export default function AdminPage() {
                         const res = await fetch("/api/v1/admin/upload", { method: "POST", body: fd });
                         const json = await res.json();
                         if (json.success) {
-                          setProductForm((prev) => ({ ...prev, imageUrl: json.data.url }));
-                          setNotificationToast("📸 Product image uploaded & stored successfully!");
+                          setProductForm((prev) => ({ ...prev, videoUrl: json.data.url }));
+                          setNotificationToast("🎬 Product Demo Video uploaded!");
                           setTimeout(() => setNotificationToast(null), 3000);
                         }
                       }}
-                      className="field !bg-slate-50 !border-slate-300 !text-slate-900 font-bold file:mr-3 file:rounded-xl file:border-0 file:bg-red-600 file:px-4 file:py-1.5 file:text-xs file:font-bold file:text-white cursor-pointer"
+                      className="field !bg-white !border-slate-300 font-bold text-xs file:mr-3 file:rounded-xl file:border-0 file:bg-amber-600 file:px-3 file:py-1 file:text-xs file:font-bold file:text-white cursor-pointer"
                     />
-                    {productForm.imageUrl && (
-                      <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100 shadow-sm">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={productForm.imageUrl} alt="Preview" className="h-full w-full object-cover" />
-                      </div>
-                    )}
                   </div>
                   <input
-                    value={productForm.imageUrl}
-                    onChange={(e) => setProductForm({ ...productForm, imageUrl: e.target.value })}
-                    placeholder="Or paste direct image URL..."
-                    className="field mt-2 !bg-slate-50 !border-slate-300 !text-slate-900 font-bold text-xs"
+                    value={productForm.videoUrl}
+                    onChange={(e) => setProductForm({ ...productForm, videoUrl: e.target.value })}
+                    placeholder="Or paste direct Video URL or YouTube link..."
+                    className="field !bg-white !border-slate-300 font-bold text-xs"
                   />
+                  {productForm.videoUrl && (
+                    <p className="text-[11px] font-bold text-amber-800 pt-1">
+                      ✓ Demo Video Linked: {productForm.videoUrl.slice(0, 45)}...
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex flex-wrap gap-4 pt-2">

@@ -132,7 +132,15 @@ export default async function ProductPage({ params }: { params: Params }) {
 
       <section className="shell grid gap-10 py-10 lg:grid-cols-[1fr_460px]">
         <Reveal>
-          <ProductGallery images={p.gallery?.length ? p.gallery : [p.imageUrl ?? ""]} name={p.name} />
+          <ProductGallery
+            images={
+              p.gallery?.length
+                ? p.gallery
+                : [p.imageUrl, (p as any).imageUrl2, (p as any).imageUrl3].filter(Boolean) as string[]
+            }
+            videoUrl={(p as any).videoUrl}
+            name={p.name}
+          />
         </Reveal>
 
         <div className="space-y-6">
