@@ -116,66 +116,100 @@ function getInMemoryProducts(): ProductWithCategory[] {
     });
   }
 
-  // Merge custom Admin products
+  return applyCustomOverrides(list);
+}
+
+/**
+ * Universal Custom Product Override Engine.
+ * Guarantees that Admin edited prices, offer prices, photos (imageUrl, imageUrl2, imageUrl3)
+ * and videos permanently overwrite database/seed items across all queries.
+ */
+function applyCustomOverrides(items: ProductWithCategory[]): ProductWithCategory[] {
   try {
     const { getCustomProductsFromStore } = require("./products-store");
     const customList = getCustomProductsFromStore();
-    if (Array.isArray(customList) && customList.length > 0) {
-      const map = new Map<string, ProductWithCategory>(list.map((p) => [p.id, p]));
-      for (const p of customList) {
-        const existing = map.get(p.id);
-        const mrpNum = Number(p.mrp) || 100;
-        const offerNum = Number(p.offerPrice) || mrpNum;
-        const formatted: ProductWithCategory = {
-          id: p.id,
-          sku: p.sku || existing?.sku || `MYL-PROD-${p.id}`,
-          slug: p.slug || slugify(p.name),
-          name: p.name || existing?.name || "Fireworks Item",
-          nameTa: p.nameTa || existing?.nameTa || null,
-          categoryId: p.categoryId || existing?.categoryId || "cat-1",
-          shortDescription: p.shortDescription || existing?.shortDescription || `${p.name} — Sivakasi quality product.`,
-          description: p.description || existing?.description || `${p.name} manufactured at Sivakasi unit with high purity chemical composition.`,
-          imageUrl: p.imageUrl || existing?.imageUrl || "/images/placeholder.jpg",
-          gallery: [p.imageUrl || existing?.imageUrl, p.imageUrl2, p.imageUrl3].filter(Boolean) as string[],
-          videoUrl: p.videoUrl || existing?.videoUrl || null,
-          packing: p.packing || existing?.packing || "1 Box",
-          piecesPerPack: p.piecesPerPack || existing?.piecesPerPack || 1,
-          mrp: mrpNum.toFixed(2),
-          discountPercent: p.discountPercent || Math.round(((mrpNum - offerNum) / mrpNum) * 100),
-          offerPrice: offerNum.toFixed(2),
-          dealerPrice: (p.dealerPrice || offerNum * 0.88).toFixed(2),
-          gstPercent: p.gstPercent || 18,
-          moq: p.moq || existing?.moq || 1,
-          stock: p.stock || existing?.stock || 100,
-          status: p.status || "ACTIVE",
-          isFeatured: Boolean(p.isFeatured ?? existing?.isFeatured),
-          isBestSeller: Boolean(p.isBestSeller ?? existing?.isBestSeller),
-          isNewArrival: Boolean(p.isNewArrival ?? existing?.isNewArrival),
-          isPremium: Boolean(p.isPremium ?? existing?.isPremium),
-          soundLevel: p.soundLevel || existing?.soundLevel || "Medium",
-          burnTime: p.burnTime || existing?.burnTime || "20 sec",
-          effectColors: ["Gold", "Red"],
-          ageRecommendation: "12+ with adult supervision",
-          usage: "Outdoor",
-          rating: existing?.rating || "4.90",
-          reviewCount: existing?.reviewCount || 25,
-          viewCount: existing?.viewCount || 150,
-          createdAt: new Date(p.createdAt || Date.now()),
-          updatedAt: new Date(),
-          deletedAt: null,
-          categoryName: p.categoryName || existing?.categoryName || "Special Fireworks",
-          categorySlug: slugify(p.categoryName || existing?.categoryName || "special-fireworks"),
-          categoryAccent: "#D4AF37",
-        };
-        map.set(p.id, formatted);
-      }
-      return Array.from(map.values());
-    }
-  } catch (err) {
-    console.warn("[getInMemoryProducts] Custom products merge note:", err);
-  }
+    if (!Array.isArray(customList) || customList.length === 0) return items;
 
-  return list;
+    const idMap = new Map<string, ProductWithCategory>();
+    const skuMap = new Map<string, ProductWithCategory>();
+    const slugMap = new Map<string, ProductWithCategory>();
+
+    for (const p of items) {
+      idMap.set(p.id, p);
+      if (p.sku) skuMap.set(p.sku, p);
+      if (p.slug) slugMap.set(p.slug, p);
+    }
+
+    const updatedItems = [...items];
+
+    for (const c of customList) {
+      const match =
+        idMap.get(c.id) ||
+        (c.sku ? skuMap.get(c.sku) : undefined) ||
+        (c.slug ? slugMap.get(c.slug) : undefined);
+
+      const mrpNum = Number(c.mrp) || 100;
+      const offerNum = Number(c.offerPrice) || mrpNum;
+      const gallery = [c.imageUrl || match?.imageUrl, c.imageUrl2, c.imageUrl3].filter(
+        Boolean,
+      ) as string[];
+
+      const override: ProductWithCategory = {
+        ...(match || ({} as any)),
+        id: c.id || match?.id || `prod-${Date.now()}`,
+        sku: c.sku || match?.sku || `MYL-PROD`,
+        slug: c.slug || match?.slug || slugify(c.name),
+        name: c.name || match?.name || "Fireworks Item",
+        nameTa: c.nameTa || match?.nameTa || null,
+        categoryId: c.categoryId || match?.categoryId || "cat-1",
+        shortDescription: c.shortDescription || match?.shortDescription || `${c.name} — Sivakasi quality product.`,
+        description: c.description || match?.description || `${c.name} manufactured at Sivakasi unit with high purity chemical composition.`,
+        imageUrl: c.imageUrl || match?.imageUrl || "/images/placeholder.jpg",
+        gallery: gallery.length > 0 ? gallery : [match?.imageUrl || "/images/placeholder.jpg"],
+        videoUrl: c.videoUrl || match?.videoUrl || null,
+        packing: c.packing || match?.packing || "1 Box",
+        piecesPerPack: c.piecesPerPack || match?.piecesPerPack || 1,
+        mrp: mrpNum.toFixed(2),
+        discountPercent: c.discountPercent || Math.round(((mrpNum - offerNum) / mrpNum) * 100),
+        offerPrice: offerNum.toFixed(2),
+        dealerPrice: (c.dealerPrice || offerNum * 0.88).toFixed(2),
+        gstPercent: c.gstPercent || 18,
+        moq: c.moq || match?.moq || 1,
+        stock: c.stock || match?.stock || 100,
+        status: c.status || "ACTIVE",
+        isFeatured: Boolean(c.isFeatured ?? match?.isFeatured),
+        isBestSeller: Boolean(c.isBestSeller ?? match?.isBestSeller),
+        isNewArrival: Boolean(c.isNewArrival ?? match?.isNewArrival),
+        isPremium: Boolean(c.isPremium ?? match?.isPremium),
+        soundLevel: c.soundLevel || match?.soundLevel || "Medium",
+        burnTime: c.burnTime || match?.burnTime || "20 sec",
+        effectColors: ["Gold", "Red"],
+        ageRecommendation: "12+ with adult supervision",
+        usage: "Outdoor",
+        rating: match?.rating || "4.90",
+        reviewCount: match?.reviewCount || 25,
+        viewCount: match?.viewCount || 150,
+        createdAt: new Date(c.createdAt || match?.createdAt || Date.now()),
+        updatedAt: new Date(),
+        deletedAt: null,
+        categoryName: c.categoryName || match?.categoryName || "Special Fireworks",
+        categorySlug: slugify(c.categoryName || match?.categoryName || "special-fireworks"),
+        categoryAccent: "#D4AF37",
+      };
+
+      if (match) {
+        const idx = updatedItems.findIndex((it) => it.id === match.id || it.sku === match.sku);
+        if (idx !== -1) updatedItems[idx] = override;
+      } else {
+        updatedItems.unshift(override);
+      }
+    }
+
+    return updatedItems;
+  } catch (err) {
+    console.warn("[applyCustomOverrides] Error:", err);
+    return items;
+  }
 }
 
 function getInMemoryReviews() {
@@ -396,6 +430,8 @@ export type ProductFilters = {
 };
 
 export async function getProducts(filters: ProductFilters = {}) {
+  let baseItems: ProductWithCategory[] = [];
+
   try {
     await ensureSeeded();
     const clauses: (SQL | undefined)[] = [alive, eq(products.status, "ACTIVE")];
@@ -441,102 +477,118 @@ export async function getProducts(filters: ProductFilters = {}) {
       }
     })();
 
-    const [rows, [{ total }]] = await Promise.all([
+    const [rows] = await Promise.all([
       baseProductQuery()
         .where(where)
         .orderBy(orderBy, asc(products.name))
-        .limit(filters.limit ?? 24)
+        .limit(filters.limit ?? 250)
         .offset(filters.offset ?? 0),
-      db
-        .select({ total: sql<number>`cast(count(*) as int)` })
-        .from(products)
-        .innerJoin(categories, eq(products.categoryId, categories.id))
-        .where(where),
     ]);
 
     if (rows.length > 0) {
-      return { items: rows as ProductWithCategory[], total };
+      baseItems = rows as ProductWithCategory[];
     }
   } catch (err) {
     console.warn("[getProducts] DB unreachable, returning in-memory products:", err);
   }
 
-  let items = getInMemoryProducts();
-  if (filters.category && filters.category !== "all") {
-    items = items.filter((p) => p.categorySlug === filters.category);
+  if (baseItems.length === 0) {
+    baseItems = getInMemoryProducts();
+    if (filters.category && filters.category !== "all") {
+      baseItems = baseItems.filter((p) => p.categorySlug === filters.category);
+    }
+    if (filters.q) {
+      const q = filters.q.toLowerCase();
+      baseItems = baseItems.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          p.sku.toLowerCase().includes(q) ||
+          p.categoryName.toLowerCase().includes(q),
+      );
+    }
+    if (filters.flag === "new") baseItems = baseItems.filter((p) => p.isNewArrival);
+    if (filters.flag === "best") baseItems = baseItems.filter((p) => p.isBestSeller);
+    if (filters.flag === "premium") baseItems = baseItems.filter((p) => p.isPremium);
+    if (filters.flag === "featured") baseItems = baseItems.filter((p) => p.isFeatured);
   }
-  if (filters.q) {
-    const q = filters.q.toLowerCase();
-    items = items.filter(
-      (p) =>
-        p.name.toLowerCase().includes(q) ||
-        p.sku.toLowerCase().includes(q) ||
-        p.categoryName.toLowerCase().includes(q),
-    );
-  }
-  if (filters.flag === "new") items = items.filter((p) => p.isNewArrival);
-  if (filters.flag === "best") items = items.filter((p) => p.isBestSeller);
-  if (filters.flag === "premium") items = items.filter((p) => p.isPremium);
-  if (filters.flag === "featured") items = items.filter((p) => p.isFeatured);
 
-  const total = items.length;
+  // Apply Custom Admin Overwrites (Price, MRP, Photos & Videos)
+  const merged = applyCustomOverrides(baseItems);
+  const total = merged.length;
   const offset = filters.offset ?? 0;
-  const limit = filters.limit ?? 24;
-  return { items: items.slice(offset, offset + limit), total };
+  const limit = filters.limit ?? 250;
+
+  return { items: merged.slice(offset, offset + limit), total };
 }
 
 export async function getProductBySlug(slug: string) {
+  let item: ProductWithCategory | null = null;
   try {
     await ensureSeeded();
     const rows = await baseProductQuery().where(and(eq(products.slug, slug), alive)).limit(1);
-    if (rows.length > 0) return rows[0] as ProductWithCategory;
+    if (rows.length > 0) item = rows[0] as ProductWithCategory;
   } catch (err) {
     console.warn("[getProductBySlug] DB unreachable:", err);
   }
-  const items = getInMemoryProducts();
-  return items.find((p) => p.slug === slug) ?? null;
+  if (!item) {
+    const items = getInMemoryProducts();
+    item = items.find((p) => p.slug === slug) ?? null;
+  }
+  if (!item) return null;
+  const [overridden] = applyCustomOverrides([item]);
+  return overridden;
 }
 
 export async function getRelatedProducts(categoryId: string, excludeId: string, limit = 8) {
+  let items: ProductWithCategory[] = [];
   try {
     const rows = await baseProductQuery()
       .where(and(eq(products.categoryId, categoryId), alive, sql`${products.id} <> ${excludeId}`))
       .orderBy(desc(products.isBestSeller))
       .limit(limit);
-    if (rows.length > 0) return rows as ProductWithCategory[];
+    if (rows.length > 0) items = rows as ProductWithCategory[];
   } catch (err) {
     console.warn("[getRelatedProducts] DB unreachable:", err);
   }
-  const items = getInMemoryProducts();
-  return items.filter((p) => p.categoryId === categoryId && p.id !== excludeId).slice(0, limit);
+  if (!items.length) {
+    items = getInMemoryProducts().filter((p) => p.categoryId === categoryId && p.id !== excludeId);
+  }
+  return applyCustomOverrides(items).slice(0, limit);
 }
 
 export async function getFeaturedProducts(limit = 8) {
+  let items: ProductWithCategory[] = [];
   try {
     await ensureSeeded();
     const rows = await baseProductQuery()
       .where(and(alive, eq(products.isFeatured, true)))
       .orderBy(desc(products.rating))
       .limit(limit);
-    if (rows.length) return rows as ProductWithCategory[];
+    if (rows.length) items = rows as ProductWithCategory[];
   } catch (err) {
     console.warn("[getFeaturedProducts] DB unreachable:", err);
   }
-  const items = getInMemoryProducts();
-  const feat = items.filter((p) => p.isFeatured);
-  return (feat.length ? feat : items).slice(0, limit);
+  if (!items.length) {
+    const memory = getInMemoryProducts();
+    const feat = memory.filter((p) => p.isFeatured);
+    items = feat.length ? feat : memory;
+  }
+  return applyCustomOverrides(items).slice(0, limit);
 }
 
 export async function getProductsByIds(ids: string[]) {
   if (!ids.length) return [] as ProductWithCategory[];
+  let items: ProductWithCategory[] = [];
   try {
     const rows = await baseProductQuery().where(and(inArray(products.id, ids), alive));
-    if (rows.length) return rows as ProductWithCategory[];
+    if (rows.length) items = rows as ProductWithCategory[];
   } catch (err) {
     console.warn("[getProductsByIds] DB unreachable:", err);
   }
-  const items = getInMemoryProducts();
-  return items.filter((p) => ids.includes(p.id));
+  if (!items.length) {
+    items = getInMemoryProducts().filter((p) => ids.includes(p.id));
+  }
+  return applyCustomOverrides(items);
 }
 
 export async function getReviews(limit = 6) {
