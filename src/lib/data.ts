@@ -120,48 +120,56 @@ function getInMemoryProducts(): ProductWithCategory[] {
   try {
     const { getCustomProductsFromStore } = require("./products-store");
     const customList = getCustomProductsFromStore();
-    for (const p of customList) {
-      list.unshift({
-        id: p.id,
-        sku: p.sku,
-        slug: p.slug || slugify(p.name),
-        name: p.name,
-        nameTa: p.nameTa || null,
-        categoryId: p.categoryId || "cat-1",
-        shortDescription: p.shortDescription || `${p.name} — Sivakasi quality product.`,
-        description: p.description || `${p.name} manufactured at Sivakasi unit with high purity chemical composition.`,
-        imageUrl: p.imageUrl || "/images/placeholder.jpg",
-        gallery: [p.imageUrl, p.imageUrl2, p.imageUrl3].filter(Boolean) as string[],
-        videoUrl: p.videoUrl || null,
-        packing: p.packing || "1 Box",
-        piecesPerPack: p.piecesPerPack || 1,
-        mrp: p.mrp.toFixed(2),
-        discountPercent: p.discountPercent || Math.round(((p.mrp - p.offerPrice) / p.mrp) * 100),
-        offerPrice: p.offerPrice.toFixed(2),
-        dealerPrice: (p.dealerPrice || p.offerPrice * 0.88).toFixed(2),
-        gstPercent: p.gstPercent || 18,
-        moq: p.moq || 1,
-        stock: p.stock || 100,
-        status: p.status || "ACTIVE",
-        isFeatured: Boolean(p.isFeatured),
-        isBestSeller: Boolean(p.isBestSeller),
-        isNewArrival: Boolean(p.isNewArrival),
-        isPremium: Boolean(p.isPremium),
-        soundLevel: p.soundLevel || "Medium",
-        burnTime: p.burnTime || "20 sec",
-        effectColors: ["Gold", "Red"],
-        ageRecommendation: "12+ with adult supervision",
-        usage: "Outdoor",
-        rating: "4.90",
-        reviewCount: 25,
-        viewCount: 150,
-        createdAt: new Date(p.createdAt || Date.now()),
-        updatedAt: new Date(),
-        deletedAt: null,
-        categoryName: p.categoryName || "Special Fireworks",
-        categorySlug: slugify(p.categoryName || "special-fireworks"),
-        categoryAccent: "#D4AF37",
-      });
+    if (Array.isArray(customList) && customList.length > 0) {
+      const map = new Map<string, ProductWithCategory>(list.map((p) => [p.id, p]));
+      for (const p of customList) {
+        const existing = map.get(p.id);
+        const mrpNum = Number(p.mrp) || 100;
+        const offerNum = Number(p.offerPrice) || mrpNum;
+        const formatted: ProductWithCategory = {
+          id: p.id,
+          sku: p.sku || existing?.sku || `MYL-PROD-${p.id}`,
+          slug: p.slug || slugify(p.name),
+          name: p.name || existing?.name || "Fireworks Item",
+          nameTa: p.nameTa || existing?.nameTa || null,
+          categoryId: p.categoryId || existing?.categoryId || "cat-1",
+          shortDescription: p.shortDescription || existing?.shortDescription || `${p.name} — Sivakasi quality product.`,
+          description: p.description || existing?.description || `${p.name} manufactured at Sivakasi unit with high purity chemical composition.`,
+          imageUrl: p.imageUrl || existing?.imageUrl || "/images/placeholder.jpg",
+          gallery: [p.imageUrl || existing?.imageUrl, p.imageUrl2, p.imageUrl3].filter(Boolean) as string[],
+          videoUrl: p.videoUrl || existing?.videoUrl || null,
+          packing: p.packing || existing?.packing || "1 Box",
+          piecesPerPack: p.piecesPerPack || existing?.piecesPerPack || 1,
+          mrp: mrpNum.toFixed(2),
+          discountPercent: p.discountPercent || Math.round(((mrpNum - offerNum) / mrpNum) * 100),
+          offerPrice: offerNum.toFixed(2),
+          dealerPrice: (p.dealerPrice || offerNum * 0.88).toFixed(2),
+          gstPercent: p.gstPercent || 18,
+          moq: p.moq || existing?.moq || 1,
+          stock: p.stock || existing?.stock || 100,
+          status: p.status || "ACTIVE",
+          isFeatured: Boolean(p.isFeatured ?? existing?.isFeatured),
+          isBestSeller: Boolean(p.isBestSeller ?? existing?.isBestSeller),
+          isNewArrival: Boolean(p.isNewArrival ?? existing?.isNewArrival),
+          isPremium: Boolean(p.isPremium ?? existing?.isPremium),
+          soundLevel: p.soundLevel || existing?.soundLevel || "Medium",
+          burnTime: p.burnTime || existing?.burnTime || "20 sec",
+          effectColors: ["Gold", "Red"],
+          ageRecommendation: "12+ with adult supervision",
+          usage: "Outdoor",
+          rating: existing?.rating || "4.90",
+          reviewCount: existing?.reviewCount || 25,
+          viewCount: existing?.viewCount || 150,
+          createdAt: new Date(p.createdAt || Date.now()),
+          updatedAt: new Date(),
+          deletedAt: null,
+          categoryName: p.categoryName || existing?.categoryName || "Special Fireworks",
+          categorySlug: slugify(p.categoryName || existing?.categoryName || "special-fireworks"),
+          categoryAccent: "#D4AF37",
+        };
+        map.set(p.id, formatted);
+      }
+      return Array.from(map.values());
     }
   } catch (err) {
     console.warn("[getInMemoryProducts] Custom products merge note:", err);

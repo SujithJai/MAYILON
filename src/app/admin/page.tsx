@@ -150,10 +150,14 @@ export default function AdminPage() {
           const localProds = JSON.parse(localRaw);
           if (Array.isArray(localProds)) {
             const map = new Map();
-            for (const p of list) map.set(p.id, p);
+            for (const p of list) {
+              if (p && p.id) map.set(p.id, p);
+            }
+            // Always overwrite with local edits so updated prices & photos take priority!
             for (const p of localProds) {
-              if (p && p.id && !map.has(p.id)) {
-                map.set(p.id, p);
+              if (p && p.id) {
+                const existing = map.get(p.id);
+                map.set(p.id, { ...existing, ...p });
               }
             }
             list = Array.from(map.values());
