@@ -3,8 +3,8 @@ import { products } from "@/db/schema";
 import { fail, ok } from "@/lib/api";
 import { getProducts } from "@/lib/data";
 import {
+  clearAllProductsInStore,
   deleteProductFromStore,
-  getCustomProductsFromStore,
   saveProductToStore,
   type ProductRecord,
 } from "@/lib/products-store";
@@ -35,6 +35,12 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
+
+  if (body.action === "clear-all") {
+    clearAllProductsInStore();
+    return ok({}, "Catalogue cleared successfully", 200);
+  }
+
   if (!body.name || !body.mrp || !body.offerPrice) {
     return fail("Product name, MRP, and offer price are required", [], 400);
   }
@@ -116,7 +122,14 @@ export async function POST(req: Request) {
 
 export async function DELETE(req: Request) {
   const sp = new URL(req.url).searchParams;
+  const action = sp.get("action");
   const id = sp.get("id");
+
+  if (action === "clear-all") {
+    clearAllProductsInStore();
+    return ok({}, "All catalogue products cleared successfully");
+  }
+
   if (!id) return fail("Product ID required", [], 400);
 
   deleteProductFromStore(id);

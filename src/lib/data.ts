@@ -126,21 +126,31 @@ function getInMemoryProducts(): ProductWithCategory[] {
  */
 function applyCustomOverrides(items: ProductWithCategory[]): ProductWithCategory[] {
   try {
-    const { getCustomProductsFromStore } = require("./products-store");
+    const { getCustomProductsFromStore, isSeedCleared, getDeletedProductIds } = require("./products-store");
     const customList = getCustomProductsFromStore();
-    if (!Array.isArray(customList) || customList.length === 0) return items;
+    const seedCleared = isSeedCleared();
+    const deletedSet = getDeletedProductIds();
+
+    let baseList = items;
+    if (seedCleared) {
+      baseList = [];
+    } else if (deletedSet && deletedSet.size > 0) {
+      baseList = items.filter((p) => !deletedSet.has(p.id) && !deletedSet.has(p.sku));
+    }
+
+    if (!Array.isArray(customList) || customList.length === 0) return baseList;
 
     const idMap = new Map<string, ProductWithCategory>();
     const skuMap = new Map<string, ProductWithCategory>();
     const slugMap = new Map<string, ProductWithCategory>();
 
-    for (const p of items) {
+    for (const p of baseList) {
       idMap.set(p.id, p);
       if (p.sku) skuMap.set(p.sku, p);
       if (p.slug) slugMap.set(p.slug, p);
     }
 
-    const updatedItems = [...items];
+    const updatedItems = [...baseList];
 
     for (const c of customList) {
       const match =

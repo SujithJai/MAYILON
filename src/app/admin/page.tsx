@@ -373,6 +373,35 @@ export default function AdminPage() {
     void load();
   }
 
+  async function handleClearAllProducts() {
+    if (!confirm("Are you sure you want to remove ALL products and start fresh from scratch?")) return;
+    setProducts([]);
+    try {
+      localStorage.setItem("mayilon_custom_products", "[]");
+      localStorage.setItem("mayilon_seed_cleared", "true");
+      await fetch("/api/v1/products?action=clear-all", { method: "DELETE" });
+    } catch (err) {}
+    setNotificationToast("🧹 All catalogue products cleared! Ready for your fresh product uploads.");
+    setTimeout(() => setNotificationToast(null), 4000);
+  }
+
+  async function handleDeleteProduct(id: string) {
+    if (!confirm("Delete this product from catalogue?")) return;
+    setProducts((prev) => prev.filter((p) => p.id !== id));
+    try {
+      const localRaw = localStorage.getItem("mayilon_custom_products");
+      if (localRaw) {
+        const arr = JSON.parse(localRaw);
+        if (Array.isArray(arr)) {
+          localStorage.setItem("mayilon_custom_products", JSON.stringify(arr.filter((p: any) => p.id !== id)));
+        }
+      }
+      await fetch(`/api/v1/products?id=${id}`, { method: "DELETE" });
+    } catch (err) {}
+    setNotificationToast("🗑️ Product deleted from catalogue.");
+    setTimeout(() => setNotificationToast(null), 3000);
+  }
+
   function openEditProduct(p: ProductItem) {
     setEditingProduct(p);
     setProductForm({
@@ -813,12 +842,20 @@ export default function AdminPage() {
                 title={
                   <div className="flex flex-wrap items-center justify-between gap-4">
                     <span>Product Catalogue ({filteredProducts.length})</span>
-                    <button
-                      onClick={openAddProduct}
-                      className="btn-gold flex items-center gap-2 px-5 py-2.5 text-[12.5px] uppercase font-bold"
-                    >
-                      <Plus size={16} /> Upload New Product
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={handleClearAllProducts}
+                        className="flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-[12px] font-bold text-red-600 hover:bg-red-600 hover:text-white transition-all shadow-sm"
+                      >
+                        <Trash2 size={14} /> Clear All (Fresh Start)
+                      </button>
+                      <button
+                        onClick={openAddProduct}
+                        className="btn-gold flex items-center gap-2 px-5 py-2.5 text-[12.5px] uppercase font-bold"
+                      >
+                        <Plus size={16} /> Upload New Product
+                      </button>
+                    </div>
                   </div>
                 }
               >
@@ -865,12 +902,20 @@ export default function AdminPage() {
                             {p.stock}
                           </td>
                           <td className="py-3 text-center">
-                            <button
-                              onClick={() => openEditProduct(p)}
-                              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1 text-[11.5px] font-bold text-slate-700 hover:border-red-500 hover:text-red-600 shadow-sm"
-                            >
-                              <Edit size={13} /> Edit
-                            </button>
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                onClick={() => openEditProduct(p)}
+                                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1 text-[11.5px] font-bold text-slate-700 hover:border-red-500 hover:text-red-600 shadow-sm"
+                              >
+                                <Edit size={13} /> Edit
+                              </button>
+                              <button
+                                onClick={() => handleDeleteProduct(p.id)}
+                                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1 text-[11.5px] font-bold text-slate-500 hover:border-red-600 hover:bg-red-600 hover:text-white transition-all shadow-sm"
+                              >
+                                <Trash2 size={13} /> Delete
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
