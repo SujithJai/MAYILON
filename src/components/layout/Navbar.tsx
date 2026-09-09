@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { Menu, Phone, Search, ShoppingBag, User, X } from "lucide-react";
+import { Download, Menu, Phone, Search, ShoppingBag, User, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { LogoLockup } from "@/components/brand/Logo";
 import { useEstimate } from "@/components/estimate/EstimateProvider";
 import { AuthModal } from "@/components/auth/AuthModal";
+import { PriceListDownloadModal } from "@/components/product/PriceListDownloadModal";
 import { SITE, waLink } from "@/lib/slug";
 import { SearchOverlay } from "./SearchOverlay";
 
@@ -42,6 +43,9 @@ export function Navbar() {
   // Customer Login Modal State
   const [loginModalOpen, setLoginModalOpen] = useState(false);
   const [userMobile, setUserMobile] = useState<string | null>(null);
+
+  // Price List Download Modal State
+  const [downloadModalOpen, setDownloadModalOpen] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem("mayilon_user_mobile");
@@ -113,20 +117,36 @@ export function Navbar() {
               {LINKS.map((l) => {
                 const active = l.href === "/" ? pathname === "/" : pathname?.startsWith(l.href);
                 return (
-                  <Link
-                    key={l.href}
-                    href={l.href}
-                    className={`group relative rounded-xl px-3.5 py-2 text-[13px] font-bold tracking-[1px] transition-all duration-300 ${
-                      active ? "text-red-600" : "text-slate-700 hover:text-red-600"
-                    }`}
-                  >
-                    {l.label}
-                    <span
-                      className={`absolute inset-x-3 -bottom-0.5 h-0.5 origin-left bg-red-600 transition-transform duration-300 ${
-                        active ? "scale-x-100" : "scale-x-0 group-hover:scale-x-100"
+                  <div key={l.href} className="flex items-center gap-1">
+                    <Link
+                      href={l.href}
+                      className={`group relative rounded-xl px-3 py-2 text-[13px] font-bold tracking-[0.5px] transition-all duration-300 ${
+                        active ? "text-red-600" : "text-slate-700 hover:text-red-600"
                       }`}
-                    />
-                  </Link>
+                    >
+                      {l.label}
+                      <span
+                        className={`absolute inset-x-3 -bottom-0.5 h-0.5 origin-left bg-red-600 transition-transform duration-300 ${
+                          active ? "scale-x-100" : "scale-x-0 group-hover:scale-x-100"
+                        }`}
+                      />
+                    </Link>
+
+                    {/* Prominent Price List Download Option beside Products */}
+                    {l.href === "/products" && (
+                      <button
+                        onClick={() => setDownloadModalOpen(true)}
+                        className="group flex items-center gap-1.5 rounded-full border border-red-500/30 bg-red-50 px-2.5 py-1 text-[11px] font-bold text-red-600 shadow-sm transition hover:bg-red-600 hover:text-white"
+                        title="Download Price List (PDF, Excel, Word)"
+                      >
+                        <Download size={12} className="text-red-600 group-hover:text-white" />
+                        <span>Price List</span>
+                        <span className="rounded bg-red-600 px-1 py-0.2 text-[8.5px] font-extrabold text-white group-hover:bg-white group-hover:text-red-600">
+                          PDF/XLS
+                        </span>
+                      </button>
+                    )}
+                  </div>
                 );
               })}
             </nav>
@@ -204,6 +224,15 @@ export function Navbar() {
                     <button
                       onClick={() => {
                         setOpen(false);
+                        setDownloadModalOpen(true);
+                      }}
+                      className="btn-gold flex items-center justify-center gap-2 py-3 text-sm font-bold uppercase"
+                    >
+                      <Download size={16} /> Download Price List (PDF / Excel)
+                    </button>
+                    <button
+                      onClick={() => {
+                        setOpen(false);
                         setLoginModalOpen(true);
                       }}
                       className="btn-ghost flex items-center justify-center gap-2 py-3 text-sm font-bold uppercase"
@@ -219,6 +248,12 @@ export function Navbar() {
       </div>
 
       <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
+
+      {/* PRICE LIST DOWNLOAD MODAL (PDF / EXCEL / WORD) */}
+      <PriceListDownloadModal
+        isOpen={downloadModalOpen}
+        onClose={() => setDownloadModalOpen(false)}
+      />
 
       {/* MOBILE OTP AUTHENTICATION & USER PROFILE MODAL */}
       <AuthModal

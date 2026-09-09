@@ -43,15 +43,8 @@ export default async function HomePage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
       />
 
-      <Hero
-        images={IMAGE_POOL}
-        stats={{ products: all.total, categories: categories.length }}
-      />
-
-      <Features />
-
-      {/* Instant Pricing Calculator moved right after Features */}
-      <section className="shell py-16">
+      {/* 1. Instant Pricing Quick Estimate Calculator at the TOP */}
+      <section className="shell pt-6 pb-14">
         <SectionHeading
           eyebrow="Instant Pricing"
           title={
@@ -59,26 +52,26 @@ export default async function HomePage() {
               Quick <span className="gold-text">Estimate Calculator</span>
             </>
           }
-          sub="Search any product, set quantity, watch the factory total calculate instantly. No login required."
+          sub="Search any product, set quantity, watch the factory total calculate instantly. 80% Off MRP applied automatically."
         />
         <Reveal>
           <QuickCalculator products={all.items} />
         </Reveal>
       </section>
 
-      {/* Featured Products */}
-      <section className="shell py-16">
+      {/* 2. Products Section right below Calculator */}
+      <section className="shell py-14">
         <SectionHeading
           align="left"
-          eyebrow="Featured"
+          eyebrow="Direct Factory Catalog"
           title={
             <>
               This Season&apos;s <span className="gold-text">Most Requested</span>
             </>
           }
-          sub="Hand-picked by our sales desk based on live estimate volume."
+          sub="Hand-picked Sivakasi fireworks with live stock and direct wholesale pricing."
           action={
-            <Link href="/products" className="btn-ghost inline-flex items-center gap-2 px-6 py-3 text-sm uppercase">
+            <Link href="/products" className="btn-ghost inline-flex items-center gap-2 px-6 py-3 text-sm uppercase font-bold">
               View All Products <ArrowRight size={15} />
             </Link>
           }
@@ -89,6 +82,14 @@ export default async function HomePage() {
           ))}
         </div>
       </section>
+
+      {/* 3. Celebrate Every Festival Hero Banner below Products */}
+      <Hero
+        images={IMAGE_POOL}
+        stats={{ products: all.total, categories: categories.length }}
+      />
+
+      <Features />
 
       {/* Festival banner */}
       <section className="shell py-16">

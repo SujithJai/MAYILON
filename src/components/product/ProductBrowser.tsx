@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Plus } from "lucide-react";
+import { Download, Plus } from "lucide-react";
 import { BrowserControls } from "./BrowserControls";
 import { ProductCard, type CardProduct } from "./ProductCard";
+import { PriceListDownloadModal } from "./PriceListDownloadModal";
 import { useEstimate } from "@/components/estimate/EstimateProvider";
 import { formatINR } from "@/lib/estimate";
 import type { CategorySummary } from "@/lib/data";
@@ -21,6 +22,7 @@ export function ProductBrowser({
   const [view, setView] = useState<"grid" | "list">("grid");
   const [productList, setProductList] = useState<CardProduct[]>(items);
   const [productTotal, setProductTotal] = useState<number>(total);
+  const [downloadOpen, setDownloadOpen] = useState(false);
   const { add } = useEstimate();
 
   useEffect(() => {
@@ -65,9 +67,23 @@ export function ProductBrowser({
       />
 
       <div>
-        <p className="mb-5 text-[12.5px] font-bold uppercase tracking-[2px] text-slate-500">
-          Showing {productList.length} of {productTotal} products
-        </p>
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-[12.5px] font-bold uppercase tracking-[2px] text-slate-500">
+            Showing {productList.length} of {productTotal} products
+          </p>
+          <button
+            onClick={() => setDownloadOpen(true)}
+            className="flex items-center gap-2 rounded-full border border-red-500/30 bg-red-50 px-4 py-2 text-xs font-bold text-red-600 shadow-sm transition hover:bg-red-600 hover:text-white"
+          >
+            <Download size={14} /> Download Price List (PDF / Excel / Word)
+          </button>
+        </div>
+
+        <PriceListDownloadModal
+          isOpen={downloadOpen}
+          onClose={() => setDownloadOpen(false)}
+          products={productList}
+        />
 
         {productList.length === 0 && (
           <div className="glass rounded-[28px] p-14 text-center border border-red-500/15 bg-white shadow-md">

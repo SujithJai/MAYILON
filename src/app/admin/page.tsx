@@ -25,6 +25,7 @@ import {
   Plus,
   QrCode,
   Receipt,
+  Save,
   Search,
   Send,
   ShieldCheck,
@@ -213,6 +214,35 @@ export default function AdminPage() {
         .then((r) => r.json())
         .catch(() => null);
       let list = pRes?.success && Array.isArray(pRes?.data?.items) ? pRes.data.items : [];
+      const serverOrder = (pRes?.data?.productOrder || []) as string[];
+
+      // 1. Permanent Product Order Rehydration from browser storage (Survives 100 days!)
+      try {
+        const localOrderRaw = typeof window !== "undefined" ? localStorage.getItem("mayilon_permanent_product_order") : null;
+        if (localOrderRaw) {
+          const localOrder = JSON.parse(localOrderRaw) as string[];
+          if (Array.isArray(localOrder) && localOrder.length > 0) {
+            const posMap = new Map<string, number>();
+            localOrder.forEach((id, idx) => posMap.set(id, idx));
+            list.sort((a: any, b: any) => {
+              const pa = posMap.has(a.id) ? posMap.get(a.id)! : 99999;
+              const pb = posMap.has(b.id) ? posMap.get(b.id)! : 99999;
+              return pa - pb;
+            });
+
+            // If serverless container cold-started or reset, re-hydrate server automatically!
+            if (serverOrder.length === 0 || JSON.stringify(serverOrder) !== JSON.stringify(localOrder)) {
+              void fetch("/api/v1/products", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "reorder", order: localOrder }),
+              });
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("[Admin load] Local product order restoration note:", err);
+      }
 
       if (list.length > 0) {
         setProducts(
@@ -253,7 +283,7 @@ export default function AdminPage() {
         const localRaw = typeof window !== "undefined" ? localStorage.getItem("mayilon_recent_orders") : null;
         if (localRaw) {
           const localOrders = JSON.parse(localRaw);
-          if (Array.isArray(localOrders)) {
+          if (Array.isArray(localOrders) && localOrders.length > 0) {
             const map = new Map();
             for (const o of list) map.set(o.estimateNumber, o);
             for (const o of localOrders) {
@@ -262,7 +292,19 @@ export default function AdminPage() {
               }
             }
             list = Array.from(map.values());
+
+            // If server had 0 orders but local storage has them, re-sync to serverless backend!
+            if ((!e?.data?.items || e.data.items.length === 0) && localOrders.length > 0) {
+              void fetch("/api/v1/estimates", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "sync_orders", orders: localOrders }),
+              });
+            }
           }
+        }
+        if (list.length > 0 && typeof window !== "undefined") {
+          localStorage.setItem("mayilon_recent_orders", JSON.stringify(list));
         }
       } catch (localErr) {
         console.warn("[Admin load] Local order backup merge note:", localErr);
@@ -380,6 +422,15 @@ export default function AdminPage() {
   async function handleReorder(newProducts: ProductItem[], moveMsg?: string) {
     setProducts(newProducts);
     const newOrderIds = newProducts.map((p) => p.id);
+
+    // 1. Permanent Browser Storage (Survives 100 days!)
+    try {
+      if (typeof window !== "undefined") {
+        localStorage.setItem("mayilon_permanent_product_order", JSON.stringify(newOrderIds));
+      }
+    } catch {}
+
+    // 2. Server API Sync
     try {
       await fetch("/api/v1/products", {
         method: "POST",
@@ -392,6 +443,36 @@ export default function AdminPage() {
       }
     } catch (err) {
       console.warn("[handleReorder] Error saving product sequence:", err);
+    }
+  }
+
+  async function handleSavePermanentSnapshot() {
+    try {
+      const res = await fetch("/api/v1/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "get_snapshot" }),
+      });
+      const json = await res.json();
+      const state = json?.data?.state || {
+        products,
+        productOrder: products.map((p) => p.id),
+      };
+
+      const jsonStr = JSON.stringify(state, null, 2);
+      const blob = new Blob([jsonStr], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "products-store.json";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+
+      setNotificationToast("💾 Snapshot downloaded! Save in data/products-store.json and git push to lock in for 100 days!");
+      setTimeout(() => setNotificationToast(null), 5000);
+    } catch (err) {
+      console.warn("Snapshot download note:", err);
     }
   }
 
@@ -972,6 +1053,13 @@ export default function AdminPage() {
                         className="flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-[12px] font-bold text-red-600 hover:bg-red-600 hover:text-white transition-all shadow-sm"
                       >
                         <Trash2 size={14} /> Clear All (Fresh Start)
+                      </button>
+                      <button
+                        onClick={handleSavePermanentSnapshot}
+                        title="Download current products & order as a permanent snapshot file to commit into Git"
+                        className="flex items-center gap-1.5 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2 text-[12px] font-bold text-emerald-700 hover:bg-emerald-600 hover:text-white transition-all shadow-sm"
+                      >
+                        <Save size={14} /> 💾 Save Git Snapshot
                       </button>
                       <button
                         onClick={openAddProduct}

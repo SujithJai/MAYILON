@@ -65,31 +65,47 @@ if (!g.__mayilonOrdersStore) {
 
 const STORE = g.__mayilonOrdersStore;
 
-function getStoreFilePath(): string {
-  const dataDir = path.join(process.cwd(), "data");
-  if (!fs.existsSync(dataDir)) {
-    try {
-      fs.mkdirSync(dataDir, { recursive: true });
-    } catch (err) {
-      console.warn("[orders-store] Unable to create data dir:", err);
+function getStoreFilePaths(): string[] {
+  const paths: string[] = [];
+  // 1. Writable serverless /tmp
+  try {
+    const tmpDir = process.env.TMPDIR || process.env.TEMP || "/tmp";
+    if (fs.existsSync(tmpDir)) {
+      paths.push(path.join(tmpDir, "mayilon-orders-store.json"));
     }
-  }
-  return path.join(dataDir, "orders-store.json");
+  } catch {}
+
+  // 2. Project data dir
+  try {
+    const dataDir = path.join(process.cwd(), "data");
+    if (!fs.existsSync(dataDir)) {
+      try {
+        fs.mkdirSync(dataDir, { recursive: true });
+      } catch {}
+    }
+    paths.push(path.join(dataDir, "orders-store.json"));
+  } catch {}
+
+  return paths;
 }
 
 function loadOrdersFromDisk() {
   if (g.__mayilonOrdersLoaded) return;
   try {
-    const filePath = getStoreFilePath();
-    if (fs.existsSync(filePath)) {
-      const raw = fs.readFileSync(filePath, "utf-8");
-      if (raw.trim()) {
-        const list = JSON.parse(raw);
-        if (Array.isArray(list)) {
-          for (const o of list) {
-            if (o && o.estimateNumber) {
-              STORE.set(o.estimateNumber, o);
+    const filePaths = getStoreFilePaths();
+    for (const filePath of filePaths) {
+      if (fs.existsSync(filePath)) {
+        const raw = fs.readFileSync(filePath, "utf-8");
+        if (raw.trim()) {
+          const list = JSON.parse(raw);
+          if (Array.isArray(list) && list.length > 0) {
+            for (const o of list) {
+              if (o && o.estimateNumber) {
+                STORE.set(o.estimateNumber, o);
+              }
             }
+            // If loaded from /tmp, break
+            break;
           }
         }
       }
@@ -102,17 +118,35 @@ function loadOrdersFromDisk() {
 }
 
 function saveOrdersToDisk() {
-  try {
-    const filePath = getStoreFilePath();
-    const list = Array.from(STORE.values());
-    fs.writeFileSync(filePath, JSON.stringify(list, null, 2), "utf-8");
-  } catch (err) {
-    console.warn("[orders-store] Error saving orders to disk:", err);
+  const list = Array.from(STORE.values());
+  const jsonStr = JSON.stringify(list, null, 2);
+
+  const filePaths = getStoreFilePaths();
+  for (const filePath of filePaths) {
+    try {
+      fs.writeFileSync(filePath, jsonStr, "utf-8");
+    } catch (err) {
+      // Expected in read-only /var/task on Vercel
+    }
   }
 }
 
 // Initial eager disk load
 loadOrdersFromDisk();
+
+/** Bulk sync orders from Admin client storage */
+export function bulkSyncOrders(orders: OrderRecord[]) {
+  if (!Array.isArray(orders)) return;
+  loadOrdersFromDisk();
+  for (const o of orders) {
+    if (o && o.estimateNumber) {
+      if (!STORE.has(o.estimateNumber)) {
+        STORE.set(o.estimateNumber, o);
+      }
+    }
+  }
+  saveOrdersToDisk();
+}
 
 /** Save order to universal store and persist to disk */
 export function saveOrderToStore(order: OrderRecord): OrderRecord {

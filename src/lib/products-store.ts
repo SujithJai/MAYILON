@@ -72,41 +72,57 @@ if (!g.__mayilonProductOrder) {
 const STORE = g.__mayilonCustomProductsStore;
 const DELETED_SET = g.__mayilonDeletedProductIds;
 
-function getStoreFilePath(): string {
-  const dataDir = path.join(process.cwd(), "data");
-  if (!fs.existsSync(dataDir)) {
-    try {
-      fs.mkdirSync(dataDir, { recursive: true });
-    } catch (err) {
-      console.warn("[products-store] Unable to create data dir:", err);
+function getStoreFilePaths(): string[] {
+  const paths: string[] = [];
+  // 1. Writable serverless /tmp
+  try {
+    const tmpDir = process.env.TMPDIR || process.env.TEMP || "/tmp";
+    if (fs.existsSync(tmpDir)) {
+      paths.push(path.join(tmpDir, "mayilon-products-store.json"));
     }
-  }
-  return path.join(dataDir, "products-store.json");
+  } catch {}
+
+  // 2. Project data dir
+  try {
+    const dataDir = path.join(process.cwd(), "data");
+    if (!fs.existsSync(dataDir)) {
+      try {
+        fs.mkdirSync(dataDir, { recursive: true });
+      } catch {}
+    }
+    paths.push(path.join(dataDir, "products-store.json"));
+  } catch {}
+
+  return paths;
 }
 
 function loadFromDisk() {
   if (g.__mayilonStoreLoaded) return;
   try {
-    const filePath = getStoreFilePath();
-    if (fs.existsSync(filePath)) {
-      const raw = fs.readFileSync(filePath, "utf-8");
-      if (raw.trim()) {
-        const data = JSON.parse(raw) as StoredData;
-        if (Array.isArray(data.products)) {
-          for (const p of data.products) {
-            if (p && p.id) STORE.set(p.id, p);
+    const filePaths = getStoreFilePaths();
+    for (const filePath of filePaths) {
+      if (fs.existsSync(filePath)) {
+        const raw = fs.readFileSync(filePath, "utf-8");
+        if (raw.trim()) {
+          const data = JSON.parse(raw) as StoredData;
+          if (Array.isArray(data.products)) {
+            for (const p of data.products) {
+              if (p && p.id) STORE.set(p.id, p);
+            }
           }
-        }
-        if (Array.isArray(data.productOrder)) {
-          g.__mayilonProductOrder = data.productOrder;
-        }
-        if (data.seedCleared !== undefined) {
-          g.__mayilonClearSeedMode = Boolean(data.seedCleared);
-        }
-        if (Array.isArray(data.deletedIds)) {
-          for (const d of data.deletedIds) {
-            DELETED_SET.add(d);
+          if (Array.isArray(data.productOrder) && data.productOrder.length > 0) {
+            g.__mayilonProductOrder = data.productOrder;
           }
+          if (data.seedCleared !== undefined) {
+            g.__mayilonClearSeedMode = Boolean(data.seedCleared);
+          }
+          if (Array.isArray(data.deletedIds)) {
+            for (const d of data.deletedIds) {
+              DELETED_SET.add(d);
+            }
+          }
+          // If we successfully loaded non-empty data from /tmp, break
+          if (data.products && data.products.length > 0) break;
         }
       }
     }
@@ -118,22 +134,63 @@ function loadFromDisk() {
 }
 
 function saveToDisk() {
-  try {
-    const filePath = getStoreFilePath();
-    const data: StoredData = {
-      products: Array.from(STORE.values()),
-      productOrder: g.__mayilonProductOrder || [],
-      seedCleared: Boolean(g.__mayilonClearSeedMode),
-      deletedIds: Array.from(DELETED_SET),
-    };
-    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf-8");
-  } catch (err) {
-    console.warn("[products-store] Error saving to disk:", err);
+  const data: StoredData = {
+    products: Array.from(STORE.values()),
+    productOrder: g.__mayilonProductOrder || [],
+    seedCleared: Boolean(g.__mayilonClearSeedMode),
+    deletedIds: Array.from(DELETED_SET),
+  };
+  const jsonStr = JSON.stringify(data, null, 2);
+
+  const filePaths = getStoreFilePaths();
+  for (const filePath of filePaths) {
+    try {
+      fs.writeFileSync(filePath, jsonStr, "utf-8");
+    } catch (err) {
+      // Expected in read-only /var/task on Vercel
+    }
   }
 }
 
 // Initial eager disk load
 loadFromDisk();
+
+/** Bulk sync all state (from Admin local storage or API backup) */
+export function syncAllProductsState(state: {
+  products?: ProductRecord[];
+  productOrder?: string[];
+  seedCleared?: boolean;
+  deletedIds?: string[];
+}) {
+  if (Array.isArray(state.productOrder) && state.productOrder.length > 0) {
+    g.__mayilonProductOrder = state.productOrder;
+  }
+  if (Array.isArray(state.products)) {
+    for (const p of state.products) {
+      if (p && p.id) STORE.set(p.id, p);
+    }
+  }
+  if (Array.isArray(state.deletedIds)) {
+    for (const d of state.deletedIds) {
+      DELETED_SET.add(d);
+    }
+  }
+  if (state.seedCleared !== undefined) {
+    g.__mayilonClearSeedMode = Boolean(state.seedCleared);
+  }
+  saveToDisk();
+}
+
+/** Get complete store snapshot */
+export function getFullStoreState(): StoredData {
+  loadFromDisk();
+  return {
+    products: Array.from(STORE.values()),
+    productOrder: g.__mayilonProductOrder || [],
+    seedCleared: Boolean(g.__mayilonClearSeedMode),
+    deletedIds: Array.from(DELETED_SET),
+  };
+}
 
 /** Save custom product to memory store and persist to disk */
 export function saveProductToStore(prod: ProductRecord): ProductRecord {

@@ -6,9 +6,11 @@ import { getProducts } from "@/lib/data";
 import {
   clearAllProductsInStore,
   deleteProductFromStore,
+  getFullStoreState,
   getProductOrderFromStore,
   saveProductToStore,
   setProductOrderInStore,
+  syncAllProductsState,
   type ProductRecord,
 } from "@/lib/products-store";
 import { slugify } from "@/lib/slug";
@@ -40,6 +42,18 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
+
+  if (body.action === "sync_all" && body.state) {
+    syncAllProductsState(body.state);
+    revalidatePath("/", "layout");
+    revalidatePath("/products");
+    revalidatePath("/estimate");
+    return ok({ state: getFullStoreState() }, "Catalogue state synced successfully", 200);
+  }
+
+  if (body.action === "get_snapshot") {
+    return ok({ state: getFullStoreState() }, "Full snapshot retrieved", 200);
+  }
 
   if (body.action === "clear-all") {
     clearAllProductsInStore();

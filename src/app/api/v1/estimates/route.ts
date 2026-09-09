@@ -3,12 +3,19 @@ import { db } from "@/db";
 import { customers, estimateItems, estimates } from "@/db/schema";
 import { ok } from "@/lib/api";
 import { calculateTotals, extractNumber, makeEstimateNumber } from "@/lib/estimate";
-import { getAllOrdersFromStore, saveOrderToStore, type OrderRecord } from "@/lib/orders-store";
+import { bulkSyncOrders, getAllOrdersFromStore, saveOrderToStore, type OrderRecord } from "@/lib/orders-store";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
+
+  if (body.action === "sync_orders" && Array.isArray(body.orders)) {
+    bulkSyncOrders(body.orders);
+    revalidatePath("/admin");
+    revalidatePath("/track");
+    return ok({ total: getAllOrdersFromStore().length }, "Orders synced successfully", 200);
+  }
   const rawCustomer = body.customer || {};
   const rawItems = Array.isArray(body.items) && body.items.length > 0 ? body.items : [];
   const paymentMethod = body.paymentMethod || "COD";
