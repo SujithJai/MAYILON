@@ -63,6 +63,10 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ number: strin
       .where(eq(estimates.estimateNumber, number))
       .returning();
     dbUpdated = row;
+  } catch (err) {
+    console.warn("[PATCH /estimates/[number]] DB update note:", err);
+  }
+
   try {
     revalidatePath("/admin");
     revalidatePath(`/estimate/${number}`);
