@@ -146,6 +146,67 @@ export default function AdminPage() {
   // Payment Modal State
   const [paymentModalOrder, setPaymentModalOrder] = useState<EstimateRow | null>(null);
 
+  const liveStats = useMemo(() => {
+    let pipeline = 0;
+    let todayCount = 0;
+    let todayValue = 0;
+    let pending = 0;
+    let paidCount = 0;
+    const byStatusMap = new Map<string, { count: number; value: number }>();
+
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+
+    for (const e of estimates) {
+      const val = parseFloat(String(e.grandTotal || "0").replace(/[^0-9.-]+/g, "")) || 0;
+      pipeline += val;
+
+      const d = new Date(e.createdAt);
+      if (d >= startOfDay) {
+        todayCount += 1;
+        todayValue += val;
+      }
+
+      const st = e.status || "NEW";
+      const cur = byStatusMap.get(st) || { count: 0, value: 0 };
+      cur.count += 1;
+      cur.value += val;
+      byStatusMap.set(st, cur);
+
+      if (st === "NEW" || (st as string) === "PENDING" || e.paymentStatus !== "PAID") {
+        pending += 1;
+      }
+      if (e.paymentStatus === "PAID" || st === "PACKAGE READY" || st === "SHIPPED" || st === "DELIVERED") {
+        paidCount += 1;
+      }
+    }
+
+    const count = estimates.length;
+    const avgValue = count > 0 ? pipeline / count : 0;
+    const conversionRate = count > 0 ? (paidCount / count) * 100 : 0;
+
+    const byStatus = Array.from(byStatusMap.entries()).map(([status, d]) => ({
+      status,
+      count: d.count,
+      value: d.value,
+    }));
+
+    return {
+      pipeline: stats?.kpis?.pipeline ? Math.max(stats.kpis.pipeline, pipeline) : pipeline,
+      estimateCount: stats?.kpis?.estimateCount ? Math.max(stats.kpis.estimateCount, count) : count,
+      avgValue: avgValue || (stats?.kpis?.avgValue ?? 0),
+      todayCount: Math.max(stats?.kpis?.todayCount ?? 0, todayCount),
+      todayValue: Math.max(stats?.kpis?.todayValue ?? 0, todayValue),
+      pending: pending || (stats?.kpis?.pending ?? 0),
+      conversionRate: conversionRate || (stats?.kpis?.conversionRate ?? 0),
+      byStatus: byStatus.length > 0 ? byStatus : (stats?.byStatus ?? []),
+      products: products.length || (stats?.kpis?.products ?? 0),
+      dealers: dealers.length || (stats?.kpis?.dealers ?? 0),
+      enquiries: enquiries.length || (stats?.kpis?.enquiries ?? 0),
+      subscribers: stats?.kpis?.subscribers ?? 0,
+    };
+  }, [estimates, stats, products, dealers, enquiries]);
+
   const load = useCallback(async () => {
     try {
       const pRes = await fetch("/api/v1/products?limit=350", { cache: "no-store" })
@@ -543,67 +604,6 @@ export default function AdminPage() {
       </div>
     );
   }
-
-  const liveStats = useMemo(() => {
-    let pipeline = 0;
-    let todayCount = 0;
-    let todayValue = 0;
-    let pending = 0;
-    let paidCount = 0;
-    const byStatusMap = new Map<string, { count: number; value: number }>();
-
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
-
-    for (const e of estimates) {
-      const val = parseFloat(String(e.grandTotal || "0").replace(/[^0-9.-]+/g, "")) || 0;
-      pipeline += val;
-
-      const d = new Date(e.createdAt);
-      if (d >= startOfDay) {
-        todayCount += 1;
-        todayValue += val;
-      }
-
-      const st = e.status || "NEW";
-      const cur = byStatusMap.get(st) || { count: 0, value: 0 };
-      cur.count += 1;
-      cur.value += val;
-      byStatusMap.set(st, cur);
-
-      if (st === "NEW" || st === "PENDING" || e.paymentStatus !== "PAID") {
-        pending += 1;
-      }
-      if (e.paymentStatus === "PAID" || st === "PACKAGE READY" || st === "SHIPPED" || st === "DELIVERED") {
-        paidCount += 1;
-      }
-    }
-
-    const count = estimates.length;
-    const avgValue = count > 0 ? pipeline / count : 0;
-    const conversionRate = count > 0 ? (paidCount / count) * 100 : 0;
-
-    const byStatus = Array.from(byStatusMap.entries()).map(([status, d]) => ({
-      status,
-      count: d.count,
-      value: d.value,
-    }));
-
-    return {
-      pipeline: stats?.kpis?.pipeline ? Math.max(stats.kpis.pipeline, pipeline) : pipeline,
-      estimateCount: stats?.kpis?.estimateCount ? Math.max(stats.kpis.estimateCount, count) : count,
-      avgValue: avgValue || (stats?.kpis?.avgValue ?? 0),
-      todayCount: Math.max(stats?.kpis?.todayCount ?? 0, todayCount),
-      todayValue: Math.max(stats?.kpis?.todayValue ?? 0, todayValue),
-      pending: pending || (stats?.kpis?.pending ?? 0),
-      conversionRate: conversionRate || (stats?.kpis?.conversionRate ?? 0),
-      byStatus: byStatus.length > 0 ? byStatus : (stats?.byStatus ?? []),
-      products: products.length || (stats?.kpis?.products ?? 0),
-      dealers: dealers.length || (stats?.kpis?.dealers ?? 0),
-      enquiries: enquiries.length || (stats?.kpis?.enquiries ?? 0),
-      subscribers: stats?.kpis?.subscribers ?? 0,
-    };
-  }, [estimates, stats, products, dealers, enquiries]);
 
   const k = liveStats;
   const filteredProducts = products.filter(
