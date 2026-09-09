@@ -1055,13 +1055,6 @@ export default function AdminPage() {
                         <Trash2 size={14} /> Clear All (Fresh Start)
                       </button>
                       <button
-                        onClick={handleSavePermanentSnapshot}
-                        title="Download current products & order as a permanent snapshot file to commit into Git"
-                        className="flex items-center gap-1.5 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2 text-[12px] font-bold text-emerald-700 hover:bg-emerald-600 hover:text-white transition-all shadow-sm"
-                      >
-                        <Save size={14} /> 💾 Save Git Snapshot
-                      </button>
-                      <button
                         onClick={openAddProduct}
                         className="btn-gold flex items-center gap-2 px-5 py-2.5 text-[12.5px] uppercase font-bold"
                       >

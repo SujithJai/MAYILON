@@ -245,6 +245,23 @@ export function QuickCalculator({ products }: { products: CalcProduct[] }) {
   const [qty, setQty] = useState<Record<string, number>>({});
 
   useEffect(() => {
+    try {
+      const savedOrder = typeof window !== "undefined" ? localStorage.getItem("mayilon_permanent_product_order") : null;
+      if (savedOrder) {
+        const orderIds = JSON.parse(savedOrder);
+        if (Array.isArray(orderIds) && orderIds.length > 0) {
+          const map = new Map<string, number>();
+          orderIds.forEach((id: string, idx: number) => map.set(id, idx));
+          const sorted = [...products].sort((a, b) => {
+            const pa = map.has(a.id) ? map.get(a.id)! : map.has(a.sku || "") ? map.get(a.sku || "")! : 99999;
+            const pb = map.has(b.id) ? map.get(b.id)! : map.has(b.sku || "") ? map.get(b.sku || "")! : 99999;
+            return pa - pb;
+          });
+          setLiveProducts(sorted);
+          return;
+        }
+      }
+    } catch {}
     setLiveProducts(products);
   }, [products]);
 
@@ -256,7 +273,22 @@ export function QuickCalculator({ products }: { products: CalcProduct[] }) {
         const res = await fetch("/api/v1/products?limit=250", { cache: "no-store" });
         const json = await res.json();
         if (active && json?.success && Array.isArray(json?.data?.items)) {
-          const fresh = json.data.items as CalcProduct[];
+          let fresh = json.data.items as CalcProduct[];
+          try {
+            const savedOrder = typeof window !== "undefined" ? localStorage.getItem("mayilon_permanent_product_order") : null;
+            if (savedOrder) {
+              const orderIds = JSON.parse(savedOrder);
+              if (Array.isArray(orderIds) && orderIds.length > 0) {
+                const map = new Map<string, number>();
+                orderIds.forEach((id: string, idx: number) => map.set(id, idx));
+                fresh = [...fresh].sort((a, b) => {
+                  const pa = map.has(a.id) ? map.get(a.id)! : map.has(a.sku || "") ? map.get(a.sku || "")! : 99999;
+                  const pb = map.has(b.id) ? map.get(b.id)! : map.has(b.sku || "") ? map.get(b.sku || "")! : 99999;
+                  return pa - pb;
+                });
+              }
+            }
+          } catch {}
           setLiveProducts((prev) => {
             const prevHash = prev.map((p) => `${p.id}:${p.offerPrice}`).join("|");
             const freshHash = fresh.map((p) => `${p.id}:${p.offerPrice}`).join("|");

@@ -26,6 +26,24 @@ export function ProductBrowser({
   const { add } = useEstimate();
 
   useEffect(() => {
+    try {
+      const savedOrder = typeof window !== "undefined" ? localStorage.getItem("mayilon_permanent_product_order") : null;
+      if (savedOrder) {
+        const orderIds = JSON.parse(savedOrder);
+        if (Array.isArray(orderIds) && orderIds.length > 0) {
+          const map = new Map<string, number>();
+          orderIds.forEach((id: string, idx: number) => map.set(id, idx));
+          const sorted = [...items].sort((a, b) => {
+            const pa = map.has(a.id) ? map.get(a.id)! : map.has(a.sku || "") ? map.get(a.sku || "")! : 99999;
+            const pb = map.has(b.id) ? map.get(b.id)! : map.has(b.sku || "") ? map.get(b.sku || "")! : 99999;
+            return pa - pb;
+          });
+          setProductList(sorted);
+          setProductTotal(total);
+          return;
+        }
+      }
+    } catch {}
     setProductList(items);
     setProductTotal(total);
   }, [items, total]);
@@ -38,7 +56,22 @@ export function ProductBrowser({
         const res = await fetch("/api/v1/products?limit=250", { cache: "no-store" });
         const json = await res.json();
         if (mounted && json?.success && Array.isArray(json?.data?.items)) {
-          const fresh = json.data.items as CardProduct[];
+          let fresh = json.data.items as CardProduct[];
+          try {
+            const savedOrder = typeof window !== "undefined" ? localStorage.getItem("mayilon_permanent_product_order") : null;
+            if (savedOrder) {
+              const orderIds = JSON.parse(savedOrder);
+              if (Array.isArray(orderIds) && orderIds.length > 0) {
+                const map = new Map<string, number>();
+                orderIds.forEach((id: string, idx: number) => map.set(id, idx));
+                fresh = [...fresh].sort((a, b) => {
+                  const pa = map.has(a.id) ? map.get(a.id)! : map.has(a.sku || "") ? map.get(a.sku || "")! : 99999;
+                  const pb = map.has(b.id) ? map.get(b.id)! : map.has(b.sku || "") ? map.get(b.sku || "")! : 99999;
+                  return pa - pb;
+                });
+              }
+            }
+          } catch {}
           setProductList((prev) => {
             const prevHash = prev.map((p) => `${p.id}:${p.offerPrice}:${p.mrp}:${p.stock}:${p.name}`).join("|");
             const freshHash = fresh.map((p) => `${p.id}:${p.offerPrice}:${p.mrp}:${p.stock}:${p.name}`).join("|");

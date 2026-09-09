@@ -167,13 +167,13 @@ export const SEED_CATEGORIES: SeedCategory[] = [
 
 export const SEED_PRODUCTS: Record<string, [string, number, string, number, string?, string?][]> = {
   "single-sound": [
-    ["2 3/4\" Kuruvi", 100, "1 Box", 5, "B"],
     ["3 1/2\" Laxmi", 150, "1 Box", 5, "B"],
-    ["4\" Laxmi", 200, "1 Box", 5, "F"],
     ["4\" Deluxe Laxmi", 250, "1 Box", 5, "N"],
     ["4\" Gold Laxmi", 300, "1 Box", 5, "P"],
     ["5\" Laxmi", 350, "1 Box", 5, "PN"],
     ["2 Sound", 300, "1 Box", 5, "B"],
+    ["2 3/4\" Kuruvi", 100, "1 Box", 5, "B"],
+    ["4\" Laxmi", 200, "1 Box", 5, "F"],
   ],
 
   "bijili-crackers": [
