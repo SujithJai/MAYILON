@@ -73,10 +73,10 @@ const orgSchema = {
   slogan: SITE.taglineEn,
   address: {
     "@type": "PostalAddress",
-    streetAddress: "142, Sattur Main Road",
+    streetAddress: "4/95, Pachayaman Kovil Street, Naranapuram",
     addressLocality: "Sivakasi",
     addressRegion: "Tamil Nadu",
-    postalCode: "626123",
+    postalCode: "626189",
     addressCountry: "IN",
   },
   areaServed: ["Tamil Nadu", "Karnataka", "Kerala", "Andhra Pradesh", "Telangana", "Puducherry"],

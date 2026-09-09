@@ -15,7 +15,7 @@ export const SITE = {
   phoneRaw: "919047012345",
   whatsapp: "919047012345",
   email: "sales@mayiloncrackers.com",
-  address: "142, Sattur Main Road, Sivakasi, Virudhunagar District, Tamil Nadu 626123",
+  address: "4/95, Pachayaman Kovil Street, Naranapuram, Sivakasi - 626189, Virudhunagar District, Tamil Nadu",
   url: "https://mayiloncrackers.com",
   gst: "33AABCM1234K1ZQ",
   license: "PESO / E-13579 / Sivakasi",

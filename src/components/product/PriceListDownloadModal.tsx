@@ -44,6 +44,7 @@ export function PriceListDownloadModal({
       const list = await getCatalog();
       let csvContent = "\uFEFF"; // UTF-8 BOM for Excel
       csvContent += "MAYILON PYROWORLD - OFFICIAL SIVAKASI FESTIVAL PRICE LIST 2026\n";
+      csvContent += "Address: 4/95, Pachayaman Kovil Street, Naranapuram, Sivakasi - 626189, Virudhunagar District\n";
       csvContent += "GSTIN: 33AABCM1234K1ZQ | PESO Licence: E-13579 | Phone: +91 90470 12345\n\n";
       csvContent += "S.No,SKU,Category,Product Name,Packing,MRP (Rs.),Discount %,Offer Price (Rs.)\n";
 
@@ -112,7 +113,7 @@ export function PriceListDownloadModal({
           <h1>மயிலோன் MAYILON PYROWORLD — SIVAKASI</h1>
           <div class="sub">
             <strong>Factory Direct Sivakasi Fireworks Price List 2026</strong><br/>
-            Address: 142, Sattur Main Road, Sivakasi, Tamil Nadu - 626123<br/>
+            Address: 4/95, Pachayaman Kovil Street, Naranapuram, Sivakasi - 626189, Virudhunagar District, Tamil Nadu<br/>
             Phone: +91 90470 12345 | Web: https://mayiloncrackers.com | PESO Lic: E-13579 | GSTIN: 33AABCM1234K1ZQ
           </div>
           <table>
@@ -222,7 +223,7 @@ export function PriceListDownloadModal({
             </div>
             <div class="meta">
               <strong>Official Deepavali Price List 2026</strong><br/>
-              142, Sattur Main Road, Sivakasi, TN - 626123<br/>
+              4/95, Pachayaman Kovil Street, Naranapuram, Sivakasi - 626189, Virudhunagar District<br/>
               PESO Licence: E-13579 | GSTIN: 33AABCM1234K1ZQ<br/>
               Customer Care: +91 90470 12345
             </div>

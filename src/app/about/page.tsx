@@ -51,7 +51,7 @@ export default function AboutPage() {
         <Reveal delay={0.08}>
           <div className="space-y-4 text-[15px] leading-relaxed text-slate-600 font-medium">
             <p>
-              Mayilon Crackers began in 1994 in a small shed off Sattur Main Road, Sivakasi — the
+              Mayilon Crackers began in 1994 at Pachayaman Kovil Street, Naranapuram, Sivakasi — the
               town that produces the overwhelming majority of India&apos;s fireworks. What started
               with four artisans hand-rolling flower pots now runs as a fully PESO-licensed unit with
               a dedicated chemical lab, quality bench and packing line.
