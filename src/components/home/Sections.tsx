@@ -240,22 +240,51 @@ type CalcProduct = {
 
 export function QuickCalculator({ products }: { products: CalcProduct[] }) {
   const { add, totals, items } = useEstimate();
+  const [liveProducts, setLiveProducts] = useState<CalcProduct[]>(products);
   const [q, setQ] = useState("");
   const [qty, setQty] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    setLiveProducts(products);
+  }, [products]);
+
+  // Live real-time background sync (< 8 seconds guarantee)
+  useEffect(() => {
+    let active = true;
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch("/api/v1/products?limit=250", { cache: "no-store" });
+        const json = await res.json();
+        if (active && json?.success && Array.isArray(json?.data?.items)) {
+          const fresh = json.data.items as CalcProduct[];
+          setLiveProducts((prev) => {
+            const prevHash = prev.map((p) => `${p.id}:${p.offerPrice}`).join("|");
+            const freshHash = fresh.map((p) => `${p.id}:${p.offerPrice}`).join("|");
+            return prevHash !== freshHash ? fresh : prev;
+          });
+        }
+      } catch {}
+    }, 6000);
+
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, []);
 
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
     return term
-      ? products.filter(
+      ? liveProducts.filter(
           (p) =>
             p.name.toLowerCase().includes(term) ||
             p.sku.toLowerCase().includes(term) ||
             p.categoryName.toLowerCase().includes(term),
         )
-      : products;
-  }, [q, products]);
+      : liveProducts;
+  }, [q, liveProducts]);
 
-  const runningTotal = products.reduce(
+  const runningTotal = liveProducts.reduce(
     (s, p) => s + Number(p.offerPrice) * (qty[p.id] ?? 0),
     0,
   );

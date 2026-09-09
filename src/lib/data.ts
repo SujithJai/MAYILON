@@ -126,10 +126,16 @@ function getInMemoryProducts(): ProductWithCategory[] {
  */
 function applyCustomOverrides(items: ProductWithCategory[]): ProductWithCategory[] {
   try {
-    const { getCustomProductsFromStore, isSeedCleared, getDeletedProductIds } = require("./products-store");
+    const {
+      getCustomProductsFromStore,
+      isSeedCleared,
+      getDeletedProductIds,
+      getProductOrderFromStore,
+    } = require("./products-store");
     const customList = getCustomProductsFromStore();
     const seedCleared = isSeedCleared();
     const deletedSet = getDeletedProductIds();
+    const customOrder: string[] = getProductOrderFromStore();
 
     let baseList = items;
     if (seedCleared) {
@@ -137,8 +143,6 @@ function applyCustomOverrides(items: ProductWithCategory[]): ProductWithCategory
     } else if (deletedSet && deletedSet.size > 0) {
       baseList = items.filter((p) => !deletedSet.has(p.id) && !deletedSet.has(p.sku));
     }
-
-    if (!Array.isArray(customList) || customList.length === 0) return baseList;
 
     const idMap = new Map<string, ProductWithCategory>();
     const skuMap = new Map<string, ProductWithCategory>();
@@ -152,67 +156,90 @@ function applyCustomOverrides(items: ProductWithCategory[]): ProductWithCategory
 
     const updatedItems = [...baseList];
 
-    for (const c of customList) {
-      const match =
-        idMap.get(c.id) ||
-        (c.sku ? skuMap.get(c.sku) : undefined) ||
-        (c.slug ? slugMap.get(c.slug) : undefined);
+    if (Array.isArray(customList) && customList.length > 0) {
+      for (const c of customList) {
+        const match =
+          idMap.get(c.id) ||
+          (c.sku ? skuMap.get(c.sku) : undefined) ||
+          (c.slug ? slugMap.get(c.slug) : undefined);
 
-      const mrpNum = Number(c.mrp) || 100;
-      const offerNum = Number(c.offerPrice) || mrpNum;
-      const gallery = [c.imageUrl || match?.imageUrl, c.imageUrl2, c.imageUrl3].filter(
-        Boolean,
-      ) as string[];
+        const mrpNum = Number(c.mrp) || 100;
+        const offerNum = Number(c.offerPrice) || mrpNum;
+        const gallery = [c.imageUrl || match?.imageUrl, c.imageUrl2, c.imageUrl3].filter(
+          Boolean,
+        ) as string[];
 
-      const override: ProductWithCategory = {
-        ...(match || ({} as any)),
-        id: c.id || match?.id || `prod-${Date.now()}`,
-        sku: c.sku || match?.sku || `MYL-PROD`,
-        slug: c.slug || match?.slug || slugify(c.name),
-        name: c.name || match?.name || "Fireworks Item",
-        nameTa: c.nameTa || match?.nameTa || null,
-        categoryId: c.categoryId || match?.categoryId || "cat-1",
-        shortDescription: c.shortDescription || match?.shortDescription || `${c.name} — Sivakasi quality product.`,
-        description: c.description || match?.description || `${c.name} manufactured at Sivakasi unit with high purity chemical composition.`,
-        imageUrl: c.imageUrl || match?.imageUrl || "/images/placeholder.jpg",
-        gallery: gallery.length > 0 ? gallery : [match?.imageUrl || "/images/placeholder.jpg"],
-        videoUrl: c.videoUrl || match?.videoUrl || null,
-        packing: c.packing || match?.packing || "1 Box",
-        piecesPerPack: c.piecesPerPack || match?.piecesPerPack || 1,
-        mrp: mrpNum.toFixed(2),
-        discountPercent: c.discountPercent || Math.round(((mrpNum - offerNum) / mrpNum) * 100),
-        offerPrice: offerNum.toFixed(2),
-        dealerPrice: (c.dealerPrice || offerNum * 0.88).toFixed(2),
-        gstPercent: c.gstPercent || 18,
-        moq: c.moq || match?.moq || 1,
-        stock: c.stock || match?.stock || 100,
-        status: c.status || "ACTIVE",
-        isFeatured: Boolean(c.isFeatured ?? match?.isFeatured),
-        isBestSeller: Boolean(c.isBestSeller ?? match?.isBestSeller),
-        isNewArrival: Boolean(c.isNewArrival ?? match?.isNewArrival),
-        isPremium: Boolean(c.isPremium ?? match?.isPremium),
-        soundLevel: c.soundLevel || match?.soundLevel || "Medium",
-        burnTime: c.burnTime || match?.burnTime || "20 sec",
-        effectColors: ["Gold", "Red"],
-        ageRecommendation: "12+ with adult supervision",
-        usage: "Outdoor",
-        rating: match?.rating || "4.90",
-        reviewCount: match?.reviewCount || 25,
-        viewCount: match?.viewCount || 150,
-        createdAt: new Date(c.createdAt || match?.createdAt || Date.now()),
-        updatedAt: new Date(),
-        deletedAt: null,
-        categoryName: c.categoryName || match?.categoryName || "Special Fireworks",
-        categorySlug: slugify(c.categoryName || match?.categoryName || "special-fireworks"),
-        categoryAccent: "#D4AF37",
-      };
+        const override: ProductWithCategory = {
+          ...(match || ({} as any)),
+          id: c.id || match?.id || `prod-${Date.now()}`,
+          sku: c.sku || match?.sku || `MYL-PROD`,
+          slug: c.slug || match?.slug || slugify(c.name),
+          name: c.name || match?.name || "Fireworks Item",
+          nameTa: c.nameTa || match?.nameTa || null,
+          categoryId: c.categoryId || match?.categoryId || "cat-1",
+          shortDescription: c.shortDescription || match?.shortDescription || `${c.name} — Sivakasi quality product.`,
+          description: c.description || match?.description || `${c.name} manufactured at Sivakasi unit with high purity chemical composition.`,
+          imageUrl: c.imageUrl || match?.imageUrl || "/images/placeholder.jpg",
+          gallery: gallery.length > 0 ? gallery : [match?.imageUrl || "/images/placeholder.jpg"],
+          videoUrl: c.videoUrl || match?.videoUrl || null,
+          packing: c.packing || match?.packing || "1 Box",
+          piecesPerPack: c.piecesPerPack || match?.piecesPerPack || 1,
+          mrp: mrpNum.toFixed(2),
+          discountPercent: c.discountPercent || Math.round(((mrpNum - offerNum) / mrpNum) * 100),
+          offerPrice: offerNum.toFixed(2),
+          dealerPrice: (c.dealerPrice || offerNum * 0.88).toFixed(2),
+          gstPercent: c.gstPercent || 18,
+          moq: c.moq || match?.moq || 1,
+          stock: c.stock || match?.stock || 100,
+          status: c.status || "ACTIVE",
+          isFeatured: Boolean(c.isFeatured ?? match?.isFeatured),
+          isBestSeller: Boolean(c.isBestSeller ?? match?.isBestSeller),
+          isNewArrival: Boolean(c.isNewArrival ?? match?.isNewArrival),
+          isPremium: Boolean(c.isPremium ?? match?.isPremium),
+          soundLevel: c.soundLevel || match?.soundLevel || "Medium",
+          burnTime: c.burnTime || match?.burnTime || "20 sec",
+          effectColors: ["Gold", "Red"],
+          ageRecommendation: "12+ with adult supervision",
+          usage: "Outdoor",
+          rating: match?.rating || "4.90",
+          reviewCount: match?.reviewCount || 25,
+          viewCount: match?.viewCount || 150,
+          createdAt: new Date(c.createdAt || match?.createdAt || Date.now()),
+          updatedAt: new Date(),
+          deletedAt: null,
+          categoryName: c.categoryName || match?.categoryName || "Special Fireworks",
+          categorySlug: slugify(c.categoryName || match?.categoryName || "special-fireworks"),
+          categoryAccent: "#D4AF37",
+        };
 
-      if (match) {
-        const idx = updatedItems.findIndex((it) => it.id === match.id || it.sku === match.sku);
-        if (idx !== -1) updatedItems[idx] = override;
-      } else {
-        updatedItems.unshift(override);
+        if (match) {
+          const idx = updatedItems.findIndex((it) => it.id === match.id || it.sku === match.sku);
+          if (idx !== -1) updatedItems[idx] = override;
+        } else {
+          updatedItems.unshift(override);
+        }
       }
+    }
+
+    // Apply Admin custom product reordering if configured
+    if (Array.isArray(customOrder) && customOrder.length > 0) {
+      const orderMap = new Map<string, number>();
+      customOrder.forEach((id, idx) => {
+        if (id) orderMap.set(id, idx);
+      });
+      updatedItems.sort((a, b) => {
+        const orderA = orderMap.has(a.id)
+          ? (orderMap.get(a.id) as number)
+          : orderMap.has(a.sku)
+            ? (orderMap.get(a.sku) as number)
+            : 999999;
+        const orderB = orderMap.has(b.id)
+          ? (orderMap.get(b.id) as number)
+          : orderMap.has(b.sku)
+            ? (orderMap.get(b.sku) as number)
+            : 999999;
+        return orderA - orderB;
+      });
     }
 
     return updatedItems;

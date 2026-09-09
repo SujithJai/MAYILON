@@ -5,12 +5,17 @@ import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Activity,
+  ArrowDown,
+  ArrowUp,
   BarChart3,
   Boxes,
   CheckCircle2,
+  ChevronsDown,
+  ChevronsUp,
   Clock,
   Edit,
   ExternalLink,
+  GripVertical,
   Handshake,
   LayoutDashboard,
   LogOut,
@@ -24,6 +29,7 @@ import {
   Send,
   ShieldCheck,
   ShoppingBag,
+  Trash2,
   Truck,
   X,
 } from "lucide-react";
@@ -111,6 +117,7 @@ export default function AdminPage() {
   const [enquiries, setEnquiries] = useState<Record<string, string>[]>([]);
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [draggedId, setDraggedId] = useState<string | null>(null);
 
   // Product Modal State
   const [productModalOpen, setProductModalOpen] = useState(false);
@@ -141,29 +148,10 @@ export default function AdminPage() {
 
   const load = useCallback(async () => {
     try {
-      const pRes = await fetch("/api/v1/products?limit=250&sort=alpha").then((r) => r.json()).catch(() => null);
+      const pRes = await fetch("/api/v1/products?limit=350", { cache: "no-store" })
+        .then((r) => r.json())
+        .catch(() => null);
       let list = pRes?.success && Array.isArray(pRes?.data?.items) ? pRes.data.items : [];
-
-      try {
-        const localRaw = typeof window !== "undefined" ? localStorage.getItem("mayilon_custom_products") : null;
-        if (localRaw) {
-          const localProds = JSON.parse(localRaw);
-          if (Array.isArray(localProds)) {
-            const map = new Map();
-            for (const p of list) {
-              if (p && p.id) map.set(p.id, p);
-            }
-            // Always overwrite with local edits so updated prices & photos take priority!
-            for (const p of localProds) {
-              if (p && p.id) {
-                const existing = map.get(p.id);
-                map.set(p.id, { ...existing, ...p });
-              }
-            }
-            list = Array.from(map.values());
-          }
-        }
-      } catch (localErr) {}
 
       if (list.length > 0) {
         setProducts(
@@ -330,6 +318,83 @@ export default function AdminPage() {
     setTimeout(() => setNotificationToast(null), 5000);
   }
 
+  async function handleReorder(newProducts: ProductItem[], moveMsg?: string) {
+    setProducts(newProducts);
+    const newOrderIds = newProducts.map((p) => p.id);
+    try {
+      await fetch("/api/v1/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "reorder", order: newOrderIds }),
+      });
+      if (moveMsg) {
+        setNotificationToast(moveMsg);
+        setTimeout(() => setNotificationToast(null), 3500);
+      }
+    } catch (err) {
+      console.warn("[handleReorder] Error saving product sequence:", err);
+    }
+  }
+
+  function moveProduct(fullIndex: number, direction: "up" | "down" | "top" | "bottom") {
+    if (products.length <= 1) return;
+    const newProducts = [...products];
+    let targetIndex = fullIndex;
+
+    if (direction === "top") {
+      targetIndex = 0;
+    } else if (direction === "bottom") {
+      targetIndex = newProducts.length - 1;
+    } else if (direction === "up") {
+      targetIndex = Math.max(0, fullIndex - 1);
+    } else if (direction === "down") {
+      targetIndex = Math.min(newProducts.length - 1, fullIndex + 1);
+    }
+
+    if (targetIndex === fullIndex) return;
+
+    const [moved] = newProducts.splice(fullIndex, 1);
+    newProducts.splice(targetIndex, 0, moved);
+
+    void handleReorder(
+      newProducts,
+      `↕️ Position updated: "${moved.name}" is now #${targetIndex + 1} (Live on Storefront)`,
+    );
+  }
+
+  function handleDragStart(id: string) {
+    setDraggedId(id);
+  }
+
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault();
+  }
+
+  function handleDrop(targetId: string) {
+    if (!draggedId || draggedId === targetId) {
+      setDraggedId(null);
+      return;
+    }
+
+    const fromIndex = products.findIndex((p) => p.id === draggedId);
+    const toIndex = products.findIndex((p) => p.id === targetId);
+
+    if (fromIndex === -1 || toIndex === -1) {
+      setDraggedId(null);
+      return;
+    }
+
+    const newProducts = [...products];
+    const [moved] = newProducts.splice(fromIndex, 1);
+    newProducts.splice(toIndex, 0, moved);
+
+    setDraggedId(null);
+    void handleReorder(
+      newProducts,
+      `↕️ Reordered: "${moved.name}" moved to #${toIndex + 1} (Live on Storefront)`,
+    );
+  }
+
   async function handleSaveProduct(e: React.FormEvent) {
     e.preventDefault();
     const prodPayload = {
@@ -342,27 +407,23 @@ export default function AdminPage() {
       setProducts((prev) =>
         prev.map((p) => (p.id === editingProduct.id ? prodPayload : p)),
       );
-      setNotificationToast(`✏️ Product "${productForm.name}" updated successfully!`);
+      setNotificationToast(`✏️ Product "${productForm.name}" updated & live!`);
     } else {
       setProducts((prev) => [prodPayload, ...prev]);
-      setNotificationToast(`🎉 New Product "${productForm.name}" added to catalogue!`);
+      setNotificationToast(`🎉 New Product "${productForm.name}" added & live!`);
     }
 
-    // Save to Local Backup Storage
+    // POST to API (persists to server disk and syncs DB)
     try {
-      const localRaw = typeof window !== "undefined" ? localStorage.getItem("mayilon_custom_products") : null;
-      const existing = localRaw ? JSON.parse(localRaw) : [];
-      const updatedArr = [prodPayload, ...existing.filter((p: any) => p.id !== prodPayload.id)];
-      localStorage.setItem("mayilon_custom_products", JSON.stringify(updatedArr));
-    } catch (err) {}
-
-    // POST to API
-    try {
-      await fetch("/api/v1/products", {
+      const res = await fetch("/api/v1/products", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(prodPayload),
       });
+      const data = await res.json();
+      if (data?.success) {
+        setNotificationToast(`⚡ Product "${productForm.name}" saved! Changes live on website.`);
+      }
     } catch (apiErr) {
       console.warn("[handleSaveProduct] API post note:", apiErr);
     }
@@ -377,8 +438,6 @@ export default function AdminPage() {
     if (!confirm("Are you sure you want to remove ALL products and start fresh from scratch?")) return;
     setProducts([]);
     try {
-      localStorage.setItem("mayilon_custom_products", "[]");
-      localStorage.setItem("mayilon_seed_cleared", "true");
       await fetch("/api/v1/products?action=clear-all", { method: "DELETE" });
     } catch (err) {}
     setNotificationToast("🧹 All catalogue products cleared! Ready for your fresh product uploads.");
@@ -389,13 +448,6 @@ export default function AdminPage() {
     if (!confirm("Delete this product from catalogue?")) return;
     setProducts((prev) => prev.filter((p) => p.id !== id));
     try {
-      const localRaw = localStorage.getItem("mayilon_custom_products");
-      if (localRaw) {
-        const arr = JSON.parse(localRaw);
-        if (Array.isArray(arr)) {
-          localStorage.setItem("mayilon_custom_products", JSON.stringify(arr.filter((p: any) => p.id !== id)));
-        }
-      }
       await fetch(`/api/v1/products?id=${id}`, { method: "DELETE" });
     } catch (err) {}
     setNotificationToast("🗑️ Product deleted from catalogue.");
@@ -859,66 +911,137 @@ export default function AdminPage() {
                   </div>
                 }
               >
-                <div className="mb-4 relative">
-                  <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Filter by product name, SKU or category…"
-                    className="field pl-11 !bg-slate-50 !border-slate-200 !text-slate-900 font-bold"
-                  />
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                  <div className="relative flex-1 min-w-[280px]">
+                    <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Filter by product name, SKU or category…"
+                      className="field pl-11 !bg-slate-50 !border-slate-200 !text-slate-900 font-bold"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2 text-[12px] font-bold text-slate-600 bg-red-50 border border-red-200 rounded-xl px-3.5 py-2 shadow-xs">
+                    <span>💡 <b>Scroll & Place:</b> Use ⬆️ ⬇️ buttons or drag rows to change order.</span>
+                  </div>
                 </div>
 
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[780px] text-[13.5px]">
-                    <thead>
-                      <tr className="border-b border-slate-200 text-left text-[11px] font-bold uppercase tracking-[2px] text-slate-500">
-                        <th className="py-3">SKU</th>
-                        <th className="py-3">Product Name</th>
-                        <th className="py-3">Category</th>
-                        <th className="py-3 text-right">MRP</th>
-                        <th className="py-3 text-right">Offer Price</th>
-                        <th className="py-3 text-right">Stock</th>
-                        <th className="py-3 text-center">Action</th>
+                <div className="max-h-[720px] overflow-y-auto overflow-x-auto rounded-2xl border border-slate-200 shadow-inner">
+                  <table className="w-full min-w-[880px] text-[13.5px] relative">
+                    <thead className="sticky top-0 z-10 bg-slate-100/95 backdrop-blur-xs border-b border-slate-200 text-left text-[11px] font-bold uppercase tracking-[2px] text-slate-600 shadow-xs">
+                      <tr>
+                        <th className="py-3.5 px-3 text-center w-[140px]">Order & Place</th>
+                        <th className="py-3.5 px-2">SKU</th>
+                        <th className="py-3.5 px-2">Product Name</th>
+                        <th className="py-3.5 px-2">Category</th>
+                        <th className="py-3.5 px-2 text-right">MRP</th>
+                        <th className="py-3.5 px-2 text-right">Offer Price</th>
+                        <th className="py-3.5 px-2 text-right">Stock</th>
+                        <th className="py-3.5 px-3 text-center">Action</th>
                       </tr>
                     </thead>
-                    <tbody>
-                      {filteredProducts.map((p) => (
-                        <tr key={String(p.id)} className="border-b border-slate-100 hover:bg-slate-50">
-                          <td className="py-3 font-bold text-slate-500">{p.sku}</td>
-                          <td className="py-3 font-bold text-slate-900">{p.name}</td>
-                          <td className="py-3 font-medium text-slate-600">{p.categoryName}</td>
-                          <td className="py-3 text-right text-slate-400 line-through">
-                            {formatINR(Number(p.mrp))}
-                          </td>
-                          <td className="py-3 text-right font-bold text-red-600">
-                            {formatINR(Number(p.offerPrice))}
-                          </td>
-                          <td
-                            className={`py-3 text-right font-bold ${
-                              Number(p.stock) < 200 ? "text-red-600" : "text-emerald-600"
+                    <tbody className="divide-y divide-slate-100 bg-white">
+                      {filteredProducts.map((p, idx) => {
+                        const fullIdx = products.findIndex((it) => it.id === p.id);
+                        const isDragging = draggedId === p.id;
+                        return (
+                          <tr
+                            key={String(p.id)}
+                            draggable={true}
+                            onDragStart={() => handleDragStart(p.id)}
+                            onDragOver={handleDragOver}
+                            onDrop={() => handleDrop(p.id)}
+                            className={`transition-colors hover:bg-slate-50 ${
+                              isDragging ? "opacity-30 bg-red-50 ring-2 ring-red-500" : ""
                             }`}
                           >
-                            {p.stock}
-                          </td>
-                          <td className="py-3 text-center">
-                            <div className="flex items-center justify-center gap-1.5">
-                              <button
-                                onClick={() => openEditProduct(p)}
-                                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1 text-[11.5px] font-bold text-slate-700 hover:border-red-500 hover:text-red-600 shadow-sm"
-                              >
-                                <Edit size={13} /> Edit
-                              </button>
-                              <button
-                                onClick={() => handleDeleteProduct(p.id)}
-                                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1 text-[11.5px] font-bold text-slate-500 hover:border-red-600 hover:bg-red-600 hover:text-white transition-all shadow-sm"
-                              >
-                                <Trash2 size={13} /> Delete
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
+                            <td className="py-2.5 px-3">
+                              <div className="flex items-center gap-1.5 justify-center">
+                                <span
+                                  title="Drag to reposition"
+                                  className="cursor-grab active:cursor-grabbing p-1 text-slate-400 hover:text-red-600"
+                                >
+                                  <GripVertical size={16} />
+                                </span>
+                                <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[11px] font-mono font-bold text-slate-700 min-w-[28px] text-center border border-slate-200">
+                                  #{idx + 1}
+                                </span>
+                                <div className="inline-flex items-center rounded-lg border border-slate-200 bg-white shadow-xs">
+                                  <button
+                                    title="Move to Top"
+                                    onClick={() => moveProduct(fullIdx, "top")}
+                                    disabled={fullIdx <= 0}
+                                    className="p-1 text-slate-500 hover:bg-red-50 hover:text-red-600 disabled:opacity-20"
+                                  >
+                                    <ChevronsUp size={13} />
+                                  </button>
+                                  <button
+                                    title="Move Up"
+                                    onClick={() => moveProduct(fullIdx, "up")}
+                                    disabled={fullIdx <= 0}
+                                    className="p-1 text-slate-500 hover:bg-red-50 hover:text-red-600 disabled:opacity-20"
+                                  >
+                                    <ArrowUp size={13} />
+                                  </button>
+                                  <button
+                                    title="Move Down"
+                                    onClick={() => moveProduct(fullIdx, "down")}
+                                    disabled={fullIdx >= products.length - 1}
+                                    className="p-1 text-slate-500 hover:bg-red-50 hover:text-red-600 disabled:opacity-20"
+                                  >
+                                    <ArrowDown size={13} />
+                                  </button>
+                                  <button
+                                    title="Move to Bottom"
+                                    onClick={() => moveProduct(fullIdx, "bottom")}
+                                    disabled={fullIdx >= products.length - 1}
+                                    className="p-1 text-slate-500 hover:bg-red-50 hover:text-red-600 disabled:opacity-20"
+                                  >
+                                    <ChevronsDown size={13} />
+                                  </button>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-2.5 px-2 font-bold text-slate-500">{p.sku}</td>
+                            <td className="py-2.5 px-2">
+                              <div className="font-bold text-slate-900">{p.name}</div>
+                              {p.packing && (
+                                <div className="text-[11px] text-slate-400 font-medium">{p.packing}</div>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-2 font-medium text-slate-600">{p.categoryName}</td>
+                            <td className="py-2.5 px-2 text-right text-slate-400 line-through">
+                              {formatINR(Number(p.mrp))}
+                            </td>
+                            <td className="py-2.5 px-2 text-right font-bold text-red-600">
+                              {formatINR(Number(p.offerPrice))}
+                            </td>
+                            <td
+                              className={`py-2.5 px-2 text-right font-bold ${
+                                Number(p.stock) < 200 ? "text-red-600" : "text-emerald-600"
+                              }`}
+                            >
+                              {p.stock}
+                            </td>
+                            <td className="py-2.5 px-3 text-center">
+                              <div className="flex items-center justify-center gap-1.5">
+                                <button
+                                  onClick={() => openEditProduct(p)}
+                                  className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1 text-[11.5px] font-bold text-slate-700 hover:border-red-500 hover:text-red-600 shadow-sm transition"
+                                >
+                                  <Edit size={13} /> Edit
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteProduct(p.id)}
+                                  className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1 text-[11.5px] font-bold text-slate-500 hover:border-red-600 hover:bg-red-600 hover:text-white transition-all shadow-sm"
+                                >
+                                  <Trash2 size={13} /> Delete
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

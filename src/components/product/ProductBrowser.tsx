@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import { BrowserControls } from "./BrowserControls";
 import { ProductCard, type CardProduct } from "./ProductCard";
@@ -19,23 +19,57 @@ export function ProductBrowser({
   total: number;
 }) {
   const [view, setView] = useState<"grid" | "list">("grid");
+  const [productList, setProductList] = useState<CardProduct[]>(items);
+  const [productTotal, setProductTotal] = useState<number>(total);
   const { add } = useEstimate();
+
+  useEffect(() => {
+    setProductList(items);
+    setProductTotal(total);
+  }, [items, total]);
+
+  // Live real-time background sync (< 8 seconds guarantee)
+  useEffect(() => {
+    let mounted = true;
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch("/api/v1/products?limit=250", { cache: "no-store" });
+        const json = await res.json();
+        if (mounted && json?.success && Array.isArray(json?.data?.items)) {
+          const fresh = json.data.items as CardProduct[];
+          setProductList((prev) => {
+            const prevHash = prev.map((p) => `${p.id}:${p.offerPrice}:${p.mrp}:${p.stock}:${p.name}`).join("|");
+            const freshHash = fresh.map((p) => `${p.id}:${p.offerPrice}:${p.mrp}:${p.stock}:${p.name}`).join("|");
+            return prevHash !== freshHash ? fresh : prev;
+          });
+          if (typeof json.data.total === "number") {
+            setProductTotal(json.data.total);
+          }
+        }
+      } catch {}
+    }, 6000);
+
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, []);
 
   return (
     <div className="grid items-start gap-8 lg:grid-cols-[270px_1fr]">
       <BrowserControls
         categories={categories}
-        total={total}
+        total={productTotal}
         view={view}
         onViewChange={setView}
       />
 
       <div>
         <p className="mb-5 text-[12.5px] font-bold uppercase tracking-[2px] text-slate-500">
-          Showing {items.length} of {total} products
+          Showing {productList.length} of {productTotal} products
         </p>
 
-        {items.length === 0 && (
+        {productList.length === 0 && (
           <div className="glass rounded-[28px] p-14 text-center border border-red-500/15 bg-white shadow-md">
             <p className="font-display text-xl font-bold text-slate-900">No products matched your filters</p>
             <p className="mt-2 text-sm text-slate-600 font-medium">
@@ -49,13 +83,13 @@ export function ProductBrowser({
 
         {view === "grid" ? (
           <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-            {items.map((p, i) => (
+            {productList.map((p, i) => (
               <ProductCard key={p.id} p={p} index={i} />
             ))}
           </div>
         ) : (
           <div className="space-y-4">
-            {items.map((p) => (
+            {productList.map((p) => (
               <div
                 key={p.id}
                 className="glass lift-card flex flex-col gap-5 rounded-[26px] p-4 border border-red-500/15 bg-white shadow-md sm:flex-row sm:items-center"

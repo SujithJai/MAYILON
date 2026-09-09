@@ -1,11 +1,14 @@
+import { revalidatePath } from "next/cache";
 import { db } from "@/db";
-import { products } from "@/db/schema";
+import { categories, products } from "@/db/schema";
 import { fail, ok } from "@/lib/api";
 import { getProducts } from "@/lib/data";
 import {
   clearAllProductsInStore,
   deleteProductFromStore,
+  getProductOrderFromStore,
   saveProductToStore,
+  setProductOrderInStore,
   type ProductRecord,
 } from "@/lib/products-store";
 import { slugify } from "@/lib/slug";
@@ -30,7 +33,9 @@ export async function GET(req: Request) {
     offset: num("offset") ?? 0,
   });
 
-  return ok({ items, total });
+  const productOrder = getProductOrderFromStore();
+
+  return ok({ items, total, productOrder });
 }
 
 export async function POST(req: Request) {
@@ -38,7 +43,18 @@ export async function POST(req: Request) {
 
   if (body.action === "clear-all") {
     clearAllProductsInStore();
+    revalidatePath("/", "layout");
+    revalidatePath("/products");
+    revalidatePath("/estimate");
     return ok({}, "Catalogue cleared successfully", 200);
+  }
+
+  if (body.action === "reorder" && Array.isArray(body.order)) {
+    const updatedOrder = setProductOrderInStore(body.order);
+    revalidatePath("/", "layout");
+    revalidatePath("/products");
+    revalidatePath("/estimate");
+    return ok({ order: updatedOrder }, "Product sequence updated successfully", 200);
   }
 
   if (!body.name || !body.mrp || !body.offerPrice) {
@@ -74,50 +90,83 @@ export async function POST(req: Request) {
     isNewArrival: Boolean(body.isNewArrival),
     isBestSeller: Boolean(body.isBestSeller),
     isPremium: Boolean(body.isPremium),
-    createdAt: new Date().toISOString(),
+    createdAt: body.createdAt || new Date().toISOString(),
   };
 
-  // 1. Save to Universal Product Store (Guaranteed Zero-Loss Persistence)
+  // 1. Save to Universal Product Store (Guaranteed Zero-Loss Disk Persistence)
   saveProductToStore(productRecord);
 
-  // 2. Best-effort DB Sync
+  // 2. Best-effort DB Sync with valid category reference
   try {
-    await db
-      .insert(products)
-      .values({
-        sku: productRecord.sku,
-        slug: productRecord.slug,
-        name: productRecord.name,
-        categoryId: "00000000-0000-0000-0000-000000000001",
-        imageUrl: productRecord.imageUrl,
-        packing: productRecord.packing,
-        mrp: String(productRecord.mrp),
-        offerPrice: String(productRecord.offerPrice),
-        discountPercent: productRecord.discountPercent,
-        moq: productRecord.moq,
-        stock: productRecord.stock,
-        isFeatured: productRecord.isFeatured,
-        isNewArrival: productRecord.isNewArrival,
-        isBestSeller: productRecord.isBestSeller,
-        isPremium: productRecord.isPremium,
-      })
-      .onConflictDoUpdate({
-        target: products.sku,
-        set: {
+    const existingCats = await db.select({ id: categories.id }).from(categories).limit(1);
+    const validCatId = existingCats[0]?.id;
+
+    if (validCatId) {
+      await db
+        .insert(products)
+        .values({
+          sku: productRecord.sku,
+          slug: productRecord.slug,
           name: productRecord.name,
+          categoryId: validCatId,
+          imageUrl: productRecord.imageUrl,
+          packing: productRecord.packing,
           mrp: String(productRecord.mrp),
           offerPrice: String(productRecord.offerPrice),
-          packing: productRecord.packing,
-          imageUrl: productRecord.imageUrl,
+          discountPercent: productRecord.discountPercent,
+          moq: productRecord.moq,
           stock: productRecord.stock,
-          updatedAt: new Date(),
-        },
-      });
+          isFeatured: productRecord.isFeatured,
+          isNewArrival: productRecord.isNewArrival,
+          isBestSeller: productRecord.isBestSeller,
+          isPremium: productRecord.isPremium,
+        })
+        .onConflictDoUpdate({
+          target: products.sku,
+          set: {
+            name: productRecord.name,
+            mrp: String(productRecord.mrp),
+            offerPrice: String(productRecord.offerPrice),
+            packing: productRecord.packing,
+            imageUrl: productRecord.imageUrl,
+            stock: productRecord.stock,
+            updatedAt: new Date(),
+          },
+        });
+    }
   } catch (err) {
     console.warn("[POST /products] DB background sync note:", err);
   }
 
+  // 3. Instant Next.js Cache Revalidation
+  try {
+    revalidatePath("/", "layout");
+    revalidatePath("/products");
+    revalidatePath("/estimate");
+  } catch (revErr) {
+    console.warn("[POST /products] Revalidation note:", revErr);
+  }
+
   return ok({ product: productRecord }, "Product saved successfully", 201);
+}
+
+export async function PUT(req: Request) {
+  const body = await req.json().catch(() => ({}));
+
+  if (body.action === "reorder" && Array.isArray(body.order)) {
+    const updatedOrder = setProductOrderInStore(body.order);
+    try {
+      revalidatePath("/", "layout");
+      revalidatePath("/products");
+      revalidatePath("/estimate");
+    } catch {}
+    return ok({ order: updatedOrder }, "Product sequence updated successfully", 200);
+  }
+
+  if (!body.id) return fail("Product ID is required", [], 400);
+
+  // If normal product update via PUT, forward to POST logic
+  return POST(req);
 }
 
 export async function DELETE(req: Request) {
@@ -127,6 +176,11 @@ export async function DELETE(req: Request) {
 
   if (action === "clear-all") {
     clearAllProductsInStore();
+    try {
+      revalidatePath("/", "layout");
+      revalidatePath("/products");
+      revalidatePath("/estimate");
+    } catch {}
     return ok({}, "All catalogue products cleared successfully");
   }
 
@@ -135,8 +189,12 @@ export async function DELETE(req: Request) {
   deleteProductFromStore(id);
 
   try {
-    // Delete from DB if present
-  } catch (err) {}
+    revalidatePath("/", "layout");
+    revalidatePath("/products");
+    revalidatePath("/estimate");
+  } catch (revErr) {
+    console.warn("[DELETE /products] Revalidation note:", revErr);
+  }
 
   return ok({ id }, "Product deleted successfully");
 }
