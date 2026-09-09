@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { customers, estimateItems, estimates } from "@/db/schema";
 import { ok } from "@/lib/api";
@@ -174,6 +175,11 @@ export async function POST(req: Request) {
   } catch (err) {
     console.warn("[POST /estimates] DB background sync note:", err);
   }
+
+  try {
+    revalidatePath("/admin");
+    revalidatePath("/track");
+  } catch (err) {}
 
   return ok(
     { estimateNumber, totals, status: "NEW", paymentMethod, order: newOrder },

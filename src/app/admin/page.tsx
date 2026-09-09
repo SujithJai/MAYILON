@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Activity,
@@ -275,47 +275,45 @@ export default function AdminPage() {
     void load();
   }
 
-  async function togglePaymentStatus(estimateNumber: string, targetPaymentStatus: "PAID" | "UNPAID") {
+  async function markPaymentReceived(estimateNumber: string, method = "UPI Verification") {
+    const existing = estimates.find((e) => e.estimateNumber === estimateNumber);
+    if (existing?.paymentStatus === "PAID") return;
+
     setEstimates((prev) =>
       prev.map((e) =>
         e.estimateNumber === estimateNumber
           ? {
               ...e,
-              paymentStatus: targetPaymentStatus,
-              paymentMethod: targetPaymentStatus === "PAID" ? e.paymentMethod || "UPI Verification" : undefined,
-              status: targetPaymentStatus === "PAID" ? "PAYMENT RECEIVED" : "NEW",
+              paymentStatus: "PAID",
+              paymentMethod: method,
+              status: e.status === "NEW" ? "PAYMENT RECEIVED" : e.status,
             }
           : e,
       ),
     );
-    await fetch(`/api/v1/estimates/${estimateNumber}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        paymentStatus: targetPaymentStatus,
-        status: targetPaymentStatus === "PAID" ? "PAYMENT RECEIVED" : "NEW",
-      }),
-    });
 
-    const msg = targetPaymentStatus === "PAID"
-      ? `🟢 Payment Received confirmed for Order ${estimateNumber}! Order moved to Packaging stage. 📦`
-      : `🔴 Order ${estimateNumber} payment marked UNPAID.`;
-    setNotificationToast(msg);
-    setTimeout(() => setNotificationToast(null), 5000);
+    try {
+      await fetch(`/api/v1/estimates/${estimateNumber}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          paymentStatus: "PAID",
+          paymentMethod: method,
+          status: existing?.status === "NEW" ? "PAYMENT RECEIVED" : undefined,
+        }),
+      });
+    } catch (err) {
+      console.warn("[markPaymentReceived] API update note:", err);
+    }
+
+    setPaymentModalOrder(null);
+    setNotificationToast(`🟢 Payment Confirmed for Order ${estimateNumber}! Locked as PAID.`);
+    setTimeout(() => setNotificationToast(null), 4000);
     void load();
   }
 
   function handleMarkPaid(estimateNumber: string, method: string) {
-    setEstimates((prev) =>
-      prev.map((e) =>
-        e.estimateNumber === estimateNumber
-          ? { ...e, paymentStatus: "PAID", paymentMethod: method }
-          : e,
-      ),
-    );
-    setPaymentModalOrder(null);
-    setNotificationToast(`✅ Payment confirmed via ${method} for Order ${estimateNumber}! Order moved to Processing.`);
-    setTimeout(() => setNotificationToast(null), 5000);
+    void markPaymentReceived(estimateNumber, method);
   }
 
   async function handleReorder(newProducts: ProductItem[], moveMsg?: string) {
@@ -546,7 +544,68 @@ export default function AdminPage() {
     );
   }
 
-  const k = stats?.kpis;
+  const liveStats = useMemo(() => {
+    let pipeline = 0;
+    let todayCount = 0;
+    let todayValue = 0;
+    let pending = 0;
+    let paidCount = 0;
+    const byStatusMap = new Map<string, { count: number; value: number }>();
+
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+
+    for (const e of estimates) {
+      const val = parseFloat(String(e.grandTotal || "0").replace(/[^0-9.-]+/g, "")) || 0;
+      pipeline += val;
+
+      const d = new Date(e.createdAt);
+      if (d >= startOfDay) {
+        todayCount += 1;
+        todayValue += val;
+      }
+
+      const st = e.status || "NEW";
+      const cur = byStatusMap.get(st) || { count: 0, value: 0 };
+      cur.count += 1;
+      cur.value += val;
+      byStatusMap.set(st, cur);
+
+      if (st === "NEW" || st === "PENDING" || e.paymentStatus !== "PAID") {
+        pending += 1;
+      }
+      if (e.paymentStatus === "PAID" || st === "PACKAGE READY" || st === "SHIPPED" || st === "DELIVERED") {
+        paidCount += 1;
+      }
+    }
+
+    const count = estimates.length;
+    const avgValue = count > 0 ? pipeline / count : 0;
+    const conversionRate = count > 0 ? (paidCount / count) * 100 : 0;
+
+    const byStatus = Array.from(byStatusMap.entries()).map(([status, d]) => ({
+      status,
+      count: d.count,
+      value: d.value,
+    }));
+
+    return {
+      pipeline: stats?.kpis?.pipeline ? Math.max(stats.kpis.pipeline, pipeline) : pipeline,
+      estimateCount: stats?.kpis?.estimateCount ? Math.max(stats.kpis.estimateCount, count) : count,
+      avgValue: avgValue || (stats?.kpis?.avgValue ?? 0),
+      todayCount: Math.max(stats?.kpis?.todayCount ?? 0, todayCount),
+      todayValue: Math.max(stats?.kpis?.todayValue ?? 0, todayValue),
+      pending: pending || (stats?.kpis?.pending ?? 0),
+      conversionRate: conversionRate || (stats?.kpis?.conversionRate ?? 0),
+      byStatus: byStatus.length > 0 ? byStatus : (stats?.byStatus ?? []),
+      products: products.length || (stats?.kpis?.products ?? 0),
+      dealers: dealers.length || (stats?.kpis?.dealers ?? 0),
+      enquiries: enquiries.length || (stats?.kpis?.enquiries ?? 0),
+      subscribers: stats?.kpis?.subscribers ?? 0,
+    };
+  }, [estimates, stats, products, dealers, enquiries]);
+
+  const k = liveStats;
   const filteredProducts = products.filter(
     (p) =>
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -691,10 +750,10 @@ export default function AdminPage() {
 
                 <div className="grid gap-6 lg:grid-cols-2">
                   <Panel title="Pipeline Status Breakdown">
-                    {(stats?.byStatus ?? []).length === 0 && <Empty>No estimates recorded yet.</Empty>}
+                    {liveStats.byStatus.length === 0 && <Empty>No estimates recorded yet.</Empty>}
                     <div className="space-y-3">
-                      {(stats?.byStatus ?? []).map((s) => {
-                        const max = Math.max(...(stats?.byStatus ?? []).map((x) => x.count), 1);
+                      {liveStats.byStatus.map((s) => {
+                        const max = Math.max(...liveStats.byStatus.map((x) => x.count), 1);
                         return (
                           <div key={s.status}>
                             <div className="mb-1 flex justify-between text-[13px] font-bold">
@@ -794,25 +853,19 @@ export default function AdminPage() {
                             </td>
 
                             {/* 6. Payment Status & Action */}
-                            <td className="py-4 px-3 min-w-[160px]">
+                            <td className="py-4 px-3 min-w-[170px]">
                               <div className="flex flex-col gap-1.5">
                                 {e.paymentStatus === "PAID" ? (
-                                  <>
-                                    <span className="rounded-xl bg-emerald-100 border border-emerald-300 px-3 py-1.5 text-[10.5px] font-extrabold text-emerald-800 text-center">
-                                      ✓ PAYMENT RECEIVED ({e.paymentMethod || "UPI"})
-                                    </span>
-                                    <button
-                                      onClick={() => togglePaymentStatus(e.estimateNumber, "UNPAID")}
-                                      className="text-[10px] font-bold text-slate-400 hover:text-red-600 underline text-center"
-                                    >
-                                      Mark Unreceived
-                                    </button>
-                                  </>
+                                  <div className="flex items-center justify-center gap-1.5 rounded-xl bg-emerald-50 border border-emerald-300 px-3 py-2 text-[11px] font-extrabold text-emerald-800 shadow-xs">
+                                    <CheckCircle2 size={15} className="text-emerald-600 shrink-0" />
+                                    <span>PAID ({e.paymentMethod || "UPI"})</span>
+                                    <span className="rounded-full bg-emerald-200 text-emerald-800 px-1.5 py-0.5 text-[9px] uppercase tracking-wider font-mono">LOCKED</span>
+                                  </div>
                                 ) : (
                                   <>
                                     <button
-                                      onClick={() => togglePaymentStatus(e.estimateNumber, "PAID")}
-                                      className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 text-[11px] font-bold shadow-sm flex items-center justify-center gap-1"
+                                      onClick={() => markPaymentReceived(e.estimateNumber, "UPI Verification")}
+                                      className="rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white px-3 py-1.5 text-[11px] font-bold shadow-sm flex items-center justify-center gap-1 transition-all"
                                     >
                                       <CheckCircle2 size={13} /> Mark Payment Received
                                     </button>
@@ -820,7 +873,7 @@ export default function AdminPage() {
                                       onClick={() => setPaymentModalOrder(e)}
                                       className="rounded-xl bg-amber-50 border border-amber-300 px-2 py-1 text-[10px] font-bold text-amber-800 hover:bg-amber-100 text-center"
                                     >
-                                      💳 Pay Gateway Modal
+                                      💳 Confirm Other Method
                                     </button>
                                   </>
                                 )}
@@ -829,55 +882,74 @@ export default function AdminPage() {
 
                             {/* 7. Fulfillment Workflow Action Buttons */}
                             <td className="py-4 px-3">
-                              <div className="flex flex-col gap-1.5 min-w-[165px]">
-                                {/* Step A: Package Ready */}
-                                <button
-                                  onClick={() => updateStatus(e.estimateNumber, "PACKAGE READY", e.mobile)}
-                                  className={`flex items-center justify-center gap-1 rounded-xl px-3 py-1.5 text-[11px] font-bold transition ${
-                                    e.status === "PACKAGE READY"
-                                      ? "bg-purple-600 text-white ring-2 ring-purple-300 shadow-sm"
-                                      : "bg-purple-50 border border-purple-200 text-purple-700 hover:bg-purple-600 hover:text-white"
-                                  }`}
-                                >
-                                  <Package size={13} /> {e.status === "PACKAGE READY" ? "✓ Packaged" : "Mark Packaged"}
-                                </button>
+                              {(() => {
+                                const isPackaged = e.status === "PACKAGE READY" || e.status === "SHIPPED" || e.status === "OUT FOR DELIVERY" || e.status === "DELIVERED";
+                                const isShipped = e.status === "SHIPPED" || e.status === "OUT FOR DELIVERY" || e.status === "DELIVERED";
+                                const isOutForDelivery = e.status === "OUT FOR DELIVERY" || e.status === "DELIVERED";
+                                const isDelivered = e.status === "DELIVERED";
 
-                                {/* Step B: Shipped */}
-                                <button
-                                  onClick={() => updateStatus(e.estimateNumber, "SHIPPED", e.mobile)}
-                                  className={`flex items-center justify-center gap-1 rounded-xl px-3 py-1.5 text-[11px] font-bold transition ${
-                                    e.status === "SHIPPED"
-                                      ? "bg-blue-600 text-white ring-2 ring-blue-300 shadow-sm"
-                                      : "bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-600 hover:text-white"
-                                  }`}
-                                >
-                                  <Truck size={13} /> {e.status === "SHIPPED" ? "✓ Shipped" : "Mark Shipped"}
-                                </button>
+                                return (
+                                  <div className="flex flex-col gap-1.5 min-w-[165px]">
+                                    {/* Step A: Package Ready */}
+                                    <button
+                                      disabled={isPackaged}
+                                      onClick={() => updateStatus(e.estimateNumber, "PACKAGE READY", e.mobile)}
+                                      className={`flex items-center justify-center gap-1 rounded-xl px-3 py-1.5 text-[11px] font-bold transition ${
+                                        isPackaged
+                                          ? "bg-purple-100 border border-purple-300 text-purple-800 opacity-80 cursor-default"
+                                          : "bg-purple-600 hover:bg-purple-700 text-white shadow-sm"
+                                      }`}
+                                    >
+                                      <Package size={13} /> {isPackaged ? "✓ Packaged" : "Mark Packaged"}
+                                    </button>
 
-                                {/* Step C: Out for Delivery */}
-                                <button
-                                  onClick={() => updateStatus(e.estimateNumber, "OUT FOR DELIVERY", e.mobile)}
-                                  className={`flex items-center justify-center gap-1 rounded-xl px-3 py-1.5 text-[11px] font-bold transition ${
-                                    e.status === "OUT FOR DELIVERY"
-                                      ? "bg-amber-600 text-white ring-2 ring-amber-300 shadow-sm"
-                                      : "bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-600 hover:text-white"
-                                  }`}
-                                >
-                                  <Truck size={13} /> {e.status === "OUT FOR DELIVERY" ? "✓ Out for Delivery" : "Mark Out for Delivery"}
-                                </button>
+                                    {/* Step B: Shipped */}
+                                    <button
+                                      disabled={isShipped || !isPackaged}
+                                      onClick={() => updateStatus(e.estimateNumber, "SHIPPED", e.mobile)}
+                                      className={`flex items-center justify-center gap-1 rounded-xl px-3 py-1.5 text-[11px] font-bold transition ${
+                                        isShipped
+                                          ? "bg-blue-100 border border-blue-300 text-blue-800 opacity-80 cursor-default"
+                                          : isPackaged
+                                            ? "bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+                                            : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
+                                      }`}
+                                    >
+                                      <Truck size={13} /> {isShipped ? "✓ Shipped" : "Mark Shipped"}
+                                    </button>
 
-                                {/* Step D: Delivered */}
-                                <button
-                                  onClick={() => updateStatus(e.estimateNumber, "DELIVERED", e.mobile)}
-                                  className={`flex items-center justify-center gap-1 rounded-xl px-3 py-1.5 text-[11px] font-bold transition ${
-                                    e.status === "DELIVERED"
-                                      ? "bg-emerald-600 text-white ring-2 ring-emerald-300 shadow-sm"
-                                      : "bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-600 hover:text-white"
-                                  }`}
-                                >
-                                  <CheckCircle2 size={13} /> {e.status === "DELIVERED" ? "✓ Delivered" : "Mark Delivered"}
-                                </button>
-                              </div>
+                                    {/* Step C: Out for Delivery */}
+                                    <button
+                                      disabled={isOutForDelivery || !isShipped}
+                                      onClick={() => updateStatus(e.estimateNumber, "OUT FOR DELIVERY", e.mobile)}
+                                      className={`flex items-center justify-center gap-1 rounded-xl px-3 py-1.5 text-[11px] font-bold transition ${
+                                        isOutForDelivery
+                                          ? "bg-amber-100 border border-amber-300 text-amber-800 opacity-80 cursor-default"
+                                          : isShipped
+                                            ? "bg-amber-600 hover:bg-amber-700 text-white shadow-sm"
+                                            : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
+                                      }`}
+                                    >
+                                      <Truck size={13} /> {isOutForDelivery ? "✓ Out for Delivery" : "Mark Out for Delivery"}
+                                    </button>
+
+                                    {/* Step D: Delivered */}
+                                    <button
+                                      disabled={isDelivered || !isOutForDelivery}
+                                      onClick={() => updateStatus(e.estimateNumber, "DELIVERED", e.mobile)}
+                                      className={`flex items-center justify-center gap-1 rounded-xl px-3 py-1.5 text-[11px] font-bold transition ${
+                                        isDelivered
+                                          ? "bg-emerald-100 border border-emerald-300 text-emerald-800 opacity-80 cursor-default"
+                                          : isOutForDelivery
+                                            ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+                                            : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
+                                      }`}
+                                    >
+                                      <CheckCircle2 size={13} /> {isDelivered ? "✓ Delivered (Done)" : "Mark Delivered"}
+                                    </button>
+                                  </div>
+                                );
+                              })()}
                             </td>
                           </tr>
                         ))}

@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
@@ -62,9 +63,11 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ number: strin
       .where(eq(estimates.estimateNumber, number))
       .returning();
     dbUpdated = row;
-  } catch (err) {
-    console.warn("[PATCH /estimates/[number]] DB update note:", err);
-  }
+  try {
+    revalidatePath("/admin");
+    revalidatePath(`/estimate/${number}`);
+    revalidatePath("/track");
+  } catch (err) {}
 
   return ok({ estimate: storeUpdated || dbUpdated }, "Order updated successfully");
 }

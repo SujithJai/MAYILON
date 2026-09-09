@@ -1,102 +1,123 @@
-import { desc, gte, isNull, sql } from "drizzle-orm";
-import { db } from "@/db";
-import {
-  auditLogs,
-  dealerApplications,
-  enquiries,
-  estimateItems,
-  estimates,
-  products,
-  subscribers,
-} from "@/db/schema";
 import { ok, requireAdmin } from "@/lib/api";
-import { ensureSeeded } from "@/lib/data";
+import { getProducts } from "@/lib/data";
+import { getAllOrdersFromStore } from "@/lib/orders-store";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
   const unauthorized = requireAdmin(req);
   if (unauthorized) return unauthorized;
-  await ensureSeeded();
 
+  const orders = getAllOrdersFromStore();
   const startOfDay = new Date();
   startOfDay.setHours(0, 0, 0, 0);
 
-  const [
-    [totals],
-    [today],
-    byStatus,
-    topProducts,
-    lowStock,
-    recentEstimates,
-    [counts],
-    activity,
-  ] = await Promise.all([
-    db
-      .select({
-        estimateCount: sql<number>`cast(count(*) as int)`,
-        pipeline: sql<number>`coalesce(sum(${estimates.grandTotal}), 0)::float8`,
-        avgValue: sql<number>`coalesce(avg(${estimates.grandTotal}), 0)::float8`,
-      })
-      .from(estimates),
-    db
-      .select({
-        count: sql<number>`cast(count(*) as int)`,
-        value: sql<number>`coalesce(sum(${estimates.grandTotal}), 0)::float8`,
-      })
-      .from(estimates)
-      .where(gte(estimates.createdAt, startOfDay)),
-    db
-      .select({
-        status: estimates.status,
-        count: sql<number>`cast(count(*) as int)`,
-        value: sql<number>`coalesce(sum(${estimates.grandTotal}), 0)::float8`,
-      })
-      .from(estimates)
-      .groupBy(estimates.status),
-    db
-      .select({
-        name: estimateItems.name,
-        sku: estimateItems.sku,
-        units: sql<number>`cast(sum(${estimateItems.quantity}) as int)`,
-        value: sql<number>`coalesce(sum(${estimateItems.lineTotal}), 0)::float8`,
-      })
-      .from(estimateItems)
-      .groupBy(estimateItems.name, estimateItems.sku)
-      .orderBy(desc(sql`sum(${estimateItems.lineTotal})`))
-      .limit(6),
-    db
-      .select({ name: products.name, sku: products.sku, stock: products.stock })
-      .from(products)
-      .where(isNull(products.deletedAt))
-      .orderBy(products.stock)
-      .limit(6),
-    db.select().from(estimates).orderBy(desc(estimates.createdAt)).limit(8),
-    db
-      .select({
-        products: sql<number>`(select count(*) from ${products} where ${products.deletedAt} is null)::int`,
-        dealers: sql<number>`(select count(*) from ${dealerApplications})::int`,
-        enquiries: sql<number>`(select count(*) from ${enquiries})::int`,
-        subscribers: sql<number>`(select count(*) from ${subscribers})::int`,
-      })
-      .from(sql`(select 1) as t`),
-    db.select().from(auditLogs).orderBy(desc(auditLogs.createdAt)).limit(10),
-  ]);
+  // 1. Calculate KPIs from persistent orders
+  let pipeline = 0;
+  let todayCount = 0;
+  let todayValue = 0;
+  let pendingCount = 0;
+  let convertedCount = 0;
 
-  const newCount = byStatus.find((s) => s.status === "NEW")?.count ?? 0;
-  const converted = byStatus.find((s) => s.status === "CONVERTED")?.count ?? 0;
-  const conversionRate = totals.estimateCount ? (converted / totals.estimateCount) * 100 : 0;
+  const statusMap = new Map<string, { count: number; value: number }>();
+  const productSalesMap = new Map<string, { name: string; sku: string; units: number; value: number }>();
+
+  for (const o of orders) {
+    const totalVal = parseFloat(String(o.grandTotal || "0").replace(/[^0-9.-]+/g, "")) || 0;
+    pipeline += totalVal;
+
+    const oDate = new Date(o.createdAt);
+    if (oDate >= startOfDay) {
+      todayCount += 1;
+      todayValue += totalVal;
+    }
+
+    const st = o.status || "NEW";
+    const curStatus = statusMap.get(st) || { count: 0, value: 0 };
+    curStatus.count += 1;
+    curStatus.value += totalVal;
+    statusMap.set(st, curStatus);
+
+    if (st === "NEW" || st === "PENDING") {
+      pendingCount += 1;
+    }
+    if (o.paymentStatus === "PAID" || st === "PACKAGE READY" || st === "SHIPPED" || st === "DELIVERED") {
+      convertedCount += 1;
+    }
+
+    // Top products aggregation
+    if (Array.isArray(o.items)) {
+      for (const item of o.items) {
+        const itemQty = Number(item.quantity) || 1;
+        const lineTotal = parseFloat(String(item.lineTotal || "0").replace(/[^0-9.-]+/g, "")) || 0;
+        const key = item.sku || item.name;
+        const existingProd = productSalesMap.get(key) || {
+          name: item.name,
+          sku: item.sku || "MYL",
+          units: 0,
+          value: 0,
+        };
+        existingProd.units += itemQty;
+        existingProd.value += lineTotal;
+        productSalesMap.set(key, existingProd);
+      }
+    }
+  }
+
+  const estimateCount = orders.length;
+  const avgValue = estimateCount > 0 ? pipeline / estimateCount : 0;
+  const conversionRate = estimateCount > 0 ? (convertedCount / estimateCount) * 100 : 0;
+
+  const byStatus = Array.from(statusMap.entries()).map(([status, d]) => ({
+    status,
+    count: d.count,
+    value: d.value,
+  }));
+
+  const topProducts = Array.from(productSalesMap.values())
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 6);
+
+  // Products catalog count and low stock items
+  let productsCount = 0;
+  let lowStock: { name: string; sku: string; stock: number }[] = [];
+  try {
+    const { items, total } = await getProducts({ limit: 250 });
+    productsCount = total;
+    lowStock = items
+      .filter((p) => Number(p.stock) < 200)
+      .slice(0, 6)
+      .map((p) => ({
+        name: p.name,
+        sku: p.sku,
+        stock: Number(p.stock),
+      }));
+  } catch (err) {
+    console.warn("[admin/stats] Products read note:", err);
+  }
+
+  const recentEstimates = orders.slice(0, 8);
+  const activity = orders.slice(0, 10).map((o, idx) => ({
+    id: `act-${idx + 1}`,
+    actor: o.customerName || "Customer",
+    action: `Order #${o.estimateNumber} placed (${formatRupees(o.grandTotal)})`,
+    entity: "estimate",
+    createdAt: o.createdAt,
+  }));
 
   return ok({
     kpis: {
-      pipeline: totals.pipeline,
-      estimateCount: totals.estimateCount,
-      avgValue: totals.avgValue,
-      todayCount: today.count,
-      todayValue: today.value,
-      pending: newCount,
+      pipeline,
+      estimateCount,
+      avgValue,
+      todayCount,
+      todayValue,
+      pending: pendingCount,
       conversionRate,
-      ...counts,
+      products: productsCount,
+      dealers: 0,
+      enquiries: 0,
+      subscribers: 0,
     },
     byStatus,
     topProducts,
@@ -104,4 +125,9 @@ export async function GET(req: Request) {
     recentEstimates,
     activity,
   });
+}
+
+function formatRupees(n: any) {
+  const v = parseFloat(String(n || "0").replace(/[^0-9.-]+/g, "")) || 0;
+  return `₹${v.toLocaleString("en-IN")}`;
 }
