@@ -38,7 +38,7 @@ export async function GET(req: Request) {
     curStatus.value += totalVal;
     statusMap.set(st, curStatus);
 
-    if (st === "NEW" || st === "PENDING") {
+    if (st === "NEW") {
       pendingCount += 1;
     }
     if (o.paymentStatus === "PAID" || st === "PACKAGE READY" || st === "SHIPPED" || st === "DELIVERED") {
