@@ -28,11 +28,35 @@ export function PriceListDownloadModal({
 
   if (!isOpen) return null;
 
+  function applyOrder(items: ProductItem[], orderIds?: string[]): ProductItem[] {
+    let order = orderIds;
+    if (!order || order.length === 0) {
+      try {
+        const local = typeof window !== "undefined" ? localStorage.getItem("mayilon_permanent_product_order") : null;
+        if (local) order = JSON.parse(local);
+      } catch {}
+    }
+    if (Array.isArray(order) && order.length > 0) {
+      const posMap = new Map<string, number>();
+      order.forEach((id, idx) => posMap.set(id, idx));
+      return [...items].sort((a, b) => {
+        const pa = posMap.has(a.id) ? posMap.get(a.id)! : posMap.has(a.sku || "") ? posMap.get(a.sku || "")! : 99999;
+        const pb = posMap.has(b.id) ? posMap.get(b.id)! : posMap.has(b.sku || "") ? posMap.get(b.sku || "")! : 99999;
+        return pa - pb;
+      });
+    }
+    return items;
+  }
+
   async function getCatalog(): Promise<ProductItem[]> {
-    if (products.length > 0) return products;
+    if (products && products.length > 0) {
+      return applyOrder(products);
+    }
     try {
-      const res = await fetch("/api/v1/products?limit=500").then((r) => r.json());
-      if (res?.data?.items) return res.data.items;
+      const res = await fetch("/api/v1/products?limit=500", { cache: "no-store" }).then((r) => r.json());
+      if (res?.data?.items) {
+        return applyOrder(res.data.items, res?.data?.productOrder);
+      }
     } catch {}
     return [];
   }

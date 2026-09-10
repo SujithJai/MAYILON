@@ -8,9 +8,11 @@ import {
   deleteProductFromStore,
   getFullStoreState,
   getProductOrderFromStore,
+  persistProductOrderToDb,
   saveProductToStore,
   setProductOrderInStore,
   syncAllProductsState,
+  syncStoreWithDb,
   type ProductRecord,
 } from "@/lib/products-store";
 import { slugify } from "@/lib/slug";
@@ -18,6 +20,7 @@ import { slugify } from "@/lib/slug";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
+  await syncStoreWithDb().catch(() => null);
   const sp = new URL(req.url).searchParams;
   const num = (k: string) => {
     const v = sp.get(k);
@@ -65,6 +68,7 @@ export async function POST(req: Request) {
 
   if (body.action === "reorder" && Array.isArray(body.order)) {
     const updatedOrder = setProductOrderInStore(body.order);
+    await persistProductOrderToDb(body.order).catch(() => null);
     revalidatePath("/", "layout");
     revalidatePath("/products");
     revalidatePath("/estimate");
