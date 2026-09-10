@@ -1,4 +1,5 @@
 import { revalidatePath } from "next/cache";
+import { eq, or } from "drizzle-orm";
 import { db } from "@/db";
 import { categories, products } from "@/db/schema";
 import { fail, ok } from "@/lib/api";
@@ -153,6 +154,24 @@ export async function POST(req: Request) {
             updatedAt: new Date(),
           },
         });
+    }
+
+    try {
+      await db
+        .update(products)
+        .set({
+          name: productRecord.name,
+          mrp: String(productRecord.mrp),
+          offerPrice: String(productRecord.offerPrice),
+          discountPercent: productRecord.discountPercent,
+          packing: productRecord.packing,
+          imageUrl: productRecord.imageUrl,
+          stock: productRecord.stock,
+          updatedAt: new Date(),
+        })
+        .where(or(eq(products.sku, productRecord.sku), eq(products.name, productRecord.name)));
+    } catch (directErr) {
+      console.warn("[POST /products] DB direct update note:", directErr);
     }
   } catch (err) {
     console.warn("[POST /products] DB background sync note:", err);

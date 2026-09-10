@@ -49,15 +49,15 @@ export function PriceListDownloadModal({
   }
 
   async function getCatalog(): Promise<ProductItem[]> {
-    if (products && products.length > 0) {
-      return applyOrder(products);
-    }
     try {
       const res = await fetch("/api/v1/products?limit=500", { cache: "no-store" }).then((r) => r.json());
-      if (res?.data?.items) {
+      if (res?.data?.items && Array.isArray(res.data.items) && res.data.items.length > 0) {
         return applyOrder(res.data.items, res?.data?.productOrder);
       }
     } catch {}
+    if (products && products.length > 0) {
+      return applyOrder(products);
+    }
     return [];
   }
 

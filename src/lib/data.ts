@@ -467,6 +467,10 @@ export type ProductFilters = {
 };
 
 export async function getProducts(filters: ProductFilters = {}) {
+  try {
+    const { syncStoreWithDb } = await import("./products-store");
+    await syncStoreWithDb().catch(() => null);
+  } catch {}
   let baseItems: ProductWithCategory[] = [];
 
   try {
@@ -559,6 +563,10 @@ export async function getProducts(filters: ProductFilters = {}) {
 }
 
 export async function getProductBySlug(slug: string) {
+  try {
+    const { syncStoreWithDb } = await import("./products-store");
+    await syncStoreWithDb().catch(() => null);
+  } catch {}
   let item: ProductWithCategory | null = null;
   try {
     await ensureSeeded();
@@ -594,6 +602,10 @@ export async function getRelatedProducts(categoryId: string, excludeId: string, 
 }
 
 export async function getFeaturedProducts(limit = 8) {
+  try {
+    const { syncStoreWithDb } = await import("./products-store");
+    await syncStoreWithDb().catch(() => null);
+  } catch {}
   let items: ProductWithCategory[] = [];
   try {
     await ensureSeeded();

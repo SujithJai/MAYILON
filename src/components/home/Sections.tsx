@@ -244,31 +244,57 @@ export function QuickCalculator({ products }: { products: CalcProduct[] }) {
   const [q, setQ] = useState("");
   const [qty, setQty] = useState<Record<string, number>>({});
 
+  // 1. Instant rehydration from client storage (zero flicker on refresh)
   useEffect(() => {
     try {
+      let list = [...products];
+      const localProds = typeof window !== "undefined" ? localStorage.getItem("mayilon_custom_products") : null;
+      if (localProds) {
+        const parsed = JSON.parse(localProds);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const map = new Map<string, any>();
+          parsed.forEach((p: any) => {
+            if (p?.id) map.set(p.id, p);
+            if (p?.sku) map.set(p.sku, p);
+          });
+          list = list.map((item) => {
+            const m = map.get(item.id) || map.get(item.sku);
+            return m
+              ? {
+                  ...item,
+                  offerPrice: String(m.offerPrice),
+                  mrp: String(m.mrp),
+                  name: m.name || item.name,
+                  packing: m.packing || item.packing,
+                }
+              : item;
+          });
+        }
+      }
+
       const savedOrder = typeof window !== "undefined" ? localStorage.getItem("mayilon_permanent_product_order") : null;
       if (savedOrder) {
         const orderIds = JSON.parse(savedOrder);
         if (Array.isArray(orderIds) && orderIds.length > 0) {
           const map = new Map<string, number>();
           orderIds.forEach((id: string, idx: number) => map.set(id, idx));
-          const sorted = [...products].sort((a, b) => {
+          list.sort((a, b) => {
             const pa = map.has(a.id) ? map.get(a.id)! : map.has(a.sku || "") ? map.get(a.sku || "")! : 99999;
             const pb = map.has(b.id) ? map.get(b.id)! : map.has(b.sku || "") ? map.get(b.sku || "")! : 99999;
             return pa - pb;
           });
-          setLiveProducts(sorted);
-          return;
         }
       }
-    } catch {}
-    setLiveProducts(products);
+      setLiveProducts(list);
+    } catch {
+      setLiveProducts(products);
+    }
   }, [products]);
 
-  // Live real-time background sync (< 8 seconds guarantee)
+  // 2. Real-time background sync (Immediate on mount + every 3.5 seconds)
   useEffect(() => {
     let active = true;
-    const interval = setInterval(async () => {
+    const fetchLatest = async () => {
       try {
         const res = await fetch("/api/v1/products?limit=250", { cache: "no-store" });
         const json = await res.json();
@@ -289,14 +315,26 @@ export function QuickCalculator({ products }: { products: CalcProduct[] }) {
               }
             }
           } catch {}
+
           setLiveProducts((prev) => {
-            const prevHash = prev.map((p) => `${p.id}:${p.offerPrice}`).join("|");
-            const freshHash = fresh.map((p) => `${p.id}:${p.offerPrice}`).join("|");
+            const prevHash = prev.map((p) => `${p.id}:${p.offerPrice}:${p.mrp}:${p.name}`).join("|");
+            const freshHash = fresh.map((p) => `${p.id}:${p.offerPrice}:${p.mrp}:${p.name}`).join("|");
             return prevHash !== freshHash ? fresh : prev;
           });
+
+          // Also update localStorage so subsequent refreshes have fresh items immediately
+          try {
+            if (typeof window !== "undefined") {
+              localStorage.setItem("mayilon_custom_products", JSON.stringify(fresh));
+            }
+          } catch {}
         }
       } catch {}
-    }, 6000);
+    };
+
+    // Run IMMEDIATELY on page load
+    void fetchLatest();
+    const interval = setInterval(fetchLatest, 3500);
 
     return () => {
       active = false;
