@@ -216,6 +216,7 @@ export function saveProductToStore(prod: ProductRecord): ProductRecord {
   loadFromDisk();
   DELETED_SET.delete(prod.id);
   STORE.set(prod.id, prod);
+  if (prod.sku) STORE.set(prod.sku, prod);
   
   // If product is newly added and not in order, prepend to front
   if (!g.__mayilonProductOrder?.includes(prod.id)) {
@@ -229,7 +230,7 @@ export function saveProductToStore(prod: ProductRecord): ProductRecord {
 /** Get all custom added products */
 export function getCustomProductsFromStore(): ProductRecord[] {
   loadFromDisk();
-  return Array.from(STORE.values());
+  return Array.from(new Set(STORE.values()));
 }
 
 /** Remove individual product from store and persist */
@@ -287,8 +288,6 @@ export function clearAllProductsInStore(): void {
 
 /** Auto-sync product sequence and custom product overrides with PostgreSQL database if configured */
 export async function syncStoreWithDb(): Promise<void> {
-  const url = process.env.DATABASE_URL || process.env.POSTGRES_URL;
-  if (!url || url.includes("127.0.0.1") || url.includes("localhost")) return;
   try {
     const { pool } = await import("@/db");
     await pool.query(`
@@ -305,7 +304,10 @@ export async function syncStoreWithDb(): Promise<void> {
           g.__mayilonProductOrder = row.value;
         } else if (row.key === "products_custom_store" && Array.isArray(row.value) && row.value.length > 0) {
           for (const p of row.value) {
-            if (p && p.id) STORE.set(p.id, p);
+            if (p && p.id) {
+              STORE.set(p.id, p);
+              if (p.sku) STORE.set(p.sku, p);
+            }
           }
         }
       }
@@ -317,8 +319,6 @@ export async function syncStoreWithDb(): Promise<void> {
 
 /** Persist product sequence to PostgreSQL database if configured */
 export async function persistProductOrderToDb(order: string[]): Promise<void> {
-  const url = process.env.DATABASE_URL || process.env.POSTGRES_URL;
-  if (!url || url.includes("127.0.0.1") || url.includes("localhost")) return;
   try {
     const { pool } = await import("@/db");
     await pool.query(`
@@ -338,11 +338,9 @@ export async function persistProductOrderToDb(order: string[]): Promise<void> {
 
 /** Persist all custom/edited products to PostgreSQL database if configured */
 export async function persistProductsToDb(): Promise<void> {
-  const url = process.env.DATABASE_URL || process.env.POSTGRES_URL;
-  if (!url || url.includes("127.0.0.1") || url.includes("localhost")) return;
   try {
     const { pool } = await import("@/db");
-    const list = Array.from(STORE.values());
+    const list = Array.from(new Set(STORE.values()));
     await pool.query(`
       CREATE TABLE IF NOT EXISTS app_settings (
         key TEXT PRIMARY KEY,

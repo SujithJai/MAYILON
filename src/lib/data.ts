@@ -147,11 +147,13 @@ function applyCustomOverrides(items: ProductWithCategory[]): ProductWithCategory
     const idMap = new Map<string, ProductWithCategory>();
     const skuMap = new Map<string, ProductWithCategory>();
     const slugMap = new Map<string, ProductWithCategory>();
+    const nameMap = new Map<string, ProductWithCategory>();
 
     for (const p of baseList) {
       idMap.set(p.id, p);
       if (p.sku) skuMap.set(p.sku, p);
       if (p.slug) slugMap.set(p.slug, p);
+      if (p.name) nameMap.set(p.name.trim().toLowerCase(), p);
     }
 
     const updatedItems = [...baseList];
@@ -161,7 +163,8 @@ function applyCustomOverrides(items: ProductWithCategory[]): ProductWithCategory
         const match =
           idMap.get(c.id) ||
           (c.sku ? skuMap.get(c.sku) : undefined) ||
-          (c.slug ? slugMap.get(c.slug) : undefined);
+          (c.slug ? slugMap.get(c.slug) : undefined) ||
+          (c.name ? nameMap.get(c.name.trim().toLowerCase()) : undefined);
 
         const mrpNum = Number(c.mrp) || 100;
         const offerNum = Number(c.offerPrice) || mrpNum;

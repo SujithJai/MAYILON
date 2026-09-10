@@ -37,6 +37,7 @@ import {
   Trash2,
   Truck,
   X,
+  Zap,
 } from "lucide-react";
 import { LogoLockup } from "@/components/brand/Logo";
 import { formatINR } from "@/lib/estimate";
@@ -126,9 +127,15 @@ export default function AdminPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [draggedId, setDraggedId] = useState<string | null>(null);
 
-  // Product Modal State
+  // Product Modal & Inline Edit State
   const [productModalOpen, setProductModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<ProductItem | null>(null);
+  const [savingProduct, setSavingProduct] = useState(false);
+  const [inlineEditingId, setInlineEditingId] = useState<string | null>(null);
+  const [inlineMrp, setInlineMrp] = useState<number>(0);
+  const [inlineOfferPrice, setInlineOfferPrice] = useState<number>(0);
+  const [inlineStock, setInlineStock] = useState<number>(100);
+  const [savingInline, setSavingInline] = useState(false);
   const [productForm, setProductForm] = useState({
     name: "",
     sku: "",
@@ -275,7 +282,11 @@ export default function AdminPage() {
             }
           }
         }
-      // 2. Rehydrate custom edited product prices/attributes
+      } catch (err) {
+        console.warn("[Admin load] Local product order restoration note:", err);
+      }
+
+      // 2. Rehydrate custom edited product prices/attributes with bulletproof multi-key lookup
       try {
         const localProdsRaw = typeof window !== "undefined" ? localStorage.getItem("mayilon_custom_products") : null;
         if (localProdsRaw) {
@@ -284,17 +295,37 @@ export default function AdminPage() {
             const lMap = new Map<string, any>();
             localProds.forEach((p: any) => {
               if (p && p.id) lMap.set(p.id, p);
+              if (p && p.sku) lMap.set(p.sku, p);
+              if (p && p.slug) lMap.set(p.slug, p);
+              if (p && p.name) lMap.set(p.name.trim().toLowerCase(), p);
             });
             list = list.map((item: any) => {
-              const matched = lMap.get(item.id);
-              return matched ? { ...item, ...matched } : item;
+              const matched =
+                lMap.get(item.id) ||
+                (item.sku ? lMap.get(item.sku) : undefined) ||
+                (item.slug ? lMap.get(item.slug) : undefined) ||
+                (item.name ? lMap.get(item.name.trim().toLowerCase()) : undefined);
+              return matched
+                ? {
+                    ...item,
+                    ...matched,
+                    mrp: Number(matched.mrp ?? item.mrp),
+                    offerPrice: Number(matched.offerPrice ?? item.offerPrice),
+                    packing: String(matched.packing ?? item.packing),
+                    stock: Number(matched.stock ?? item.stock),
+                  }
+                : item;
+            });
+
+            // Auto-sync custom edits to serverless backend if cold started
+            void fetch("/api/v1/products", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ action: "sync_all", state: { products: localProds } }),
             });
           }
         }
       } catch (err) {}
-      } catch (err) {
-        console.warn("[Admin load] Local product order restoration note:", err);
-      }
 
       if (list.length > 0) {
         setProducts(
@@ -601,16 +632,69 @@ export default function AdminPage() {
     );
   }
 
+  async function handleQuickSaveInline(p: ProductItem) {
+    setSavingInline(true);
+    const mrp = Number(inlineMrp) || Number(p.mrp) || 100;
+    const offerPrice = Number(inlineOfferPrice) || Number(p.offerPrice) || mrp;
+    const stock = Number(inlineStock) || Number(p.stock) || 100;
+
+    const updatedItem: ProductItem = {
+      ...p,
+      mrp,
+      offerPrice,
+      stock,
+    };
+    const updatedList = products.map((it) => (it.id === p.id ? updatedItem : it));
+    setProducts(updatedList);
+    try {
+      if (typeof window !== "undefined") {
+        localStorage.setItem("mayilon_custom_products", JSON.stringify(updatedList));
+      }
+    } catch {}
+
+    try {
+      const res = await fetch("/api/v1/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...updatedItem,
+          discountPercent: Math.round(((mrp - offerPrice) / mrp) * 100),
+        }),
+      });
+      const json = await res.json();
+      if (json?.success) {
+        setNotificationToast(`⚡ Updated ${p.name}: Offer ₹${offerPrice} (Live on Website)!`);
+        setTimeout(() => setNotificationToast(null), 3500);
+      } else {
+        alert("Warning: " + (json?.message || "Could not save to server"));
+      }
+    } catch (err: any) {
+      console.warn("Inline save note:", err);
+    } finally {
+      setSavingInline(false);
+      setInlineEditingId(null);
+      await load();
+    }
+  }
+
   async function handleSaveProduct(e: React.FormEvent) {
     e.preventDefault();
+    setSavingProduct(true);
+    const mrpNum = Number(productForm.mrp) || 100;
+    const offerNum = Number(productForm.offerPrice) || mrpNum;
+
     const prodPayload = {
       id: editingProduct ? editingProduct.id : `prod-${Date.now()}`,
       ...productForm,
-      discountPercent: Math.round(((productForm.mrp - productForm.offerPrice) / productForm.mrp) * 100),
+      mrp: mrpNum,
+      offerPrice: offerNum,
+      discountPercent: Math.round(((mrpNum - offerNum) / mrpNum) * 100),
     };
 
     const updatedProducts = editingProduct
-      ? products.map((p) => (p.id === editingProduct.id ? prodPayload : p))
+      ? products.map((p) =>
+          p.id === editingProduct.id || (p.sku && p.sku === editingProduct.sku) ? prodPayload : p
+        )
       : [prodPayload, ...products];
 
     setProducts(updatedProducts);
@@ -621,13 +705,6 @@ export default function AdminPage() {
       }
     } catch {}
 
-    if (editingProduct) {
-      setNotificationToast(`✏️ Product "${productForm.name}" updated & live!`);
-    } else {
-      setNotificationToast(`🎉 New Product "${productForm.name}" added & live!`);
-    }
-
-    // POST to API (persists to server disk and syncs DB)
     try {
       const res = await fetch("/api/v1/products", {
         method: "POST",
@@ -635,17 +712,22 @@ export default function AdminPage() {
         body: JSON.stringify(prodPayload),
       });
       const data = await res.json();
-      if (data?.success) {
+      if (!data?.success) {
+        alert("Warning: " + (data?.message || "Failed to save product"));
+      } else {
         setNotificationToast(`⚡ Product "${productForm.name}" saved! Changes live on website.`);
+        setTimeout(() => setNotificationToast(null), 4000);
       }
-    } catch (apiErr) {
-      console.warn("[handleSaveProduct] API post note:", apiErr);
+    } catch (apiErr: any) {
+      console.warn("[handleSaveProduct] API post error:", apiErr);
+      setNotificationToast(`Product "${productForm.name}" updated locally!`);
+      setTimeout(() => setNotificationToast(null), 4000);
+    } finally {
+      setSavingProduct(false);
+      setProductModalOpen(false);
+      setEditingProduct(null);
+      await load();
     }
-
-    setTimeout(() => setNotificationToast(null), 4000);
-    setProductModalOpen(false);
-    setEditingProduct(null);
-    void load();
   }
 
   async function handleClearAllProducts() {
@@ -1345,34 +1427,100 @@ export default function AdminPage() {
                               )}
                             </td>
                             <td className="py-2.5 px-2 font-medium text-slate-600">{p.categoryName}</td>
-                            <td className="py-2.5 px-2 text-right text-slate-400 line-through">
-                              {formatINR(Number(p.mrp))}
+                            <td className="py-2.5 px-2 text-right">
+                              {inlineEditingId === p.id ? (
+                                <input
+                                  type="number"
+                                  value={inlineMrp}
+                                  onChange={(e) => setInlineMrp(Number(e.target.value))}
+                                  className="w-20 rounded-lg border border-slate-300 bg-white px-2 py-1 text-right text-xs font-bold text-slate-800 shadow-inner"
+                                  placeholder="MRP"
+                                />
+                              ) : (
+                                <span className="text-slate-400 line-through">{formatINR(Number(p.mrp))}</span>
+                              )}
                             </td>
-                            <td className="py-2.5 px-2 text-right font-bold text-red-600">
-                              {formatINR(Number(p.offerPrice))}
+                            <td className="py-2.5 px-2 text-right">
+                              {inlineEditingId === p.id ? (
+                                <input
+                                  type="number"
+                                  value={inlineOfferPrice}
+                                  onChange={(e) => setInlineOfferPrice(Number(e.target.value))}
+                                  className="w-20 rounded-lg border-2 border-red-500 bg-red-50 px-2 py-1 text-right text-xs font-black text-red-600 shadow-inner focus:outline-hidden"
+                                  placeholder="Offer ₹"
+                                />
+                              ) : (
+                                <span className="font-black text-red-600">{formatINR(Number(p.offerPrice))}</span>
+                              )}
                             </td>
-                            <td
-                              className={`py-2.5 px-2 text-right font-bold ${
-                                Number(p.stock) < 200 ? "text-red-600" : "text-emerald-600"
-                              }`}
-                            >
-                              {p.stock}
+                            <td className="py-2.5 px-2 text-right">
+                              {inlineEditingId === p.id ? (
+                                <input
+                                  type="number"
+                                  value={inlineStock}
+                                  onChange={(e) => setInlineStock(Number(e.target.value))}
+                                  className="w-16 rounded-lg border border-slate-300 bg-white px-2 py-1 text-right text-xs font-bold text-slate-800 shadow-inner"
+                                  placeholder="Stock"
+                                />
+                              ) : (
+                                <span
+                                  className={`font-bold ${
+                                    Number(p.stock) < 200 ? "text-red-600" : "text-emerald-600"
+                                  }`}
+                                >
+                                  {p.stock}
+                                </span>
+                              )}
                             </td>
                             <td className="py-2.5 px-3 text-center">
-                              <div className="flex items-center justify-center gap-1.5">
-                                <button
-                                  onClick={() => openEditProduct(p)}
-                                  className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1 text-[11.5px] font-bold text-slate-700 hover:border-red-500 hover:text-red-600 shadow-sm transition"
-                                >
-                                  <Edit size={13} /> Edit
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteProduct(p.id)}
-                                  className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1 text-[11.5px] font-bold text-slate-500 hover:border-red-600 hover:bg-red-600 hover:text-white transition-all shadow-sm"
-                                >
-                                  <Trash2 size={13} /> Delete
-                                </button>
-                              </div>
+                              {inlineEditingId === p.id ? (
+                                <div className="flex items-center justify-center gap-1.5">
+                                  <button
+                                    onClick={() => handleQuickSaveInline(p)}
+                                    disabled={savingInline}
+                                    title="Save Price & Stock changes"
+                                    className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 text-white px-3 py-1.5 text-[11.5px] font-black hover:bg-emerald-700 shadow-sm transition disabled:opacity-50 cursor-pointer"
+                                  >
+                                    <Check size={13} /> {savingInline ? "Saving..." : "Save"}
+                                  </button>
+                                  <button
+                                    onClick={() => setInlineEditingId(null)}
+                                    title="Cancel"
+                                    className="rounded-lg border border-slate-200 bg-slate-100 px-2 py-1.5 text-[11px] font-bold text-slate-600 hover:bg-slate-200 cursor-pointer"
+                                  >
+                                    <X size={13} />
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center justify-center gap-1.5">
+                                  <button
+                                    onClick={() => {
+                                      setInlineEditingId(p.id);
+                                      setInlineMrp(Number(p.mrp));
+                                      setInlineOfferPrice(Number(p.offerPrice));
+                                      setInlineStock(Number(p.stock));
+                                    }}
+                                    title="Quick Price Change"
+                                    className="inline-flex items-center gap-1 rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1 text-[11px] font-black text-amber-900 hover:bg-amber-100 shadow-2xs transition cursor-pointer"
+                                  >
+                                    <Zap size={12} className="text-amber-600 fill-amber-600" /> ₹ Edit
+                                  </button>
+                                  <button
+                                    onClick={() => openEditProduct(p)}
+                                    title="Edit Full Details"
+                                    className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:border-red-500 hover:text-red-600 shadow-2xs transition cursor-pointer"
+                                  >
+                                    <Edit size={12} /> Full Edit
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteProduct(p.id)}
+                                    title="Delete product"
+                                    className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-bold text-slate-400 hover:border-red-600 hover:bg-red-600 hover:text-white transition shadow-2xs cursor-pointer"
+                                  >
+                                    <Trash2 size={12} />
+                                  </button>
+                                </div>
+                              )}
                             </td>
                           </tr>
                         );
@@ -2063,8 +2211,20 @@ export default function AdminPage() {
                   </label>
                 </div>
 
-                <button type="submit" className="btn-gold mt-6 w-full py-3.5 text-sm uppercase font-bold">
-                  {editingProduct ? "Save Product Changes" : "Create & Publish Product"}
+                <button
+                  type="submit"
+                  disabled={savingProduct}
+                  className="btn-gold mt-6 w-full py-3.5 text-sm uppercase font-bold disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  {savingProduct ? (
+                    <>
+                      <span className="animate-spin">⏳</span> Saving Changes & Updating Live...
+                    </>
+                  ) : editingProduct ? (
+                    "💾 Save Product Changes & Publish Live"
+                  ) : (
+                    "🎉 Create & Publish Product Live"
+                  )}
                 </button>
               </form>
             </motion.div>

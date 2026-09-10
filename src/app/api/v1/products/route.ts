@@ -77,11 +77,15 @@ export async function POST(req: Request) {
     return ok({ order: updatedOrder }, "Product sequence updated successfully", 200);
   }
 
-  if (!body.name || !body.mrp || !body.offerPrice) {
+  return saveProductItem(body);
+}
+
+async function saveProductItem(body: any) {
+  if (!body.name || body.mrp === undefined || body.offerPrice === undefined) {
     return fail("Product name, MRP, and offer price are required", [], 400);
   }
 
-  const id = body.id || `prod-${Date.now()}`;
+  const id = String(body.id || `prod-${Date.now()}`);
   const name = String(body.name).trim();
   const sku = String(body.sku || `MYL-PROD-${Date.now().toString().slice(-4)}`).trim();
   const slug = slugify(name);
@@ -113,68 +117,31 @@ export async function POST(req: Request) {
     createdAt: body.createdAt || new Date().toISOString(),
   };
 
-  // 1. Save to Universal Product Store (Guaranteed Zero-Loss Disk Persistence)
+  // 1. Save to Universal Product Store (Guaranteed Zero-Loss Disk & Memory Persistence)
   saveProductToStore(productRecord);
   await persistProductsToDb().catch(() => null);
 
-  // 2. Best-effort DB Sync with valid category reference
+  // 2. Direct PostgreSQL update if database is accessible
   try {
-    const existingCats = await db.select({ id: categories.id }).from(categories).limit(1);
-    const validCatId = existingCats[0]?.id;
-
-    if (validCatId) {
-      await db
-        .insert(products)
-        .values({
-          sku: productRecord.sku,
-          slug: productRecord.slug,
-          name: productRecord.name,
-          categoryId: validCatId,
-          imageUrl: productRecord.imageUrl,
-          packing: productRecord.packing,
-          mrp: String(productRecord.mrp),
-          offerPrice: String(productRecord.offerPrice),
-          discountPercent: productRecord.discountPercent,
-          moq: productRecord.moq,
-          stock: productRecord.stock,
-          isFeatured: productRecord.isFeatured,
-          isNewArrival: productRecord.isNewArrival,
-          isBestSeller: productRecord.isBestSeller,
-          isPremium: productRecord.isPremium,
-        })
-        .onConflictDoUpdate({
-          target: products.sku,
-          set: {
-            name: productRecord.name,
-            mrp: String(productRecord.mrp),
-            offerPrice: String(productRecord.offerPrice),
-            packing: productRecord.packing,
-            imageUrl: productRecord.imageUrl,
-            stock: productRecord.stock,
-            updatedAt: new Date(),
-          },
-        });
-    }
-
-    try {
-      await db
-        .update(products)
-        .set({
-          name: productRecord.name,
-          mrp: String(productRecord.mrp),
-          offerPrice: String(productRecord.offerPrice),
-          discountPercent: productRecord.discountPercent,
-          packing: productRecord.packing,
-          imageUrl: productRecord.imageUrl,
-          stock: productRecord.stock,
-          updatedAt: new Date(),
-        })
-        .where(or(eq(products.sku, productRecord.sku), eq(products.name, productRecord.name)));
-    } catch (directErr) {
-      console.warn("[POST /products] DB direct update note:", directErr);
-    }
-  } catch (err) {
-    console.warn("[POST /products] DB background sync note:", err);
+    const { pool } = await import("@/db");
+    await pool.query(
+      `UPDATE products 
+       SET name = $1, mrp = $2, offer_price = $3, packing = $4, stock = $5, image_url = $6, updated_at = NOW()
+       WHERE sku = $7 OR id::text = $8 OR slug = $9;`,
+      [
+        productRecord.name,
+        String(productRecord.mrp),
+        String(productRecord.offerPrice),
+        productRecord.packing,
+        productRecord.stock,
+        productRecord.imageUrl,
+        productRecord.sku,
+        productRecord.id,
+        productRecord.slug,
+      ],
+    );
+  } catch (sqlErr) {
+    console.warn("[saveProductItem] DB direct SQL update note:", sqlErr);
   }
 
   // 3. Instant Next.js Cache Revalidation
@@ -183,10 +150,10 @@ export async function POST(req: Request) {
     revalidatePath("/products");
     revalidatePath("/estimate");
   } catch (revErr) {
-    console.warn("[POST /products] Revalidation note:", revErr);
+    console.warn("[saveProductItem] Revalidation note:", revErr);
   }
 
-  return ok({ product: productRecord }, "Product saved successfully", 201);
+  return ok({ product: productRecord }, "Product saved successfully", 200);
 }
 
 export async function PUT(req: Request) {
@@ -203,10 +170,7 @@ export async function PUT(req: Request) {
     return ok({ order: updatedOrder }, "Product sequence updated successfully", 200);
   }
 
-  if (!body.id) return fail("Product ID is required", [], 400);
-
-  // If normal product update via PUT, forward to POST logic
-  return POST(req);
+  return saveProductItem(body);
 }
 
 export async function DELETE(req: Request) {

@@ -324,13 +324,6 @@ export function QuickCalculator({ products }: { products: CalcProduct[] }) {
             const freshHash = fresh.map((p) => `${p.id}:${p.offerPrice}:${p.mrp}:${p.name}`).join("|");
             return prevHash !== freshHash ? fresh : prev;
           });
-
-          // Also update localStorage so subsequent refreshes have fresh items immediately
-          try {
-            if (typeof window !== "undefined") {
-              localStorage.setItem("mayilon_custom_products", JSON.stringify(fresh));
-            }
-          } catch {}
         }
       } catch {}
     };

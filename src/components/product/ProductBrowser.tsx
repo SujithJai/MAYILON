@@ -108,13 +108,6 @@ export function ProductBrowser({
           if (typeof json.data.total === "number") {
             setProductTotal(json.data.total);
           }
-
-          // Also update localStorage so subsequent refreshes have fresh items immediately
-          try {
-            if (typeof window !== "undefined") {
-              localStorage.setItem("mayilon_custom_products", JSON.stringify(fresh));
-            }
-          } catch {}
         }
       } catch {}
     };
