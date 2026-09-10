@@ -22,6 +22,8 @@ import {
   Mail,
   MessageCircle,
   Package,
+  Check,
+  FolderTree,
   Plus,
   QrCode,
   Receipt,
@@ -30,6 +32,8 @@ import {
   Send,
   ShieldCheck,
   ShoppingBag,
+  Sparkles,
+  Tags,
   Trash2,
   Truck,
   X,
@@ -100,6 +104,8 @@ const TABS = [
   { k: "dashboard", l: "Dashboard", icon: LayoutDashboard },
   { k: "estimates", l: "Orders & Estimates", icon: Receipt },
   { k: "inventory", l: "Products & Offers", icon: Boxes },
+  { k: "categories", l: "Categories", icon: FolderTree },
+  { k: "banner", l: "Festive Banner", icon: Sparkles },
   { k: "dealers", l: "Dealers", icon: Handshake },
   { k: "enquiries", l: "Enquiries", icon: Mail },
   { k: "analytics", l: "Analytics", icon: BarChart3 },
@@ -146,6 +152,35 @@ export default function AdminPage() {
 
   // Payment Modal State
   const [paymentModalOrder, setPaymentModalOrder] = useState<EstimateRow | null>(null);
+
+  // Categories State
+  const [categoriesList, setCategoriesList] = useState<{ id: string; name: string; slug: string; productCount: number }[]>([]);
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [selectedProductIdsForNewCat, setSelectedProductIdsForNewCat] = useState<string[]>([]);
+  const [catSearchFilter, setCatSearchFilter] = useState("");
+
+  // Rename Category State
+  const [renamingCat, setRenamingCat] = useState<{ id: string; name: string } | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+
+  // Assign Products to Category State
+  const [assignModalCat, setAssignModalCat] = useState<{ id: string; name: string } | null>(null);
+  const [assignProductIds, setAssignProductIds] = useState<string[]>([]);
+  const [assignSearch, setAssignSearch] = useState("");
+
+  // Festive Banner State
+  const [bannerForm, setBannerForm] = useState({
+    enabled: true,
+    title: "விநாயகர் சதுர்த்தி & தீபாவளி மெகா சலுகை!",
+    subtitle: "Sivakasi Direct Factory Fireworks · Flat 80% Off MRP on All Premium Crackers & Gift Boxes",
+    badge: "🐘 Vinayagar Chaturthi & Diwali Mega Sale",
+    discountText: "80% FLAT DISCOUNT · ALL TAMIL NADU DELIVERY",
+    imageUrl: "https://images.unsplash.com/photo-1543807535-eceef0bc6599?auto=format&fit=crop&w=1600&q=80",
+    buttonText: "Instant Order / Cart",
+    buttonLink: "/estimate",
+  });
+  const [savingBanner, setSavingBanner] = useState(false);
 
   const liveStats = useMemo(() => {
     let pipeline = 0;
@@ -338,6 +373,20 @@ export default function AdminPage() {
     try {
       const q = await fetch("/api/v1/enquiries").then((r) => r.json()).catch(() => null);
       if (q?.success) setEnquiries(q.data.items);
+    } catch {}
+
+    try {
+      const c = await fetch("/api/v1/categories").then((r) => r.json()).catch(() => null);
+      if (c?.success && Array.isArray(c?.data?.items)) {
+        setCategoriesList(c.data.items);
+      }
+    } catch {}
+
+    try {
+      const b = await fetch("/api/v1/admin/banner").then((r) => r.json()).catch(() => null);
+      if (b?.success && b?.data) {
+        setBannerForm((prev) => ({ ...prev, ...b.data }));
+      }
     } catch {}
   }, []);
 
@@ -672,6 +721,103 @@ export default function AdminPage() {
       isPremium: false,
     });
     setProductModalOpen(true);
+  }
+
+  async function handleCreateCategory() {
+    if (!newCategoryName.trim()) return;
+    try {
+      const res = await fetch("/api/v1/categories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newCategoryName.trim(),
+          productIds: selectedProductIdsForNewCat,
+        }),
+      }).then((r) => r.json());
+
+      if (res?.success) {
+        setNotificationToast(`Category "${newCategoryName.trim().toUpperCase()}" created successfully!`);
+        setCategoryModalOpen(false);
+        setNewCategoryName("");
+        setSelectedProductIdsForNewCat([]);
+        load();
+      } else {
+        alert(res?.error || "Failed to create category");
+      }
+    } catch (e: any) {
+      alert(e?.message || "Error creating category");
+    }
+  }
+
+  async function handleRenameCategory() {
+    if (!renamingCat || !renameValue.trim()) return;
+    try {
+      const res = await fetch("/api/v1/categories", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: renamingCat.id,
+          oldName: renamingCat.name,
+          name: renameValue.trim(),
+        }),
+      }).then((r) => r.json());
+
+      if (res?.success) {
+        setNotificationToast(`Category renamed to "${renameValue.trim().toUpperCase()}"!`);
+        setRenamingCat(null);
+        load();
+      } else {
+        alert(res?.error || "Failed to rename category");
+      }
+    } catch (e: any) {
+      alert(e?.message || "Error renaming category");
+    }
+  }
+
+  async function handleSaveAssignedProducts() {
+    if (!assignModalCat) return;
+    try {
+      const res = await fetch("/api/v1/categories", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: assignModalCat.id,
+          name: assignModalCat.name,
+          productIds: assignProductIds,
+        }),
+      }).then((r) => r.json());
+
+      if (res?.success) {
+        setNotificationToast(`Updated products in "${assignModalCat.name}"!`);
+        setAssignModalCat(null);
+        load();
+      } else {
+        alert(res?.error || "Failed to assign products");
+      }
+    } catch (e: any) {
+      alert(e?.message || "Error assigning products");
+    }
+  }
+
+  async function handleSaveBanner() {
+    setSavingBanner(true);
+    try {
+      const res = await fetch("/api/v1/admin/banner", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(bannerForm),
+      }).then((r) => r.json());
+
+      if (res?.success) {
+        setNotificationToast("Festival Offer Banner saved and live on homepage!");
+      } else {
+        alert(res?.error || "Failed to save banner");
+      }
+    } catch (e: any) {
+      alert(e?.message || "Error saving banner");
+    } finally {
+      setSavingBanner(false);
+    }
   }
 
   if (authed === null) {
@@ -1237,6 +1383,268 @@ export default function AdminPage() {
               </Panel>
             )}
 
+            {/* Categories Management Tab */}
+            {tab === "categories" && (
+              <div className="space-y-6">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div>
+                    <h2 className="font-display text-xl sm:text-2xl font-bold text-slate-900">
+                      Product Categories ({categoriesList.length})
+                    </h2>
+                    <p className="text-xs sm:text-sm text-slate-500 font-medium">
+                      Create new categories (e.g. KIDS SPECIAL), rename them, and assign products directly.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setNewCategoryName("");
+                      setSelectedProductIdsForNewCat([]);
+                      setCategoryModalOpen(true);
+                    }}
+                    className="flex items-center gap-2 rounded-2xl bg-red-600 px-5 py-2.5 text-xs sm:text-sm font-bold text-white shadow-md transition hover:bg-red-700"
+                  >
+                    <Plus size={16} /> New Category
+                  </button>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {categoriesList.map((c) => {
+                    const catProds = products.filter(
+                      (p) => p.categoryName?.trim().toUpperCase() === c.name?.trim().toUpperCase()
+                    );
+                    return (
+                      <div
+                        key={c.id}
+                        className="rounded-2xl border border-red-500/15 bg-white p-5 shadow-sm transition hover:shadow-md"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <span className="inline-block rounded-full bg-red-50 border border-red-200 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-red-700 mb-1">
+                              Category
+                            </span>
+                            <h3 className="font-display text-base sm:text-lg font-bold text-slate-900">
+                              {c.name}
+                            </h3>
+                          </div>
+                          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700">
+                            {catProds.length} items
+                          </span>
+                        </div>
+
+                        <p className="mt-2 text-xs text-slate-500 line-clamp-2">
+                          {catProds.length > 0
+                            ? catProds.slice(0, 3).map((p) => p.name).join(", ") + (catProds.length > 3 ? ` +${catProds.length - 3} more` : "")
+                            : "No products assigned yet"}
+                        </p>
+
+                        <div className="mt-4 flex items-center gap-2 border-t border-slate-100 pt-3">
+                          <button
+                            onClick={() => {
+                              setRenamingCat({ id: c.id, name: c.name });
+                              setRenameValue(c.name);
+                            }}
+                            className="flex-1 rounded-xl border border-slate-200 bg-slate-50 py-2 text-center text-xs font-bold text-slate-700 hover:border-red-500 hover:text-red-600 transition"
+                          >
+                            Rename
+                          </button>
+                          <button
+                            onClick={() => {
+                              setAssignModalCat({ id: c.id, name: c.name });
+                              setAssignProductIds(catProds.map((p) => p.id));
+                              setAssignSearch("");
+                            }}
+                            className="flex-1 rounded-xl bg-red-50 border border-red-200 py-2 text-center text-xs font-bold text-red-700 hover:bg-red-600 hover:text-white transition"
+                          >
+                            Assign Products
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Festive Banner Settings Tab */}
+            {tab === "banner" && (
+              <div className="space-y-6 max-w-4xl">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div>
+                    <h2 className="font-display text-xl sm:text-2xl font-bold text-slate-900">
+                      Homepage Festival Offer Banner
+                    </h2>
+                    <p className="text-xs sm:text-sm text-slate-500 font-medium">
+                      Full-width promotional banner shown on the homepage right below Instant Order.
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleSaveBanner}
+                    disabled={savingBanner}
+                    className="flex items-center gap-2 rounded-2xl bg-red-600 px-6 py-2.5 text-xs sm:text-sm font-bold text-white shadow-md transition hover:bg-red-700 disabled:opacity-50"
+                  >
+                    <Save size={16} /> {savingBanner ? "Saving..." : "Save Banner"}
+                  </button>
+                </div>
+
+                <div className="rounded-[28px] border border-red-500/15 bg-white p-6 sm:p-8 shadow-md space-y-5">
+                  {/* Enable/Disable Toggle */}
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                    <div>
+                      <span className="block text-sm font-bold text-slate-900">Banner Visibility</span>
+                      <span className="block text-xs text-slate-500">Show this festival banner on the public homepage</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setBannerForm({ ...bannerForm, enabled: !bannerForm.enabled })}
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        bannerForm.enabled ? "bg-red-600" : "bg-slate-200"
+                      }`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                          bannerForm.enabled ? "translate-x-5" : "translate-x-0"
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Festival Title */}
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                      Festival Title (Tamil / English)
+                    </label>
+                    <input
+                      value={bannerForm.title}
+                      onChange={(e) => setBannerForm({ ...bannerForm, title: e.target.value })}
+                      placeholder="e.g. விநாயகர் சதுர்த்தி & தீபாவளி மெகா சலுகை!"
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-bold text-slate-900 outline-none focus:border-red-600"
+                    />
+                  </div>
+
+                  {/* Subtitle */}
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                      Offer Subtitle / Description
+                    </label>
+                    <input
+                      value={bannerForm.subtitle}
+                      onChange={(e) => setBannerForm({ ...bannerForm, subtitle: e.target.value })}
+                      placeholder="e.g. Sivakasi Direct Factory Fireworks · Flat 80% Off MRP on All Premium Crackers"
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-medium text-slate-900 outline-none focus:border-red-600"
+                    />
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {/* Festive Badge */}
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                        Festive Badge Tag
+                      </label>
+                      <input
+                        value={bannerForm.badge}
+                        onChange={(e) => setBannerForm({ ...bannerForm, badge: e.target.value })}
+                        placeholder="e.g. 🐘 Vinayagar Chaturthi & Diwali Mega Sale"
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-900 outline-none focus:border-red-600"
+                      />
+                    </div>
+
+                    {/* Discount Highlight */}
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                        Discount Highlight Text
+                      </label>
+                      <input
+                        value={bannerForm.discountText}
+                        onChange={(e) => setBannerForm({ ...bannerForm, discountText: e.target.value })}
+                        placeholder="e.g. 80% FLAT DISCOUNT · ALL TAMIL NADU DELIVERY"
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-900 outline-none focus:border-red-600"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Image URL & Presets */}
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                      Banner Background Image URL
+                    </label>
+                    <input
+                      value={bannerForm.imageUrl}
+                      onChange={(e) => setBannerForm({ ...bannerForm, imageUrl: e.target.value })}
+                      placeholder="https://..."
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs text-slate-800 outline-none focus:border-red-600 mb-2"
+                    />
+                    <div className="flex flex-wrap items-center gap-2 mt-2">
+                      <span className="text-[11px] font-bold text-slate-500">Quick Festival Presets:</span>
+                      {[
+                        { l: "Vinayagar Chaturthi & Diwali", url: "https://images.unsplash.com/photo-1543807535-eceef0bc6599?auto=format&fit=crop&w=1600&q=80" },
+                        { l: "Golden Fireworks", url: "https://images.unsplash.com/photo-1514565131-fce0801e5785?auto=format&fit=crop&w=1600&q=80" },
+                        { l: "Night Sky Sparks", url: "https://images.unsplash.com/photo-1498931299472-f7a63a5a1cfa?auto=format&fit=crop&w=1600&q=80" },
+                        { l: "Festival Celebration", url: "https://images.unsplash.com/photo-1531306728370-e2ebd9d7bb99?auto=format&fit=crop&w=1600&q=80" },
+                      ].map((preset) => (
+                        <button
+                          key={preset.l}
+                          type="button"
+                          onClick={() => setBannerForm({ ...bannerForm, imageUrl: preset.url })}
+                          className="rounded-lg border border-slate-200 bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:bg-red-50 hover:text-red-600 transition"
+                        >
+                          {preset.l}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                        CTA Button Text
+                      </label>
+                      <input
+                        value={bannerForm.buttonText}
+                        onChange={(e) => setBannerForm({ ...bannerForm, buttonText: e.target.value })}
+                        placeholder="e.g. Instant Order / Cart"
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-900 outline-none focus:border-red-600"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                        CTA Button Link
+                      </label>
+                      <input
+                        value={bannerForm.buttonLink}
+                        onChange={(e) => setBannerForm({ ...bannerForm, buttonLink: e.target.value })}
+                        placeholder="e.g. /estimate or /products"
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-900 outline-none focus:border-red-600"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Live Preview Card */}
+                  <div className="pt-4 border-t border-slate-100">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">
+                      Live Homepage Preview:
+                    </label>
+                    <div className="relative overflow-hidden rounded-[24px] border-2 border-amber-500/40 bg-gradient-to-br from-slate-950 via-red-950 to-amber-950 p-6 text-center text-white shadow-xl">
+                      <div
+                        className="absolute inset-0 bg-cover bg-center mix-blend-luminosity opacity-25"
+                        style={{ backgroundImage: `url(${bannerForm.imageUrl})` }}
+                      />
+                      <div className="relative z-10">
+                        <span className="inline-block rounded-full border border-amber-400/50 bg-amber-500/20 px-3 py-1 text-[10px] font-black uppercase text-amber-300 mb-2">
+                          {bannerForm.badge}
+                        </span>
+                        <h3 className="font-display text-xl sm:text-2xl font-black text-white">{bannerForm.title}</h3>
+                        <p className="mt-1 text-xs text-slate-200 max-w-xl mx-auto">{bannerForm.subtitle}</p>
+                        <div className="mt-4 inline-flex rounded-full bg-red-600 px-5 py-2 text-xs font-extrabold uppercase text-white shadow">
+                          {bannerForm.buttonText} →
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Dealers Tab */}
             {tab === "dealers" && (
               <Panel title={`Dealer Applications (${dealers.length})`}>
@@ -1373,15 +1781,46 @@ export default function AdminPage() {
                     />
                   </label>
                   <label className="block">
-                    <span className="text-[11px] font-bold uppercase tracking-[2px] text-slate-700">Category *</span>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold uppercase tracking-[2px] text-slate-700">Category *</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const customName = prompt("Enter New Category Name (e.g. KIDS SPECIAL):");
+                          if (customName && customName.trim()) {
+                            const upper = customName.trim().toUpperCase();
+                            setProductForm({ ...productForm, categoryName: upper });
+                            fetch("/api/v1/categories", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ name: upper }),
+                            }).then(() => load());
+                          }
+                        }}
+                        className="text-[10px] font-bold text-red-600 hover:underline cursor-pointer"
+                      >
+                        + New Category
+                      </button>
+                    </div>
                     <select
                       value={productForm.categoryName}
                       onChange={(e) => setProductForm({ ...productForm, categoryName: e.target.value })}
                       className="field mt-1.5 !bg-slate-50 !border-slate-300 !text-slate-900 font-bold"
                     >
-                      {["ONE SOUND CRACKERS", "FLOWER POTS", "PREMIUM FOUNTAINS", "GROUND CHAKKARS", "ROCKETS", "SKY SHOTS", "SPARKLERS", "GIFT BOXES"].map((c) => (
-                        <option key={c} value={c}>{c}</option>
-                      ))}
+                      {Array.from(
+                        new Set([
+                          productForm.categoryName,
+                          ...categoriesList.map((c) => c.name),
+                          ...products.map((p) => p.categoryName),
+                          "SOUND CRACKERS", "GROUND CHAKKARS", "FLOWER POTS", "TWINKLING STARS",
+                          "SPARKLERS", "ROCKETS", "FOUNTAINS", "COLOR SMOKE", "FANCY NOVELTIES",
+                          "SINGLE SHOTS", "REPEATERS", "DELUXE CRACKERS", "GIFT BOXES", "KIDS SPECIAL"
+                        ])
+                      )
+                        .filter(Boolean)
+                        .map((c) => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
                     </select>
                   </label>
                 </div>
@@ -1695,6 +2134,288 @@ export default function AdminPage() {
                 >
                   Confirm via PayU
                 </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 1. Create New Category Modal */}
+      <AnimatePresence>
+        {categoryModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setCategoryModalOpen(false)}
+            className="fixed inset-0 z-[999] flex items-center justify-center bg-slate-950/75 p-4 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.94, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.94, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-[32px] border border-red-500/20 bg-white p-7 shadow-2xl"
+            >
+              <button
+                onClick={() => setCategoryModalOpen(false)}
+                className="absolute right-5 top-5 flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-red-600 hover:text-white"
+              >
+                <X size={16} />
+              </button>
+
+              <h2 className="font-display text-xl font-bold text-slate-900">
+                Create New Category
+              </h2>
+              <p className="mt-1 text-xs font-medium text-slate-500">
+                Add a new category (e.g. KIDS SPECIAL) and select initial products to add.
+              </p>
+
+              <div className="mt-5 space-y-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                    Category Name *
+                  </label>
+                  <input
+                    value={newCategoryName}
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                    placeholder="e.g. KIDS SPECIAL"
+                    className="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-2.5 text-sm font-bold text-slate-900 outline-none focus:border-red-600"
+                    autoFocus
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                      Select Products to Assign ({selectedProductIdsForNewCat.length} selected)
+                    </label>
+                    <input
+                      value={catSearchFilter}
+                      onChange={(e) => setCatSearchFilter(e.target.value)}
+                      placeholder="Search..."
+                      className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs outline-none focus:border-red-600 w-28"
+                    />
+                  </div>
+
+                  <div className="max-h-56 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-2 space-y-1">
+                    {products
+                      .filter((p) =>
+                        !catSearchFilter.trim() ||
+                        p.name.toLowerCase().includes(catSearchFilter.toLowerCase()) ||
+                        p.sku.toLowerCase().includes(catSearchFilter.toLowerCase())
+                      )
+                      .map((p) => {
+                        const selected = selectedProductIdsForNewCat.includes(p.id);
+                        return (
+                          <div
+                            key={p.id}
+                            onClick={() => {
+                              setSelectedProductIdsForNewCat((prev) =>
+                                selected ? prev.filter((id) => id !== p.id) : [...prev, p.id]
+                              );
+                            }}
+                            className={`flex items-center justify-between rounded-lg p-2 text-xs font-medium cursor-pointer transition ${
+                              selected ? "bg-red-50 text-red-700 font-bold border border-red-200" : "hover:bg-white text-slate-700"
+                            }`}
+                          >
+                            <span className="truncate pr-2">{p.name} ({p.sku})</span>
+                            <span className={`h-4 w-4 rounded flex items-center justify-center text-[10px] ${
+                              selected ? "bg-red-600 text-white" : "border border-slate-300 bg-white"
+                            }`}>
+                              {selected ? "✓" : ""}
+                            </span>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setCategoryModalOpen(false)}
+                    className="flex-1 rounded-xl border border-slate-200 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCreateCategory}
+                    disabled={!newCategoryName.trim()}
+                    className="flex-1 rounded-xl bg-red-600 py-2.5 text-xs font-bold text-white shadow hover:bg-red-700 disabled:opacity-50"
+                  >
+                    Create Category
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 2. Rename Category Modal */}
+      <AnimatePresence>
+        {renamingCat && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setRenamingCat(null)}
+            className="fixed inset-0 z-[999] flex items-center justify-center bg-slate-950/75 p-4 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.94, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.94, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative w-full max-w-md rounded-[32px] border border-red-500/20 bg-white p-7 shadow-2xl"
+            >
+              <button
+                onClick={() => setRenamingCat(null)}
+                className="absolute right-5 top-5 flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-red-600 hover:text-white"
+              >
+                <X size={16} />
+              </button>
+
+              <h2 className="font-display text-xl font-bold text-slate-900">
+                Rename Category
+              </h2>
+              <p className="mt-1 text-xs font-medium text-slate-500">
+                Renaming will update the category name across all assigned products.
+              </p>
+
+              <div className="mt-5 space-y-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                    Category Name *
+                  </label>
+                  <input
+                    value={renameValue}
+                    onChange={(e) => setRenameValue(e.target.value)}
+                    className="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-2.5 text-sm font-bold text-slate-900 outline-none focus:border-red-600"
+                    autoFocus
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setRenamingCat(null)}
+                    className="flex-1 rounded-xl border border-slate-200 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleRenameCategory}
+                    disabled={!renameValue.trim()}
+                    className="flex-1 rounded-xl bg-red-600 py-2.5 text-xs font-bold text-white shadow hover:bg-red-700 disabled:opacity-50"
+                  >
+                    Save Changes
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 3. Assign Products Modal */}
+      <AnimatePresence>
+        {assignModalCat && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setAssignModalCat(null)}
+            className="fixed inset-0 z-[999] flex items-center justify-center bg-slate-950/75 p-4 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.94, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.94, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-[32px] border border-red-500/20 bg-white p-7 shadow-2xl"
+            >
+              <button
+                onClick={() => setAssignModalCat(null)}
+                className="absolute right-5 top-5 flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-red-600 hover:text-white"
+              >
+                <X size={16} />
+              </button>
+
+              <h2 className="font-display text-xl font-bold text-slate-900">
+                Assign Products to &quot;{assignModalCat.name}&quot;
+              </h2>
+              <p className="mt-1 text-xs font-medium text-slate-500">
+                Select or unselect products that should belong to this category.
+              </p>
+
+              <div className="mt-4 space-y-3">
+                <input
+                  value={assignSearch}
+                  onChange={(e) => setAssignSearch(e.target.value)}
+                  placeholder="Search products by name or SKU..."
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs font-medium outline-none focus:border-red-600"
+                />
+
+                <div className="max-h-72 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-2 space-y-1">
+                  {products
+                    .filter((p) =>
+                      !assignSearch.trim() ||
+                      p.name.toLowerCase().includes(assignSearch.toLowerCase()) ||
+                      p.sku.toLowerCase().includes(assignSearch.toLowerCase())
+                    )
+                    .map((p) => {
+                      const selected = assignProductIds.includes(p.id);
+                      return (
+                        <div
+                          key={p.id}
+                          onClick={() => {
+                            setAssignProductIds((prev) =>
+                              selected ? prev.filter((id) => id !== p.id) : [...prev, p.id]
+                            );
+                          }}
+                          className={`flex items-center justify-between rounded-lg p-2 text-xs font-medium cursor-pointer transition ${
+                            selected ? "bg-red-50 text-red-700 font-bold border border-red-200" : "hover:bg-white text-slate-700"
+                          }`}
+                        >
+                          <div className="truncate pr-2">
+                            <span className="font-bold">{p.name}</span>
+                            <span className="text-[11px] text-slate-500 ml-2">({p.sku}) · {p.categoryName}</span>
+                          </div>
+                          <span className={`h-4 w-4 shrink-0 rounded flex items-center justify-center text-[10px] ${
+                            selected ? "bg-red-600 text-white" : "border border-slate-300 bg-white"
+                          }`}>
+                            {selected ? "✓" : ""}
+                          </span>
+                        </div>
+                      );
+                    })}
+                </div>
+
+                <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                  <span className="text-xs font-bold text-slate-600">
+                    {assignProductIds.length} products assigned
+                  </span>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setAssignModalCat(null)}
+                      className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSaveAssignedProducts}
+                      className="rounded-xl bg-red-600 px-5 py-2 text-xs font-bold text-white shadow hover:bg-red-700"
+                    >
+                      Save
+                    </button>
+                  </div>
+                </div>
               </div>
             </motion.div>
           </motion.div>

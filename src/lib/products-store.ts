@@ -49,15 +49,33 @@ type StoredData = {
 
 type GlobalWithProducts = typeof globalThis & {
   __mayilonCustomProductsStore?: Map<string, ProductRecord>;
+  __mayilonCustomCategoriesStore?: Map<string, CustomCategory>;
   __mayilonClearSeedMode?: boolean;
   __mayilonDeletedProductIds?: Set<string>;
   __mayilonProductOrder?: string[];
   __mayilonStoreLoaded?: boolean;
 };
 
+export type CustomCategory = {
+  id: string;
+  name: string;
+  nameTa?: string | null;
+  slug: string;
+  tagline?: string | null;
+  description?: string | null;
+  imageUrl?: string | null;
+  accent?: string;
+  icon?: string;
+  sortOrder?: number;
+  productCount?: number;
+};
+
 const g = globalThis as GlobalWithProducts;
 if (!g.__mayilonCustomProductsStore) {
   g.__mayilonCustomProductsStore = new Map<string, ProductRecord>();
+}
+if (!g.__mayilonCustomCategoriesStore) {
+  g.__mayilonCustomCategoriesStore = new Map<string, CustomCategory>();
 }
 if (g.__mayilonClearSeedMode === undefined) {
   g.__mayilonClearSeedMode = false;
@@ -70,6 +88,7 @@ if (!g.__mayilonProductOrder) {
 }
 
 const STORE = g.__mayilonCustomProductsStore;
+const CAT_STORE = g.__mayilonCustomCategoriesStore;
 const DELETED_SET = g.__mayilonDeletedProductIds;
 
 function getStoreFilePaths(): string[] {
@@ -336,6 +355,63 @@ export async function persistProductsToDb(): Promise<void> {
     `, [JSON.stringify(list)]);
   } catch (err) {
     // Database persist note
+  }
+}
+
+/** Get all custom categories in memory */
+export function getCustomCategoriesFromStore(): CustomCategory[] {
+  return Array.from(new Set(CAT_STORE.values()));
+}
+
+/** Save custom category into in-memory store */
+export function saveCustomCategoryToStore(cat: CustomCategory): CustomCategory {
+  CAT_STORE.set(cat.id, cat);
+  CAT_STORE.set(cat.slug, cat);
+  return cat;
+}
+
+/** Sync custom categories from PostgreSQL app_settings */
+export async function syncCategoriesWithDb(): Promise<CustomCategory[]> {
+  const url = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+  if (!url || url.includes("127.0.0.1") || url.includes("localhost")) {
+    return Array.from(new Set(CAT_STORE.values()));
+  }
+  try {
+    const { pool } = await import("@/db");
+    const res = await pool.query(`SELECT value FROM app_settings WHERE key = 'categories_custom_store' LIMIT 1;`);
+    if (res?.rows?.[0]?.value && Array.isArray(res.rows[0].value)) {
+      for (const c of res.rows[0].value) {
+        if (c && c.id) {
+          CAT_STORE.set(c.id, c);
+          CAT_STORE.set(c.slug, c);
+        }
+      }
+    }
+  } catch (err) {
+    // Category sync note
+  }
+  return Array.from(new Set(CAT_STORE.values()));
+}
+
+/** Persist custom categories to PostgreSQL database */
+export async function persistCategoriesToDb(): Promise<void> {
+  const url = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+  if (!url || url.includes("127.0.0.1") || url.includes("localhost")) return;
+  try {
+    const { pool } = await import("@/db");
+    const list = Array.from(new Set(CAT_STORE.values()));
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS app_settings (
+        key TEXT PRIMARY KEY,
+        value JSONB NOT NULL,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );
+      INSERT INTO app_settings (key, value, updated_at)
+      VALUES ('categories_custom_store', $1::jsonb, NOW())
+      ON CONFLICT (key) DO UPDATE SET value = $1::jsonb, updated_at = NOW();
+    `, [JSON.stringify(list)]);
+  } catch (err) {
+    // Category persist note
   }
 }
 

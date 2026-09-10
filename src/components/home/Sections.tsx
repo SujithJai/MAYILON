@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   Award,
   ChevronDown,
+  Download,
   Factory,
   Flame,
   IndianRupee,
@@ -20,6 +21,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useEstimate } from "@/components/estimate/EstimateProvider";
+import { PriceListDownloadModal } from "@/components/product/PriceListDownloadModal";
 import { Reveal, StaggerGroup, StaggerItem } from "@/components/ui/Reveal";
 import { formatINR } from "@/lib/estimate";
 import type { CategorySummary } from "@/lib/data";
@@ -243,6 +245,7 @@ export function QuickCalculator({ products }: { products: CalcProduct[] }) {
   const [liveProducts, setLiveProducts] = useState<CalcProduct[]>(products);
   const [q, setQ] = useState("");
   const [qty, setQty] = useState<Record<string, number>>({});
+  const [downloadModalOpen, setDownloadModalOpen] = useState(false);
 
   // 1. Instant rehydration from client storage (zero flicker on refresh)
   useEffect(() => {
@@ -363,6 +366,19 @@ export function QuickCalculator({ products }: { products: CalcProduct[] }) {
     <div className="glass overflow-hidden rounded-[34px] border border-red-500/20 bg-white shadow-xl">
       <div className="grid lg:grid-cols-[1.5fr_1fr]">
         <div className="border-b border-red-500/12 p-7 lg:border-b-0 lg:border-r">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <span className="text-[11.5px] font-bold uppercase tracking-[1.5px] text-slate-500">
+              Instant Order Pricing · 80% Off MRP
+            </span>
+            <button
+              onClick={() => setDownloadModalOpen(true)}
+              className="flex items-center gap-1.5 rounded-full border border-red-500/30 bg-red-50 px-3 py-1.5 text-[11.5px] font-bold text-red-600 shadow-sm transition hover:bg-red-600 hover:text-white active:scale-95"
+            >
+              <Download size={13} />
+              <span>Download Price List (PDF / Excel)</span>
+            </button>
+          </div>
+
           <div className="relative">
             <Search size={17} className="absolute left-4 top-1/2 -translate-y-1/2 text-red-600" />
             <input
@@ -490,6 +506,12 @@ export function QuickCalculator({ products }: { products: CalcProduct[] }) {
           </div>
         </div>
       </div>
+
+      <PriceListDownloadModal
+        isOpen={downloadModalOpen}
+        onClose={() => setDownloadModalOpen(false)}
+        products={liveProducts}
+      />
     </div>
   );
 }

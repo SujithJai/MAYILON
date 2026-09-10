@@ -425,6 +425,7 @@ function baseProductQuery() {
 }
 
 export async function getCategories() {
+  let list: CategorySummary[] = [];
   try {
     await ensureSeeded();
     const rows = await db
@@ -446,11 +447,40 @@ export async function getCategories() {
       .where(isNull(categories.deletedAt))
       .groupBy(categories.id)
       .orderBy(asc(categories.sortOrder));
-    if (rows.length > 0) return rows;
+    if (rows.length > 0) list = rows;
   } catch (err) {
     console.warn("[getCategories] DB unreachable, returning in-memory categories:", err);
+    list = getInMemoryCategories();
   }
-  return getInMemoryCategories();
+
+  // Merge custom categories from store/DB
+  try {
+    const { syncCategoriesWithDb, getCustomCategoriesFromStore } = await import("./products-store");
+    const customCats = await syncCategoriesWithDb().catch(() => getCustomCategoriesFromStore());
+    if (customCats && customCats.length > 0) {
+      const existingSlugs = new Set(list.map((c) => c.slug));
+      for (const cc of customCats) {
+        if (!existingSlugs.has(cc.slug)) {
+          list.push({
+            id: cc.id,
+            name: cc.name,
+            nameTa: cc.nameTa || null,
+            slug: cc.slug,
+            tagline: cc.tagline || null,
+            description: cc.description || null,
+            imageUrl: cc.imageUrl || null,
+            accent: cc.accent || "#D4AF37",
+            icon: cc.icon || "sparkles",
+            sortOrder: cc.sortOrder || list.length,
+            productCount: cc.productCount || 0,
+          });
+          existingSlugs.add(cc.slug);
+        }
+      }
+    }
+  } catch {}
+
+  return list;
 }
 
 export type CategorySummary = Awaited<ReturnType<typeof getCategories>>[number];

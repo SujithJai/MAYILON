@@ -425,29 +425,38 @@ export default function CheckoutPage() {
                               <p className="hidden text-right text-[14.5px] font-bold text-red-600 md:block">
                                 {formatINR(itemPrice)}
                               </p>
-                              <div className="col-span-2 flex items-center justify-center gap-2 md:col-span-1">
-                                <motion.button
-                                  whileTap={{ scale: 0.85 }}
-                                  aria-label="Decrease"
-                                  onClick={() => setQty(it.id, itemQty - 1)}
-                                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-500/30 text-red-600 transition hover:bg-red-600 hover:text-white"
+                              <div className="col-span-2 flex items-center justify-between gap-3 pt-2 border-t border-slate-100 md:border-0 md:pt-0 md:col-span-1 md:justify-center">
+                                <div className="flex items-center gap-1.5">
+                                  <motion.button
+                                    whileTap={{ scale: 0.85 }}
+                                    aria-label="Decrease"
+                                    onClick={() => setQty(it.id, itemQty - 1)}
+                                    className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-500/30 text-red-600 transition hover:bg-red-600 hover:text-white"
+                                  >
+                                    <Minus size={13} />
+                                  </motion.button>
+                                  <input
+                                    value={itemQty}
+                                    onChange={(e) => setQty(it.id, Number(e.target.value) || 0)}
+                                    className="no-spin w-12 sm:w-14 rounded-lg border border-slate-200 bg-slate-50 py-1.5 text-center text-[13.5px] font-bold text-slate-900 outline-none focus:border-red-600"
+                                    inputMode="numeric"
+                                  />
+                                  <motion.button
+                                    whileTap={{ scale: 0.85 }}
+                                    aria-label="Increase"
+                                    onClick={() => setQty(it.id, itemQty + 1)}
+                                    className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-500/30 text-red-600 transition hover:bg-red-600 hover:text-white"
+                                  >
+                                    <Plus size={13} />
+                                  </motion.button>
+                                </div>
+                                <button
+                                  onClick={() => remove(it.id)}
+                                  aria-label={`Remove ${it.name}`}
+                                  className="flex items-center gap-1 text-xs font-bold text-red-600 bg-red-50 border border-red-200 px-2.5 py-1.5 rounded-lg md:hidden"
                                 >
-                                  <Minus size={13} />
-                                </motion.button>
-                                <input
-                                  value={itemQty}
-                                  onChange={(e) => setQty(it.id, Number(e.target.value) || 0)}
-                                  className="no-spin w-14 rounded-lg border border-slate-200 bg-slate-50 py-1.5 text-center text-[14px] font-bold text-slate-900 outline-none focus:border-red-600"
-                                  inputMode="numeric"
-                                />
-                                <motion.button
-                                  whileTap={{ scale: 0.85 }}
-                                  aria-label="Increase"
-                                  onClick={() => setQty(it.id, itemQty + 1)}
-                                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-500/30 text-red-600 transition hover:bg-red-600 hover:text-white"
-                                >
-                                  <Plus size={13} />
-                                </motion.button>
+                                  <Trash2 size={13} /> Remove
+                                </button>
                               </div>
                               <button
                                 onClick={() => remove(it.id)}

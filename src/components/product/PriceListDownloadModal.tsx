@@ -61,25 +61,46 @@ export function PriceListDownloadModal({
     return [];
   }
 
-  // 1. Download as CSV / Excel
+  function groupByCategory(items: ProductItem[]) {
+    const groups: { category: string; items: ProductItem[] }[] = [];
+    const map = new Map<string, ProductItem[]>();
+    for (const item of items) {
+      const cat = (item.categoryName || "Special Fireworks").trim();
+      if (!map.has(cat)) {
+        const arr: ProductItem[] = [];
+        map.set(cat, arr);
+        groups.push({ category: cat, items: arr });
+      }
+      map.get(cat)!.push(item);
+    }
+    return groups;
+  }
+
+  // 1. Download as CSV / Excel (Category-Wise)
   async function downloadExcel() {
     setDownloading("excel");
     try {
       const list = await getCatalog();
+      const groups = groupByCategory(list);
       let csvContent = "\uFEFF"; // UTF-8 BOM for Excel
       csvContent += "MAYILON PYROWORLD - OFFICIAL SIVAKASI FESTIVAL PRICE LIST 2026\n";
       csvContent += "Address: 4/95, Pachayaman Kovil Street, Naranapuram, Sivakasi - 626189, Virudhunagar District\n";
       csvContent += "GSTIN: 33AABCM1234K1ZQ | PESO Licence: E-13579 | Phone: +91 90470 12345\n\n";
-      csvContent += "S.No,SKU,Category,Product Name,Packing,MRP (Rs.),Discount %,Offer Price (Rs.)\n";
 
-      list.forEach((p, idx) => {
-        const mrp = Number(p.mrp) || 0;
-        const offer = Number(p.offerPrice) || mrp;
-        const disc = p.discountPercent || (mrp > 0 ? Math.round(((mrp - offer) / mrp) * 100) : 80);
-        const cleanName = `"${String(p.name).replace(/"/g, '""')}"`;
-        const cleanCat = `"${String(p.categoryName || "Special Fireworks").replace(/"/g, '""')}"`;
-        const cleanPack = `"${String(p.packing || "1 Box").replace(/"/g, '""')}"`;
-        csvContent += `${idx + 1},${p.sku || `MYL-${idx + 1}`},${cleanCat},${cleanName},${cleanPack},${mrp.toFixed(2)},${disc}%,${offer.toFixed(2)}\n`;
+      let globalIdx = 0;
+      groups.forEach((g) => {
+        csvContent += `\n"--- ${g.category.toUpperCase()} (${g.items.length} PRODUCTS) ---",,,,,,\n`;
+        csvContent += "S.No,SKU,Category,Product Name,Packing,MRP (Rs.),Discount %,Offer Price (Rs.)\n";
+        g.items.forEach((p) => {
+          globalIdx += 1;
+          const mrp = Number(p.mrp) || 0;
+          const offer = Number(p.offerPrice) || mrp;
+          const disc = p.discountPercent || (mrp > 0 ? Math.round(((mrp - offer) / mrp) * 100) : 80);
+          const cleanName = `"${String(p.name).replace(/"/g, '""')}"`;
+          const cleanCat = `"${String(g.category).replace(/"/g, '""')}"`;
+          const cleanPack = `"${String(p.packing || "1 Box").replace(/"/g, '""')}"`;
+          csvContent += `${globalIdx},${p.sku || `MYL-${globalIdx}`},${cleanCat},${cleanName},${cleanPack},${mrp.toFixed(2)},${disc}%,${offer.toFixed(2)}\n`;
+        });
       });
 
       const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
@@ -97,27 +118,39 @@ export function PriceListDownloadModal({
     }
   }
 
-  // 2. Download as Word (.doc)
+  // 2. Download as Word (.doc) (Category-Wise)
   async function downloadWord() {
     setDownloading("word");
     try {
       const list = await getCatalog();
+      const groups = groupByCategory(list);
       let tableRows = "";
-      list.forEach((p, idx) => {
-        const mrp = Number(p.mrp) || 0;
-        const offer = Number(p.offerPrice) || mrp;
+      let wordIdx = 0;
+      groups.forEach((g) => {
         tableRows += `
-          <tr style="border-bottom: 1px solid #ddd; ${idx % 2 === 0 ? "background-color: #f9f9f9;" : ""}">
-            <td style="padding: 8px; text-align: center;">${idx + 1}</td>
-            <td style="padding: 8px; font-weight: bold; color: #b91c1c;">${p.sku || `MYL-${idx + 1}`}</td>
-            <td style="padding: 8px;">${p.categoryName || "Special Fireworks"}</td>
-            <td style="padding: 8px; font-weight: bold;">${p.name}</td>
-            <td style="padding: 8px;">${p.packing || "1 Box"}</td>
-            <td style="padding: 8px; text-decoration: line-through; color: #888;">₹${mrp.toFixed(2)}</td>
-            <td style="padding: 8px; font-weight: bold; color: #15803d;">80% OFF</td>
-            <td style="padding: 8px; font-weight: bold; color: #b91c1c; font-size: 14px;">₹${offer.toFixed(2)}</td>
+          <tr style="background-color: #fee2e2; border-top: 2px solid #dc2626; border-bottom: 2px solid #dc2626;">
+            <td colspan="8" style="padding: 10px; font-weight: bold; font-size: 13px; color: #991b1b; text-transform: uppercase;">
+              🎆 ${g.category} &nbsp;—&nbsp; <span style="font-size: 11px; color: #7f1d1d;">(${g.items.length} Products)</span>
+            </td>
           </tr>
         `;
+        g.items.forEach((p) => {
+          wordIdx += 1;
+          const mrp = Number(p.mrp) || 0;
+          const offer = Number(p.offerPrice) || mrp;
+          tableRows += `
+            <tr style="border-bottom: 1px solid #ddd; ${wordIdx % 2 === 0 ? "background-color: #f9f9f9;" : ""}">
+              <td style="padding: 8px; text-align: center;">${wordIdx}</td>
+              <td style="padding: 8px; font-weight: bold; color: #b91c1c;">${p.sku || `MYL-${wordIdx}`}</td>
+              <td style="padding: 8px;">${g.category}</td>
+              <td style="padding: 8px; font-weight: bold;">${p.name}</td>
+              <td style="padding: 8px;">${p.packing || "1 Box"}</td>
+              <td style="padding: 8px; text-decoration: line-through; color: #888;">₹${mrp.toFixed(2)}</td>
+              <td style="padding: 8px; font-weight: bold; color: #15803d;">80% OFF</td>
+              <td style="padding: 8px; font-weight: bold; color: #b91c1c; font-size: 14px;">₹${offer.toFixed(2)}</td>
+            </tr>
+          `;
+        });
       });
 
       const wordHtml = `
@@ -179,11 +212,12 @@ export function PriceListDownloadModal({
     }
   }
 
-  // 3. Print / Save as PDF
+  // 3. Print / Save as PDF (Category-Wise)
   async function downloadPdf() {
     setDownloading("pdf");
     try {
       const list = await getCatalog();
+      const groups = groupByCategory(list);
       const printWindow = window.open("", "_blank");
       if (!printWindow) {
         alert("Please allow popups to open the printable PDF Price List.");
@@ -191,21 +225,32 @@ export function PriceListDownloadModal({
       }
 
       let rows = "";
-      list.forEach((p, idx) => {
-        const mrp = Number(p.mrp) || 0;
-        const offer = Number(p.offerPrice) || mrp;
+      let pdfIdx = 0;
+      groups.forEach((g) => {
         rows += `
-          <tr class="${idx % 2 === 0 ? "even" : ""}">
-            <td style="text-align: center; width: 35px;">${idx + 1}</td>
-            <td style="font-weight: 600; color: #991b1b; width: 90px;">${p.sku || `MYL-${idx + 1}`}</td>
-            <td style="width: 130px; font-size: 11px;">${p.categoryName || "Fireworks"}</td>
-            <td style="font-weight: 700; font-size: 12.5px;">${p.name}</td>
-            <td style="width: 100px; font-size: 11.5px;">${p.packing || "1 Box"}</td>
-            <td style="text-align: right; text-decoration: line-through; color: #777; width: 75px;">₹${mrp.toFixed(2)}</td>
-            <td style="text-align: center; color: #16a34a; font-weight: 800; width: 65px;">80%</td>
-            <td style="text-align: right; font-weight: 800; color: #b91c1c; font-size: 13px; width: 85px;">₹${offer.toFixed(2)}</td>
+          <tr class="category-divider-row" style="background: #fef2f2; border-top: 2px solid #dc2626; border-bottom: 2px solid #dc2626;">
+            <td colspan="8" style="padding: 8px 12px; font-weight: 900; font-size: 12.5px; color: #991b1b; text-transform: uppercase; letter-spacing: 0.5px;">
+              🎇 ${g.category} <span style="font-size: 10.5px; font-weight: 700; background: #ffffff; color: #991b1b; padding: 2px 8px; border-radius: 9999px; margin-left: 8px; border: 1px solid #fca5a5;">${g.items.length} Products</span>
+            </td>
           </tr>
         `;
+        g.items.forEach((p) => {
+          pdfIdx += 1;
+          const mrp = Number(p.mrp) || 0;
+          const offer = Number(p.offerPrice) || mrp;
+          rows += `
+            <tr class="${pdfIdx % 2 === 0 ? "even" : ""}">
+              <td style="text-align: center; width: 35px;">${pdfIdx}</td>
+              <td style="font-weight: 600; color: #991b1b; width: 90px;">${p.sku || `MYL-${pdfIdx}`}</td>
+              <td style="width: 130px; font-size: 11px;">${g.category}</td>
+              <td style="font-weight: 700; font-size: 12.5px;">${p.name}</td>
+              <td style="width: 100px; font-size: 11.5px;">${p.packing || "1 Box"}</td>
+              <td style="text-align: right; text-decoration: line-through; color: #777; width: 75px;">₹${mrp.toFixed(2)}</td>
+              <td style="text-align: center; color: #16a34a; font-weight: 800; width: 65px;">80%</td>
+              <td style="text-align: right; font-weight: 800; color: #b91c1c; font-size: 13px; width: 85px;">₹${offer.toFixed(2)}</td>
+            </tr>
+          `;
+        });
       });
 
       printWindow.document.write(`
@@ -225,6 +270,7 @@ export function PriceListDownloadModal({
             th { background: #dc2626; color: white; padding: 7px 8px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
             td { padding: 6px 8px; border-bottom: 1px solid #e2e8f0; }
             tr.even { background-color: #f8fafc; }
+            tr.category-divider-row td { page-break-after: avoid; }
             .footer { margin-top: 20px; border-top: 1px solid #cbd5e1; padding-top: 10px; font-size: 10px; color: #64748b; display: flex; justify-content: space-between; }
             @media print {
               .no-print { display: none; }

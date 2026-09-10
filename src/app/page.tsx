@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, MessageCircle, Phone } from "lucide-react";
 import { Hero } from "@/components/home/Hero";
+import { FestivalOfferBanner } from "@/components/home/FestivalOfferBanner";
 import {
   FAQAccordion,
   Features,
@@ -59,7 +60,10 @@ export default async function HomePage() {
         </Reveal>
       </section>
 
-      {/* 2. Products Section right below Calculator */}
+      {/* FULL-WIDTH FESTIVAL OFFER BANNER (Manageable from Admin) */}
+      <FestivalOfferBanner />
+
+      {/* 2. Products Section right below Banner */}
       <section className="shell py-14">
         <SectionHeading
           align="left"
