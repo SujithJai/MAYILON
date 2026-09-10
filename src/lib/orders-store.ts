@@ -187,3 +187,52 @@ export function updateOrderStatusInStore(
   saveOrdersToDisk();
   return updated;
 }
+
+/** Auto-sync orders with PostgreSQL database if configured */
+export async function syncOrdersWithDb(): Promise<void> {
+  const url = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+  if (!url || url.includes("127.0.0.1") || url.includes("localhost")) return;
+  try {
+    const { pool } = await import("@/db");
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS app_settings (
+        key TEXT PRIMARY KEY,
+        value JSONB NOT NULL,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );
+    `);
+    const res = await pool.query(`SELECT value FROM app_settings WHERE key = 'orders_store' LIMIT 1;`);
+    if (res?.rows?.length > 0 && Array.isArray(res.rows[0].value)) {
+      for (const o of res.rows[0].value) {
+        if (o && o.estimateNumber) {
+          STORE.set(o.estimateNumber, o);
+        }
+      }
+    }
+  } catch (err) {
+    // Database sync note (safe fallback to memory/disk)
+  }
+}
+
+/** Persist all orders to PostgreSQL database if configured */
+export async function persistOrdersToDb(): Promise<void> {
+  const url = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+  if (!url || url.includes("127.0.0.1") || url.includes("localhost")) return;
+  try {
+    const { pool } = await import("@/db");
+    const list = Array.from(STORE.values());
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS app_settings (
+        key TEXT PRIMARY KEY,
+        value JSONB NOT NULL,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );
+      INSERT INTO app_settings (key, value, updated_at)
+      VALUES ('orders_store', $1::jsonb, NOW())
+      ON CONFLICT (key) DO UPDATE SET value = $1::jsonb, updated_at = NOW();
+    `, [JSON.stringify(list)]);
+  } catch (err) {
+    // Database persist note
+  }
+}
+

@@ -4,11 +4,17 @@ import { z } from "zod";
 import { db } from "@/db";
 import { auditLogs, estimateItems, estimates } from "@/db/schema";
 import { fail, ok, zodFail } from "@/lib/api";
-import { getOrderFromStore, updateOrderStatusInStore } from "@/lib/orders-store";
+import {
+  getOrderFromStore,
+  persistOrdersToDb,
+  syncOrdersWithDb,
+  updateOrderStatusInStore,
+} from "@/lib/orders-store";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(_req: Request, ctx: { params: Promise<{ number: string }> }) {
+  await syncOrdersWithDb().catch(() => null);
   const { number } = await ctx.params;
 
   let estimate: any = undefined;
@@ -53,6 +59,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ number: strin
 
   // 1. Update in Universal Store
   const storeUpdated = updateOrderStatusInStore(number, patchData);
+  await persistOrdersToDb().catch(() => null);
 
   // 2. Best-effort DB update
   let dbUpdated: any = null;

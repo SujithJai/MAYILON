@@ -3,7 +3,14 @@ import { db } from "@/db";
 import { customers, estimateItems, estimates } from "@/db/schema";
 import { ok } from "@/lib/api";
 import { calculateTotals, extractNumber, makeEstimateNumber } from "@/lib/estimate";
-import { bulkSyncOrders, getAllOrdersFromStore, saveOrderToStore, type OrderRecord } from "@/lib/orders-store";
+import {
+  bulkSyncOrders,
+  getAllOrdersFromStore,
+  persistOrdersToDb,
+  saveOrderToStore,
+  syncOrdersWithDb,
+  type OrderRecord,
+} from "@/lib/orders-store";
 
 export const dynamic = "force-dynamic";
 
@@ -98,6 +105,7 @@ export async function POST(req: Request) {
 
   // 1. Save to Universal Store FIRST (Instant Guaranteed Availability)
   saveOrderToStore(newOrder);
+  await persistOrdersToDb().catch(() => null);
 
   // 2. Background DB Insert (Best Effort Sync)
   try {
@@ -197,6 +205,7 @@ export async function POST(req: Request) {
 
 /** Admin listing (Merges Store + DB) */
 export async function GET() {
+  await syncOrdersWithDb().catch(() => null);
   const storeOrders = getAllOrdersFromStore();
   let dbRows: any[] = [];
 
