@@ -424,7 +424,21 @@ function baseProductQuery() {
     .innerJoin(categories, eq(products.categoryId, categories.id));
 }
 
-export async function getCategories() {
+export type CategorySummary = {
+  id: string;
+  name: string;
+  nameTa: string | null;
+  slug: string;
+  tagline: string | null;
+  description: string | null;
+  imageUrl: string | null;
+  accent: string | null;
+  icon: string | null;
+  sortOrder: number | null;
+  productCount: number;
+};
+
+export async function getCategories(): Promise<CategorySummary[]> {
   let list: CategorySummary[] = [];
   try {
     await ensureSeeded();
@@ -482,8 +496,6 @@ export async function getCategories() {
 
   return list;
 }
-
-export type CategorySummary = Awaited<ReturnType<typeof getCategories>>[number];
 
 export type ProductFilters = {
   category?: string;

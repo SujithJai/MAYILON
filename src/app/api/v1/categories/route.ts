@@ -3,7 +3,7 @@ import { eq, or } from "drizzle-orm";
 import { db } from "@/db";
 import { categories, products } from "@/db/schema";
 import { fail, ok } from "@/lib/api";
-import { getCategories, getProducts } from "@/lib/data";
+import { getCategories, getProducts, type CategorySummary, type ProductWithCategory } from "@/lib/data";
 import {
   persistCategoriesToDb,
   persistProductsToDb,
@@ -21,17 +21,17 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   await syncCategoriesWithDb().catch(() => null);
   await syncStoreWithDb().catch(() => null);
-  const items = await getCategories();
-  const prods = await getProducts({ limit: 500 }).catch(() => ({ items: [] }));
+  const items: CategorySummary[] = await getCategories();
+  const prods = await getProducts({ limit: 500 }).catch(() => ({ items: [] as ProductWithCategory[] }));
   
   // Real-time product counts per category
   const countMap = new Map<string, number>();
-  prods.items.forEach((p) => {
+  prods.items.forEach((p: ProductWithCategory) => {
     const cName = (p.categoryName || "Special Fireworks").trim().toUpperCase();
     countMap.set(cName, (countMap.get(cName) || 0) + 1);
   });
 
-  const updatedItems = items.map((c) => ({
+  const updatedItems = items.map((c: CategorySummary) => ({
     ...c,
     productCount: countMap.get(c.name.trim().toUpperCase()) || c.productCount || 0,
   }));
