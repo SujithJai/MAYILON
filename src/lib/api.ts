@@ -5,7 +5,10 @@ export function ok<T>(data: T, message = "Operation Successful", status = 200) {
   return NextResponse.json({ success: true, message, data }, { status });
 }
 
-export function fail(message: string, errors: unknown[] = [], status = 400) {
+export function fail(message: string, errors: unknown[] | number = [], status = 400) {
+  if (typeof errors === "number") {
+    return NextResponse.json({ success: false, message, errors: [] }, { status: errors });
+  }
   return NextResponse.json({ success: false, message, errors }, { status });
 }
 

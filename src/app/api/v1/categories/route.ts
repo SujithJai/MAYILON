@@ -44,7 +44,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const rawName = String(body.name || "").trim();
     if (!rawName) {
-      return fail("Category name is required", 400);
+      return fail("Category name is required", [], 400);
     }
 
     const name = rawName.toUpperCase();
@@ -127,7 +127,7 @@ export async function POST(req: Request) {
     return ok(newCategory);
   } catch (err: any) {
     console.error("[POST /categories] Error:", err);
-    return fail(err?.message || "Failed to create category", 500);
+    return fail(err?.message || "Failed to create category", [], 500);
   }
 }
 
@@ -137,7 +137,7 @@ export async function PUT(req: Request) {
     const oldName = String(body.oldName || "").trim().toUpperCase();
     const newName = String(body.name || "").trim().toUpperCase();
     if (!newName) {
-      return fail("New category name is required", 400);
+      return fail("New category name is required", [], 400);
     }
 
     const slug = slugify(newName);
@@ -195,6 +195,6 @@ export async function PUT(req: Request) {
     return ok(updatedCat);
   } catch (err: any) {
     console.error("[PUT /categories] Error:", err);
-    return fail(err?.message || "Failed to update category", 500);
+    return fail(err?.message || "Failed to update category", [], 500);
   }
 }

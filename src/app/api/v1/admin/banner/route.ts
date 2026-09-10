@@ -80,6 +80,6 @@ export async function POST(req: Request) {
     return ok(config);
   } catch (err: any) {
     console.error("[POST /banner] Error:", err);
-    return fail(err?.message || "Failed to save banner", 500);
+    return fail(err?.message || "Failed to save banner", [], 500);
   }
 }
