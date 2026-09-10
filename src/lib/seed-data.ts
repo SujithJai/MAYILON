@@ -165,20 +165,20 @@ export const SEED_CATEGORIES: SeedCategory[] = [
   },
 ];
 
-export const SEED_PRODUCTS: Record<string, [string, number, string, number, string?, string?][]> = {
+export const SEED_PRODUCTS: Record<string, [string, number, string, number, string?, string?, number?][]> = {
   "single-sound": [
     ["3 1/2\" Laxmi", 150, "1 Box", 5, "B"],
     ["4\" Deluxe Laxmi", 250, "1 Box", 5, "N"],
     ["4\" Gold Laxmi", 300, "1 Box", 5, "P"],
     ["5\" Laxmi", 350, "1 Box", 5, "PN"],
-    ["2 Sound", 300, "1 Box", 5, "B"],
+    ["2 Sound", 300, "1 Box", 5, "B", undefined, 55],
     ["2 3/4\" Kuruvi", 100, "1 Box", 5, "B"],
     ["4\" Laxmi", 200, "1 Box", 5, "F"],
   ],
 
   "bijili-crackers": [
-    ["Red Bijili 100", 250, "1 Bag (100 Pcs)", 100, "B"],
-    ["Stripped Bijili 100", 300, "1 Bag (100 Pcs)", 100, "F"],
+    ["Red Bijili 100", 250, "1 Bag (100 Pcs)", 100, "B", undefined, 30],
+    ["Stripped Bijili 100", 300, "1 Bag (100 Pcs)", 100, "F", undefined, 55],
   ],
 
   "ground-chakkar": [
@@ -189,13 +189,13 @@ export const SEED_PRODUCTS: Record<string, [string, number, string, number, stri
   ],
 
   "twinkling-star": [
-    ["1 1/2' Twinkling Stars", 150, "1 Box (10 Pcs)", 10, "B"],
+    ["1 1/2' Twinkling Stars", 150, "1 Box (10 Pcs)", 10, "B", undefined, 35],
     ["4' Twinkling Stars", 350, "1 Box (10 Pcs)", 10, "F"],
   ],
 
   "flower-pots": [
     ["Flower Pots Big", 400, "1 Box (10 Pcs)", 10, "B"],
-    ["Flower Pots Special", 550, "1 Box (10 Pcs)", 10, "F"],
+    ["Flower Pots Special", 550, "1 Box (10 Pcs)", 10, "F", undefined, 115],
     ["Flower Pots Asoka", 700, "1 Box (10 Pcs)", 10, "P"],
     ["Colour Kotti", 850, "1 Box (10 Pcs)", 10, "N"],
     ["Colour Kotti Deluxe", 1000, "1 Box (10 Pcs)", 10, "PN"],

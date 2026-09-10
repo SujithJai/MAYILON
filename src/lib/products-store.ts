@@ -266,7 +266,7 @@ export function clearAllProductsInStore(): void {
   saveToDisk();
 }
 
-/** Auto-sync product sequence with PostgreSQL database if configured */
+/** Auto-sync product sequence and custom product overrides with PostgreSQL database if configured */
 export async function syncStoreWithDb(): Promise<void> {
   const url = process.env.DATABASE_URL || process.env.POSTGRES_URL;
   if (!url || url.includes("127.0.0.1") || url.includes("localhost")) return;
@@ -279,9 +279,17 @@ export async function syncStoreWithDb(): Promise<void> {
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       );
     `);
-    const res = await pool.query(`SELECT value FROM app_settings WHERE key = 'product_order' LIMIT 1;`);
-    if (res?.rows?.length > 0 && Array.isArray(res.rows[0].value) && res.rows[0].value.length > 0) {
-      g.__mayilonProductOrder = res.rows[0].value;
+    const res = await pool.query(`SELECT key, value FROM app_settings WHERE key IN ('product_order', 'products_custom_store');`);
+    if (res?.rows?.length > 0) {
+      for (const row of res.rows) {
+        if (row.key === "product_order" && Array.isArray(row.value) && row.value.length > 0) {
+          g.__mayilonProductOrder = row.value;
+        } else if (row.key === "products_custom_store" && Array.isArray(row.value) && row.value.length > 0) {
+          for (const p of row.value) {
+            if (p && p.id) STORE.set(p.id, p);
+          }
+        }
+      }
     }
   } catch (err) {
     // Database sync note (safe fallback to disk/memory)
@@ -304,6 +312,28 @@ export async function persistProductOrderToDb(order: string[]): Promise<void> {
       VALUES ('product_order', $1::jsonb, NOW())
       ON CONFLICT (key) DO UPDATE SET value = $1::jsonb, updated_at = NOW();
     `, [JSON.stringify(order)]);
+  } catch (err) {
+    // Database persist note
+  }
+}
+
+/** Persist all custom/edited products to PostgreSQL database if configured */
+export async function persistProductsToDb(): Promise<void> {
+  const url = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+  if (!url || url.includes("127.0.0.1") || url.includes("localhost")) return;
+  try {
+    const { pool } = await import("@/db");
+    const list = Array.from(STORE.values());
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS app_settings (
+        key TEXT PRIMARY KEY,
+        value JSONB NOT NULL,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );
+      INSERT INTO app_settings (key, value, updated_at)
+      VALUES ('products_custom_store', $1::jsonb, NOW())
+      ON CONFLICT (key) DO UPDATE SET value = $1::jsonb, updated_at = NOW();
+    `, [JSON.stringify(list)]);
   } catch (err) {
     // Database persist note
   }

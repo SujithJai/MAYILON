@@ -9,6 +9,7 @@ import {
   getFullStoreState,
   getProductOrderFromStore,
   persistProductOrderToDb,
+  persistProductsToDb,
   saveProductToStore,
   setProductOrderInStore,
   syncAllProductsState,
@@ -113,6 +114,7 @@ export async function POST(req: Request) {
 
   // 1. Save to Universal Product Store (Guaranteed Zero-Loss Disk Persistence)
   saveProductToStore(productRecord);
+  await persistProductsToDb().catch(() => null);
 
   // 2. Best-effort DB Sync with valid category reference
   try {
@@ -173,6 +175,7 @@ export async function PUT(req: Request) {
 
   if (body.action === "reorder" && Array.isArray(body.order)) {
     const updatedOrder = setProductOrderInStore(body.order);
+    await persistProductOrderToDb(body.order).catch(() => null);
     try {
       revalidatePath("/", "layout");
       revalidatePath("/products");
@@ -194,6 +197,8 @@ export async function DELETE(req: Request) {
 
   if (action === "clear-all") {
     clearAllProductsInStore();
+    await persistProductsToDb().catch(() => null);
+    await persistProductOrderToDb([]).catch(() => null);
     try {
       revalidatePath("/", "layout");
       revalidatePath("/products");
@@ -205,6 +210,8 @@ export async function DELETE(req: Request) {
   if (!id) return fail("Product ID required", [], 400);
 
   deleteProductFromStore(id);
+  await persistProductsToDb().catch(() => null);
+  await persistProductOrderToDb(getProductOrderFromStore()).catch(() => null);
 
   try {
     revalidatePath("/", "layout");

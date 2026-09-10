@@ -61,9 +61,9 @@ function getInMemoryProducts(): ProductWithCategory[] {
     const cat = catMap.get(catSlug);
     if (!cat) continue;
     rows.forEach((row, idx) => {
-      const [name, mrp, packing, pieces, flags = "", customImg] = row;
-      const discount = 80;
-      const offer = Math.round((mrp * 20) / 100);
+      const [name, mrp, packing, pieces, flags = "", customImg, customOffer] = row;
+      const offer = customOffer !== undefined ? customOffer : Math.round((mrp * 20) / 100);
+      const discount = Math.round(((mrp - offer) / mrp) * 100);
       const img = customImg ?? IMAGE_POOL[n % IMAGE_POOL.length];
       list.push({
         id: `prod-${n + 1}`,
@@ -302,9 +302,9 @@ async function seed() {
       const categoryId = bySlug.get(catSlug);
       if (!categoryId) continue;
       rows.forEach((row, idx) => {
-        const [name, mrp, packing, pieces, flags = "", customImg] = row;
-        const discount = 80;
-        const offer = Math.round((mrp * 20) / 100);
+        const [name, mrp, packing, pieces, flags = "", customImg, customOffer] = row;
+        const offer = customOffer !== undefined ? customOffer : Math.round((mrp * 20) / 100);
+        const discount = Math.round(((mrp - offer) / mrp) * 100);
         const img = customImg ?? IMAGE_POOL[n % IMAGE_POOL.length];
         productRows.push({
           sku: `MYL-${CATEGORY_CODE[catSlug] ?? "GEN"}-${`${idx + 1}`.padStart(2, "0")}`,

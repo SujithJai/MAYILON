@@ -240,6 +240,23 @@ export default function AdminPage() {
             }
           }
         }
+      // 2. Rehydrate custom edited product prices/attributes
+      try {
+        const localProdsRaw = typeof window !== "undefined" ? localStorage.getItem("mayilon_custom_products") : null;
+        if (localProdsRaw) {
+          const localProds = JSON.parse(localProdsRaw);
+          if (Array.isArray(localProds) && localProds.length > 0) {
+            const lMap = new Map<string, any>();
+            localProds.forEach((p: any) => {
+              if (p && p.id) lMap.set(p.id, p);
+            });
+            list = list.map((item: any) => {
+              const matched = lMap.get(item.id);
+              return matched ? { ...item, ...matched } : item;
+            });
+          }
+        }
+      } catch (err) {}
       } catch (err) {
         console.warn("[Admin load] Local product order restoration note:", err);
       }
@@ -543,13 +560,21 @@ export default function AdminPage() {
       discountPercent: Math.round(((productForm.mrp - productForm.offerPrice) / productForm.mrp) * 100),
     };
 
+    const updatedProducts = editingProduct
+      ? products.map((p) => (p.id === editingProduct.id ? prodPayload : p))
+      : [prodPayload, ...products];
+
+    setProducts(updatedProducts);
+
+    try {
+      if (typeof window !== "undefined") {
+        localStorage.setItem("mayilon_custom_products", JSON.stringify(updatedProducts));
+      }
+    } catch {}
+
     if (editingProduct) {
-      setProducts((prev) =>
-        prev.map((p) => (p.id === editingProduct.id ? prodPayload : p)),
-      );
       setNotificationToast(`✏️ Product "${productForm.name}" updated & live!`);
     } else {
-      setProducts((prev) => [prodPayload, ...prev]);
       setNotificationToast(`🎉 New Product "${productForm.name}" added & live!`);
     }
 
@@ -578,6 +603,11 @@ export default function AdminPage() {
     if (!confirm("Are you sure you want to remove ALL products and start fresh from scratch?")) return;
     setProducts([]);
     try {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("mayilon_custom_products");
+      }
+    } catch {}
+    try {
       await fetch("/api/v1/products?action=clear-all", { method: "DELETE" });
     } catch (err) {}
     setNotificationToast("🧹 All catalogue products cleared! Ready for your fresh product uploads.");
@@ -586,7 +616,13 @@ export default function AdminPage() {
 
   async function handleDeleteProduct(id: string) {
     if (!confirm("Delete this product from catalogue?")) return;
-    setProducts((prev) => prev.filter((p) => p.id !== id));
+    const remaining = products.filter((p) => p.id !== id);
+    setProducts(remaining);
+    try {
+      if (typeof window !== "undefined") {
+        localStorage.setItem("mayilon_custom_products", JSON.stringify(remaining));
+      }
+    } catch {}
     try {
       await fetch(`/api/v1/products?id=${id}`, { method: "DELETE" });
     } catch (err) {}
