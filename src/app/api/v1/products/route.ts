@@ -174,6 +174,12 @@ async function saveProductItem(body: any) {
     createdAt: body.createdAt || new Date().toISOString(),
   };
 
+  // If order array is provided, sync order FIRST so new product stays at the end of category!
+  if (Array.isArray(body.order) && body.order.length > 0) {
+    setProductOrderInStore(body.order);
+    await persistProductOrderToDb(body.order).catch(() => null);
+  }
+
   // 1. Save to Universal Product Store (Guaranteed Zero-Loss Disk & Memory Persistence)
   saveProductToStore(productRecord);
   await persistProductsToDb().catch(() => null);

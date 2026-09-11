@@ -47,7 +47,7 @@ export async function POST(req: Request) {
       return fail("Category name is required", [], 400);
     }
 
-    const name = rawName.toUpperCase();
+    const name = rawName;
     const slug = slugify(name);
     const catId = body.id || `cat-${Date.now()}`;
 

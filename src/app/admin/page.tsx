@@ -349,6 +349,29 @@ export default function AdminPage() {
     return pills;
   }, [products]);
 
+  // Clean, case-insensitively deduplicated category options for dropdown
+  const cleanCategoryOptions = useMemo(() => {
+    const seen = new Set<string>();
+    const list: string[] = [];
+
+    const addCat = (catName?: string) => {
+      if (!catName || !catName.trim()) return;
+      const trimmed = catName.trim();
+      const key = trimmed.toLowerCase();
+      if (!seen.has(key)) {
+        seen.add(key);
+        list.push(trimmed);
+      }
+    };
+
+    if (productForm.categoryName) addCat(productForm.categoryName);
+    for (const c of OFFICIAL_CATEGORIES) addCat(c);
+    for (const c of categoriesList) addCat(c.name);
+    for (const p of products) addCat(p.categoryName);
+
+    return list;
+  }, [productForm.categoryName, categoriesList, products]);
+
   const categoryGroups = useMemo(() => {
     const map = new Map<string, ProductItem[]>();
 
@@ -997,9 +1020,11 @@ export default function AdminPage() {
 
     setProducts(updatedProducts);
 
+    const newOrderIds = updatedProducts.map((p) => p.id);
     try {
       if (typeof window !== "undefined") {
         localStorage.setItem("mayilon_custom_products", JSON.stringify(updatedProducts));
+        localStorage.setItem("mayilon_permanent_product_order", JSON.stringify(newOrderIds));
       }
     } catch {}
 
@@ -1007,7 +1032,10 @@ export default function AdminPage() {
       const res = await fetch("/api/v1/products", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(prodPayload),
+        body: JSON.stringify({
+          ...prodPayload,
+          order: newOrderIds,
+        }),
       });
       const data = await res.json();
       if (!data?.success) {
@@ -1081,11 +1109,13 @@ export default function AdminPage() {
     setProductModalOpen(true);
   }
 
-  function openAddProduct() {
+  function openAddProduct(categoryName?: string) {
     setEditingProduct(null);
-    const cat = selectedCategoryFilter !== "ALL" ? selectedCategoryFilter : "One Sound / 2 Sound Crackers";
-    const catItems = products.filter((p) => p.categoryName?.toLowerCase() === cat.toLowerCase());
-    const prefix = PREFIX_MAP[cat] || "MYL-PRD";
+    const cat = (typeof categoryName === "string" && categoryName.trim())
+      ? categoryName.trim()
+      : (selectedCategoryFilter !== "ALL" ? selectedCategoryFilter : "One Sound / 2 Sound Crackers");
+    const catItems = products.filter((p) => p.categoryName?.trim().toLowerCase() === cat.trim().toLowerCase());
+    const prefix = PREFIX_MAP[cat] || `MYL-${cat.replace(/[^A-Za-z0-9]/g, "").slice(0, 3).toUpperCase()}`;
     const nextSku = `${prefix}-${(catItems.length + 1).toString().padStart(2, "0")}`;
 
     setProductForm({
@@ -1641,10 +1671,21 @@ export default function AdminPage() {
                         {savingWholeWebsite ? "Publishing Live..." : "💾 Save Whole Website & Publish Live"}
                       </button>
                       <button
-                        onClick={openAddProduct}
+                        onClick={() => openAddProduct()}
                         className="btn-gold flex items-center gap-2 px-5 py-2.5 text-[12.5px] uppercase font-bold cursor-pointer shadow-sm"
                       >
                         <Plus size={16} /> Upload New Product
+                      </button>
+                      <button
+                        onClick={() => {
+                          setNewCategoryName("");
+                          setSelectedProductIdsForNewCat([]);
+                          setCategoryModalOpen(true);
+                        }}
+                        className="flex items-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 px-4 py-2.5 text-[12.5px] font-black uppercase tracking-wider shadow-sm transition cursor-pointer"
+                        title="Create a new category at the top"
+                      >
+                        <FolderTree size={16} className="text-amber-600" /> + New Category
                       </button>
                       <button
                         onClick={handleClearAllProducts}
@@ -1760,6 +1801,13 @@ export default function AdminPage() {
                             )}
                           </div>
                           <div className="flex items-center gap-2.5">
+                            <button
+                              onClick={() => openAddProduct(group.category)}
+                              className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 hover:bg-red-500 px-3 py-1.5 text-xs font-black text-white shadow-sm transition cursor-pointer"
+                              title={`Add new product directly to "${group.category}" (Appends at the end)`}
+                            >
+                              <Plus size={13} /> + Add Product
+                            </button>
                             <button
                               onClick={() => handleSaveCategory(group.category)}
                               disabled={savingCategory === group.category}
@@ -2403,20 +2451,11 @@ export default function AdminPage() {
                       onChange={(e) => setProductForm({ ...productForm, categoryName: e.target.value })}
                       className="field mt-1.5 !bg-slate-50 !border-slate-300 !text-slate-900 font-bold"
                     >
-                      {Array.from(
-                        new Set([
-                          productForm.categoryName,
-                          ...categoriesList.map((c) => c.name),
-                          ...products.map((p) => p.categoryName),
-                          "SOUND CRACKERS", "GROUND CHAKKARS", "FLOWER POTS", "TWINKLING STARS",
-                          "SPARKLERS", "ROCKETS", "FOUNTAINS", "COLOR SMOKE", "FANCY NOVELTIES",
-                          "SINGLE SHOTS", "REPEATERS", "DELUXE CRACKERS", "GIFT BOXES", "KIDS SPECIAL"
-                        ])
-                      )
-                        .filter(Boolean)
-                        .map((c) => (
-                          <option key={c} value={c}>{c}</option>
-                        ))}
+                      {cleanCategoryOptions.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
                     </select>
                   </label>
                 </div>

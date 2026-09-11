@@ -217,9 +217,24 @@ export function saveProductToStore(prod: ProductRecord): ProductRecord {
   DELETED_SET.delete(prod.id);
   STORE.set(prod.id, prod);
   
-  // If product is newly added and not in order, prepend to front
+  // If product is newly added and not in order, append to the end of its category (or end of list)
   if (!g.__mayilonProductOrder?.includes(prod.id)) {
-    g.__mayilonProductOrder = [prod.id, ...(g.__mayilonProductOrder || [])];
+    let lastIdx = -1;
+    if (g.__mayilonProductOrder) {
+      for (let i = g.__mayilonProductOrder.length - 1; i >= 0; i--) {
+        const existingId = g.__mayilonProductOrder[i];
+        const existingItem = STORE.get(existingId);
+        if (existingItem?.categoryName?.trim().toLowerCase() === prod.categoryName?.trim().toLowerCase()) {
+          lastIdx = i;
+          break;
+        }
+      }
+    }
+    if (lastIdx >= 0 && g.__mayilonProductOrder) {
+      g.__mayilonProductOrder.splice(lastIdx + 1, 0, prod.id);
+    } else {
+      g.__mayilonProductOrder = [...(g.__mayilonProductOrder || []), prod.id];
+    }
   }
   
   saveToDisk();
