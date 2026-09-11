@@ -644,8 +644,10 @@ export default function AdminPage() {
             }
             list = Array.from(map.values());
 
-            // If server had 0 orders but local storage has them, re-sync to serverless backend!
-            if ((!e?.data?.items || e.data.items.length === 0) && localOrders.length > 0) {
+            // Always re-sync if local storage has any order missing on the server!
+            const serverNums = new Set((e?.data?.items || []).map((it: any) => it.estimateNumber));
+            const missingOrders = localOrders.filter((o: any) => o && o.estimateNumber && !serverNums.has(o.estimateNumber));
+            if (missingOrders.length > 0) {
               void fetch("/api/v1/estimates", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -735,11 +737,23 @@ export default function AdminPage() {
     if (updatingStatusId) return;
     setUpdatingStatusId(`${number}-${status}`);
 
+    const targetOrder = estimates.find((e) => e.estimateNumber === number);
+
     setEstimates((prev) => {
       const next = prev.map((e) => (e.estimateNumber === number ? { ...e, status } : e));
       try {
         if (typeof window !== "undefined") {
           localStorage.setItem("mayilon_recent_orders", JSON.stringify(next));
+          // Update individual order key that OrderInvoiceView reads
+          const singleKey = `mayilon_order_${number}`;
+          const currentSingle = localStorage.getItem(singleKey);
+          if (currentSingle) {
+            const parsed = JSON.parse(currentSingle);
+            parsed.status = status;
+            localStorage.setItem(singleKey, JSON.stringify(parsed));
+          } else if (targetOrder) {
+            localStorage.setItem(singleKey, JSON.stringify({ ...targetOrder, status }));
+          }
         }
       } catch {}
       return next;
@@ -749,7 +763,7 @@ export default function AdminPage() {
       await fetch(`/api/v1/estimates/${number}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status, order: targetOrder }),
       });
 
       const msg = `📲 Order ${number} updated to [${status}]! Live on Customer Tracking 📦✨`;

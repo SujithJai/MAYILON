@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { Download, Menu, Phone, Search, ShoppingBag, User, X } from "lucide-react";
+import { Download, Menu, Package, Phone, Search, ShoppingBag, User, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { LogoLockup } from "@/components/brand/Logo";
 import { useEstimate } from "@/components/estimate/EstimateProvider";
@@ -15,6 +15,7 @@ import { SearchOverlay } from "./SearchOverlay";
 const LINKS = [
   { href: "/", label: "Home" },
   { href: "/products", label: "Products" },
+  { href: "/track", label: "My Orders" },
   { href: "/categories", label: "Categories" },
   { href: "/dealers", label: "Wholesale" },
   { href: "/safety", label: "Safety" },
@@ -168,6 +169,16 @@ export function Navbar() {
                 <Phone size={16} />
               </a>
 
+              {/* MY ORDERS BUTTON IN HEADER */}
+              <Link
+                href="/track"
+                className="hidden md:flex h-10 items-center gap-1.5 rounded-xl border border-red-500/25 bg-red-50/90 px-3.5 text-[12.5px] font-bold text-red-600 shadow-xs transition hover:bg-red-600 hover:text-white"
+                title="View your orders & live tracking"
+              >
+                <Package size={15} />
+                <span>My Orders</span>
+              </Link>
+
               <Link
                 href="/estimate"
                 className="btn-gold relative flex h-10 items-center gap-2 px-4 text-[12.5px] uppercase font-bold"
@@ -222,6 +233,13 @@ export function Navbar() {
                     </Link>
                   ))}
                   <div className="mt-4 border-t border-slate-100 pt-4 flex flex-col gap-3">
+                    <Link
+                      href="/track"
+                      onClick={() => setOpen(false)}
+                      className="flex items-center justify-center gap-2 rounded-2xl bg-red-50 border border-red-200 py-3 text-sm font-bold text-red-600 hover:bg-red-100 transition shadow-xs"
+                    >
+                      <Package size={17} /> 📦 My Orders & Live Tracking
+                    </Link>
                     <button
                       onClick={() => {
                         setOpen(false);

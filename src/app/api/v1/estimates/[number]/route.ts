@@ -35,11 +35,17 @@ export async function GET(_req: Request, ctx: { params: Promise<{ number: string
     console.warn("[GET /estimates/[number]] DB read fallback:", err);
   }
 
-  if (!estimate) {
-    const cached = getOrderFromStore(number);
-    if (cached) {
+  // Universal Store check and merge
+  const cached = getOrderFromStore(number);
+  if (cached) {
+    if (!estimate) {
       estimate = cached;
       items = cached.items;
+    } else {
+      // If store has updated status from admin, merge it!
+      if (cached.status) estimate.status = cached.status;
+      if (cached.paymentStatus) estimate.paymentStatus = cached.paymentStatus;
+      if (cached.paymentMethod) estimate.paymentMethod = cached.paymentMethod;
     }
   }
 
@@ -58,7 +64,12 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ number: strin
   if (body.paymentMethod) patchData.paymentMethod = body.paymentMethod;
 
   // 1. Update in Universal Store
-  const storeUpdated = updateOrderStatusInStore(number, patchData);
+  let storeUpdated = updateOrderStatusInStore(number, patchData);
+  if (!storeUpdated && body.order) {
+    const restored = { ...body.order, ...patchData };
+    saveOrderToStore(restored);
+    storeUpdated = restored;
+  }
   await persistOrdersToDb().catch(() => null);
 
   // 2. Best-effort DB update
@@ -80,5 +91,5 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ number: strin
     revalidatePath("/track");
   } catch (err) {}
 
-  return ok({ estimate: storeUpdated || dbUpdated }, "Order updated successfully");
+  return ok({ estimate: storeUpdated || dbUpdated || patchData }, "Order updated successfully");
 }

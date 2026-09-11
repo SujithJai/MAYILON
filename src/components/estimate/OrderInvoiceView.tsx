@@ -8,7 +8,25 @@ import { EstimateActions } from "@/components/estimate/EstimateActions";
 import { formatINR } from "@/lib/estimate";
 import { SITE } from "@/lib/slug";
 
-const STAGES = ["NEW", "PENDING", "PACKAGE READY", "SHIPPED", "OUT FOR DELIVERY", "DELIVERED"];
+const STAGES = [
+  { key: "NEW", label: "Order Placed" },
+  { key: "PENDING", label: "Verification" },
+  { key: "PACKAGE READY", label: "Package Ready" },
+  { key: "SHIPPED", label: "Shipped / Dispatched" },
+  { key: "OUT FOR DELIVERY", label: "Out for Delivery" },
+  { key: "DELIVERED", label: "Delivered" },
+];
+
+function getStageIndex(status?: string): number {
+  if (!status) return 0;
+  const s = status.toUpperCase().trim();
+  if (s === "DELIVERED") return 5;
+  if (s === "OUT FOR DELIVERY") return 4;
+  if (s === "SHIPPED") return 3;
+  if (s === "PACKAGE READY") return 2;
+  if (s === "PENDING" || s === "PAYMENT RECEIVED") return 1;
+  return 0; // NEW
+}
 
 export function OrderInvoiceView({
   number,
@@ -23,39 +41,38 @@ export function OrderInvoiceView({
   const [items, setItems] = useState<any[]>(initialItems || []);
 
   useEffect(() => {
-    // If initial server data is fallback or missing, load real placed order from localStorage
-    const isFallback =
-      !initialEstimate ||
-      initialEstimate.id === "est-fallback" ||
-      initialEstimate.customerName === "Valued Customer";
-
-    if (isFallback) {
+    const syncFromLocalStorage = () => {
       try {
-        let localRaw = localStorage.getItem(`mayilon_order_${number}`);
-        if (!localRaw) {
-          const recentsRaw = localStorage.getItem("mayilon_recent_orders");
-          if (recentsRaw) {
-            const recents = JSON.parse(recentsRaw);
-            if (Array.isArray(recents) && recents.length > 0) {
-              localRaw = JSON.stringify(recents[0]);
+        const recentsRaw = typeof window !== "undefined" ? localStorage.getItem("mayilon_recent_orders") : null;
+        if (recentsRaw) {
+          const recents = JSON.parse(recentsRaw);
+          if (Array.isArray(recents)) {
+            const found = recents.find((o: any) => o?.estimateNumber === number);
+            if (found) {
+              setEstimate((prev: any) => ({ ...prev, ...found }));
+              if (Array.isArray(found.items) && found.items.length > 0) {
+                setItems(found.items);
+              }
             }
           }
         }
-        if (localRaw) {
-          const parsed = JSON.parse(localRaw);
+
+        const singleRaw = typeof window !== "undefined" ? localStorage.getItem(`mayilon_order_${number}`) : null;
+        if (singleRaw) {
+          const parsed = JSON.parse(singleRaw);
           if (parsed) {
-            setEstimate(parsed);
+            setEstimate((prev: any) => ({ ...prev, ...parsed }));
             if (Array.isArray(parsed.items) && parsed.items.length > 0) {
               setItems(parsed.items);
             }
           }
         }
-      } catch (err) {
-        console.warn("[OrderInvoiceView] Error reading local order backup:", err);
-      }
-    }
+      } catch (err) {}
+    };
 
-    // Live polling: Check for Admin status updates every 5 seconds
+    syncFromLocalStorage();
+
+    // Live polling: Check for Admin status updates every 3 seconds
     const pollLatest = async () => {
       try {
         const res = await fetch(`/api/v1/estimates/${encodeURIComponent(number)}`, { cache: "no-store" });
@@ -65,11 +82,25 @@ export function OrderInvoiceView({
           if (Array.isArray(json.data.items) && json.data.items.length > 0) {
             setItems(json.data.items);
           }
+        } else {
+          // If individual route returned 404, check full list
+          const listRes = await fetch(`/api/v1/estimates`, { cache: "no-store" });
+          const listJson = await listRes.json();
+          if (listJson?.success && Array.isArray(listJson?.data?.items)) {
+            const match = listJson.data.items.find((o: any) => o.estimateNumber === number);
+            if (match) {
+              setEstimate(match);
+              if (Array.isArray(match.items) && match.items.length > 0) {
+                setItems(match.items);
+              }
+            }
+          }
         }
       } catch (err) {}
+      syncFromLocalStorage();
     };
 
-    const pollInterval = setInterval(pollLatest, 5000);
+    const pollInterval = setInterval(pollLatest, 3000);
     return () => clearInterval(pollInterval);
   }, [number, initialEstimate]);
 
@@ -110,7 +141,7 @@ export function OrderInvoiceView({
         },
       ];
 
-  const stageIndex = Math.max(0, STAGES.indexOf(activeEst.status));
+  const stageIndex = getStageIndex(activeEst.status);
 
   return (
     <div className="shell py-10">
@@ -133,25 +164,28 @@ export function OrderInvoiceView({
       <div className="glass mb-8 rounded-[26px] p-6 border border-red-500/15 bg-white shadow-md print:hidden">
         <p className="mb-5 text-[11px] font-bold uppercase tracking-[3px] text-red-600">Order Delivery Tracker</p>
         <div className="flex flex-wrap gap-y-4">
-          {STAGES.map((s, i) => (
-            <div key={s} className="flex min-w-[110px] flex-1 items-center gap-2">
-              <span
-                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${
-                  i <= stageIndex
-                    ? "bg-red-600 text-white shadow-sm"
-                    : "border border-slate-300 bg-slate-100 text-slate-400"
-                }`}
-              >
-                {i + 1}
-              </span>
-              <span className={`text-[11.5px] font-bold ${i <= stageIndex ? "text-slate-900" : "text-slate-400"}`}>
-                {s}
-              </span>
-              {i < STAGES.length - 1 && (
-                <span className={`hidden h-px flex-1 sm:block ${i < stageIndex ? "bg-red-500" : "bg-slate-200"}`} />
-              )}
-            </div>
-          ))}
+          {STAGES.map((s, i) => {
+            const isCompleted = i <= stageIndex;
+            return (
+              <div key={s.key} className="flex min-w-[110px] flex-1 items-center gap-2">
+                <span
+                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold transition-all ${
+                    isCompleted
+                      ? "bg-red-600 text-white shadow-sm"
+                      : "border border-slate-300 bg-slate-100 text-slate-400"
+                  }`}
+                >
+                  {isCompleted && i > 0 ? "✓" : i + 1}
+                </span>
+                <span className={`text-[11.5px] font-bold transition-all ${isCompleted ? "text-slate-900" : "text-slate-400"}`}>
+                  {s.key}
+                </span>
+                {i < STAGES.length - 1 && (
+                  <span className={`hidden h-px flex-1 sm:block transition-all ${i < stageIndex ? "bg-red-500" : "bg-slate-200"}`} />
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -178,9 +212,21 @@ export function OrderInvoiceView({
             <p className="text-[12px] font-medium text-slate-500 print:text-black">
               {new Date(activeEst.createdAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}
             </p>
-            <span className="mt-2 inline-block rounded-full bg-red-50 border border-red-200 px-3 py-1 text-[11px] font-bold uppercase tracking-[2px] text-red-600">
-              {activeEst.status}
-            </span>
+            {(() => {
+              const st = String(activeEst.status || "NEW").toUpperCase();
+              let badgeCls = "bg-red-50 border-red-200 text-red-600";
+              if (st === "DELIVERED") badgeCls = "bg-emerald-100 border-emerald-300 text-emerald-800";
+              else if (st === "OUT FOR DELIVERY") badgeCls = "bg-amber-100 border-amber-300 text-amber-800";
+              else if (st === "SHIPPED") badgeCls = "bg-blue-100 border-blue-300 text-blue-800";
+              else if (st === "PACKAGE READY") badgeCls = "bg-purple-100 border-purple-300 text-purple-800";
+              else if (st === "PAYMENT RECEIVED") badgeCls = "bg-emerald-50 border-emerald-300 text-emerald-700";
+
+              return (
+                <span className={`mt-2 inline-flex items-center gap-1 rounded-full border px-3.5 py-1 text-[11px] font-extrabold uppercase tracking-[2px] shadow-xs ${badgeCls}`}>
+                  {st === "DELIVERED" ? "✓ DELIVERED" : st === "OUT FOR DELIVERY" ? "🚚 OUT FOR DELIVERY" : st}
+                </span>
+              );
+            })()}
           </div>
         </div>
 

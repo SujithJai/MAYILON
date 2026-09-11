@@ -140,7 +140,10 @@ export function bulkSyncOrders(orders: OrderRecord[]) {
   loadOrdersFromDisk();
   for (const o of orders) {
     if (o && o.estimateNumber) {
-      if (!STORE.has(o.estimateNumber)) {
+      const existing = STORE.get(o.estimateNumber);
+      if (existing) {
+        STORE.set(o.estimateNumber, { ...existing, ...o });
+      } else {
         STORE.set(o.estimateNumber, o);
       }
     }
