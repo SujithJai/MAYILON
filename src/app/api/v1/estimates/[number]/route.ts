@@ -7,6 +7,7 @@ import { fail, ok, zodFail } from "@/lib/api";
 import {
   getOrderFromStore,
   persistOrdersToDb,
+  saveOrderToStore,
   syncOrdersWithDb,
   updateOrderStatusInStore,
 } from "@/lib/orders-store";
