@@ -68,7 +68,7 @@ export async function POST(req: Request) {
     } catch (e) {
       console.warn("[publish_all] Disk write note:", e);
     }
-    await persistProductsToDb(prods).catch(() => null);
+    await persistProductsToDb().catch(() => null);
     await persistProductOrderToDb(order).catch(() => null);
     revalidatePath("/", "layout");
     revalidatePath("/products");
