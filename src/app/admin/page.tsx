@@ -291,6 +291,85 @@ export default function AdminPage() {
     };
   }, [estimates, stats, products, dealers, enquiries]);
 
+  const filteredProducts = useMemo(() => {
+    const q = (searchQuery || "").trim().toLowerCase();
+    if (!q) return products;
+    return products.filter((p) => {
+      const name = (p?.name || "").toLowerCase();
+      const sku = (p?.sku || "").toLowerCase();
+      const cat = (p?.categoryName || "").toLowerCase();
+      return name.includes(q) || sku.includes(q) || cat.includes(q);
+    });
+  }, [products, searchQuery]);
+
+  const allCategoryPills = useMemo(() => {
+    const countMap = new Map<string, number>();
+    for (const p of products) {
+      if (!p) continue;
+      const cat = p.categoryName || "Special Fireworks";
+      countMap.set(cat, (countMap.get(cat) || 0) + 1);
+    }
+    const pills: { name: string; count: number; icon: string }[] = [];
+    for (const cat of OFFICIAL_CATEGORIES) {
+      if (countMap.has(cat)) {
+        pills.push({ name: cat, count: countMap.get(cat)!, icon: CATEGORY_ICONS[cat] || "🎇" });
+        countMap.delete(cat);
+      }
+    }
+    for (const [cat, count] of countMap.entries()) {
+      pills.push({ name: cat, count, icon: CATEGORY_ICONS[cat] || "🎇" });
+    }
+    return pills;
+  }, [products]);
+
+  const categoryGroups = useMemo(() => {
+    const map = new Map<string, ProductItem[]>();
+
+    for (const p of filteredProducts) {
+      if (!p) continue;
+      const cat = p.categoryName || "Special Fireworks";
+      if (!map.has(cat)) {
+        map.set(cat, []);
+      }
+      map.get(cat)!.push(p);
+    }
+
+    const groups: { category: string; icon: string; items: ProductItem[] }[] = [];
+
+    for (const cat of OFFICIAL_CATEGORIES) {
+      if (map.has(cat)) {
+        const items = map.get(cat)!;
+        if (items.length > 0) {
+          groups.push({
+            category: cat,
+            icon: CATEGORY_ICONS[cat] || "🎇",
+            items,
+          });
+          map.delete(cat);
+        }
+      }
+    }
+
+    for (const [cat, items] of map.entries()) {
+      if (items.length > 0) {
+        groups.push({
+          category: cat,
+          icon: CATEGORY_ICONS[cat] || "🎇",
+          items,
+        });
+      }
+    }
+
+    if (selectedCategoryFilter !== "ALL") {
+      return groups.filter(
+        (g) => (g.category || "").toLowerCase() === selectedCategoryFilter.toLowerCase(),
+      );
+    }
+
+    return groups;
+  }, [filteredProducts, selectedCategoryFilter]);
+
+
   const load = useCallback(async () => {
     try {
       const pRes = await fetch("/api/v1/products?limit=350", { cache: "no-store" })
@@ -935,77 +1014,6 @@ export default function AdminPage() {
   }
 
   const k = liveStats;
-  const filteredProducts = products.filter(
-    (p) =>
-      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.categoryName.toLowerCase().includes(searchQuery.toLowerCase()),
-  );
-
-  const allCategoryPills = useMemo(() => {
-    const countMap = new Map<string, number>();
-    for (const p of products) {
-      const cat = p.categoryName || "Special Fireworks";
-      countMap.set(cat, (countMap.get(cat) || 0) + 1);
-    }
-    const pills: { name: string; count: number; icon: string }[] = [];
-    for (const cat of OFFICIAL_CATEGORIES) {
-      if (countMap.has(cat)) {
-        pills.push({ name: cat, count: countMap.get(cat)!, icon: CATEGORY_ICONS[cat] || "🎇" });
-        countMap.delete(cat);
-      }
-    }
-    for (const [cat, count] of countMap.entries()) {
-      pills.push({ name: cat, count, icon: CATEGORY_ICONS[cat] || "🎇" });
-    }
-    return pills;
-  }, [products]);
-
-  const categoryGroups = useMemo(() => {
-    const map = new Map<string, ProductItem[]>();
-
-    for (const p of filteredProducts) {
-      const cat = p.categoryName || "Special Fireworks";
-      if (!map.has(cat)) {
-        map.set(cat, []);
-      }
-      map.get(cat)!.push(p);
-    }
-
-    const groups: { category: string; icon: string; items: ProductItem[] }[] = [];
-
-    for (const cat of OFFICIAL_CATEGORIES) {
-      if (map.has(cat)) {
-        const items = map.get(cat)!;
-        if (items.length > 0) {
-          groups.push({
-            category: cat,
-            icon: CATEGORY_ICONS[cat] || "🎇",
-            items,
-          });
-          map.delete(cat);
-        }
-      }
-    }
-
-    for (const [cat, items] of map.entries()) {
-      if (items.length > 0) {
-        groups.push({
-          category: cat,
-          icon: CATEGORY_ICONS[cat] || "🎇",
-          items,
-        });
-      }
-    }
-
-    if (selectedCategoryFilter !== "ALL") {
-      return groups.filter(
-        (g) => g.category.toLowerCase() === selectedCategoryFilter.toLowerCase(),
-      );
-    }
-
-    return groups;
-  }, [filteredProducts, selectedCategoryFilter]);
 
   return (
     <div className="flex min-h-screen bg-slate-50 text-slate-900">
