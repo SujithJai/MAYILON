@@ -54,7 +54,14 @@ export function BrowserControls({
       if (!value) next.delete(key);
       else next.set(key, value);
       next.delete("page");
+      setMobileOpen(false);
       router.push(`/products?${next.toString()}`, { scroll: false });
+      if (typeof window !== "undefined") {
+        const el = document.getElementById("products-grid");
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }
     },
     [router, sp],
   );
@@ -239,8 +246,10 @@ export function BrowserControls({
         </button>
       </div>
 
-      {/* desktop sidebar */}
-      <aside className="glass sticky top-28 hidden h-fit rounded-[28px] p-6 border border-red-500/15 bg-white shadow-md lg:block">{Panel}</aside>
+      {/* desktop sidebar with smooth vertical scroll for all categories */}
+      <aside className="glass sticky top-28 hidden h-fit max-h-[calc(100vh-8.5rem)] overflow-y-auto rounded-[28px] p-6 border border-red-500/15 bg-white shadow-md lg:block scrollbar-thin">
+        {Panel}
+      </aside>
 
       {/* mobile drawer */}
       <AnimatePresence>

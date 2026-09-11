@@ -26,6 +26,39 @@ const CATEGORY_CODE: Record<string, string> = {
   "gift-boxes": "GFT",
 };
 
+
+export function resolveCategorySlug(categoryName?: string | null): string {
+  if (!categoryName) return "single-sound";
+  const norm = categoryName.trim().toLowerCase();
+
+  const found = SEED_CATEGORIES.find(
+    (c) => c.name.toLowerCase() === norm || c.slug.toLowerCase() === norm
+  );
+  if (found) return found.slug;
+
+  if (norm.includes("sound") && (norm.includes("1") || norm.includes("2") || norm.includes("one") || norm.includes("two"))) {
+    return "single-sound";
+  }
+  if (norm.includes("bijili")) return "bijili-crackers";
+  if (norm.includes("wala") || norm.includes("sound")) return "sound-crackers";
+  if (norm.includes("chakkar") || norm.includes("wheel")) return "ground-chakkar";
+  if (norm.includes("twinkl") || norm.includes("star")) return "twinkling-star";
+  if (norm.includes("flower") || norm.includes("pot")) return "flower-pots";
+  if (norm.includes("pencil") || norm.includes("candle")) return "candles";
+  if (norm.includes("rocket")) return "rockets";
+  if (norm.includes("bomb")) return "bombs";
+  if (norm.includes("kid")) return "kids-special";
+  if (norm.includes("aerial") || norm.includes("sky")) return "sky-shots";
+  if (norm.includes("multi")) return "multi-shots";
+  if (norm.includes("premium")) return "premium-fountains";
+  if (norm.includes("fountain")) return "fountains";
+  if (norm.includes("sparkler") || norm.includes("mathappu")) return "sparklers";
+  if (norm.includes("match") || norm.includes("novel")) return "novelties";
+  if (norm.includes("gift") || norm.includes("box")) return "gift-boxes";
+
+  return slugify(categoryName);
+}
+
 const EFFECTS = ["Gold", "Red", "Blue", "Green", "Silver", "Purple"];
 
 export type ProductWithCategory = typeof products.$inferSelect & {
@@ -127,7 +160,10 @@ function getInMemoryProducts(): ProductWithCategory[] {
  * Guarantees that Admin edited prices, offer prices, photos (imageUrl, imageUrl2, imageUrl3)
  * and videos permanently overwrite database/seed items across all queries.
  */
-function applyCustomOverrides(items: ProductWithCategory[]): ProductWithCategory[] {
+function applyCustomOverrides(
+  items: ProductWithCategory[],
+  filters?: ProductFilters
+): ProductWithCategory[] {
   try {
     const {
       getCustomProductsFromStore,
@@ -149,28 +185,59 @@ function applyCustomOverrides(items: ProductWithCategory[]): ProductWithCategory
 
     const idMap = new Map<string, ProductWithCategory>();
     const skuMap = new Map<string, ProductWithCategory>();
-    const slugMap = new Map<string, ProductWithCategory>();
-    const nameMap = new Map<string, ProductWithCategory>();
 
     for (const p of baseList) {
       idMap.set(p.id, p);
       if (p.sku) skuMap.set(p.sku, p);
-      if (p.slug) slugMap.set(p.slug, p);
-      if (p.name) nameMap.set(p.name.trim().toLowerCase(), p);
     }
 
     const updatedItems = [...baseList];
 
     if (Array.isArray(customList) && customList.length > 0) {
       for (const c of customList) {
-        // Match solely by permanent unique ID so reordering/renaming never overwrites other products
-        const match = idMap.get(c.id);
+        if (!c || !c.id) continue;
+        if (deletedSet && (deletedSet.has(c.id) || deletedSet.has(c.sku))) continue;
+
+        const match = idMap.get(c.id) || (c.sku ? skuMap.get(c.sku) : undefined);
+        const resolvedSlug = resolveCategorySlug(c.categoryName || match?.categoryName);
+
+        // Check category filter
+        if (filters?.category && filters.category !== "all") {
+          const filterSlug = resolveCategorySlug(filters.category);
+          if (resolvedSlug !== filterSlug && c.categorySlug !== filters.category) {
+            continue;
+          }
+        }
+
+        // Check query filter
+        if (filters?.q) {
+          const q = filters.q.toLowerCase().trim();
+          const matches =
+            (c.name && c.name.toLowerCase().includes(q)) ||
+            (c.sku && c.sku.toLowerCase().includes(q)) ||
+            (c.categoryName && c.categoryName.toLowerCase().includes(q));
+          if (!matches) continue;
+        }
+
+        // Check flag filter
+        if (filters?.flag === "new" && !c.isNewArrival && !match?.isNewArrival) continue;
+        if (filters?.flag === "best" && !c.isBestSeller && !match?.isBestSeller) continue;
+        if (filters?.flag === "premium" && !c.isPremium && !match?.isPremium) continue;
+        if (filters?.flag === "featured" && !c.isFeatured && !match?.isFeatured) continue;
 
         const mrpNum = Number(c.mrp) || 100;
         const offerNum = Number(c.offerPrice) || mrpNum;
+
+        // Check price bounds
+        if (typeof filters?.min === "number" && offerNum < filters.min) continue;
+        if (typeof filters?.max === "number" && offerNum > filters.max) continue;
+
         const gallery = [c.imageUrl || match?.imageUrl, c.imageUrl2, c.imageUrl3].filter(
           Boolean,
         ) as string[];
+
+        // Find accent and icon
+        const matchedSeedCat = SEED_CATEGORIES.find((sc) => sc.slug === resolvedSlug);
 
         const override: ProductWithCategory = {
           ...(match || ({} as any)),
@@ -210,9 +277,9 @@ function applyCustomOverrides(items: ProductWithCategory[]): ProductWithCategory
           createdAt: new Date(c.createdAt || match?.createdAt || Date.now()),
           updatedAt: new Date(),
           deletedAt: null,
-          categoryName: c.categoryName || match?.categoryName || "Special Fireworks",
-          categorySlug: slugify(c.categoryName || match?.categoryName || "special-fireworks"),
-          categoryAccent: "#D4AF37",
+          categoryName: c.categoryName || match?.categoryName || matchedSeedCat?.name || "Special Fireworks",
+          categorySlug: resolvedSlug,
+          categoryAccent: matchedSeedCat?.accent || "#D4AF37",
         };
 
         if (match) {
@@ -231,17 +298,17 @@ function applyCustomOverrides(items: ProductWithCategory[]): ProductWithCategory
         if (id) orderMap.set(id, idx);
       });
       updatedItems.sort((a, b) => {
-        const orderA = orderMap.has(a.id)
+        const pa = orderMap.has(a.id)
           ? (orderMap.get(a.id) as number)
           : orderMap.has(a.sku)
             ? (orderMap.get(a.sku) as number)
             : 999999;
-        const orderB = orderMap.has(b.id)
+        const pb = orderMap.has(b.id)
           ? (orderMap.get(b.id) as number)
           : orderMap.has(b.sku)
             ? (orderMap.get(b.sku) as number)
             : 999999;
-        return orderA - orderB;
+        return pa - pb;
       });
     }
 
@@ -497,6 +564,28 @@ export async function getCategories(): Promise<CategorySummary[]> {
     }
   } catch {}
 
+
+  // Update category productCounts with custom products
+  try {
+    const { getCustomProductsFromStore, getDeletedProductIds } = await import("./products-store");
+    const customList = getCustomProductsFromStore();
+    const deletedSet = getDeletedProductIds();
+    if (customList && customList.length > 0) {
+      const countBySlug = new Map<string, number>();
+      for (const p of customList) {
+        if (!p || !p.id) continue;
+        if (deletedSet && (deletedSet.has(p.id) || deletedSet.has(p.sku))) continue;
+        const slug = resolveCategorySlug(p.categoryName);
+        countBySlug.set(slug, (countBySlug.get(slug) || 0) + 1);
+      }
+      for (const cat of list) {
+        if (countBySlug.has(cat.slug)) {
+          cat.productCount = Math.max(cat.productCount, countBySlug.get(cat.slug)!);
+        }
+      }
+    }
+  } catch {}
+
   return list;
 }
 
@@ -599,7 +688,7 @@ export async function getProducts(filters: ProductFilters = {}) {
   }
 
   // Apply Custom Admin Overwrites (Price, MRP, Photos & Videos)
-  const merged = applyCustomOverrides(baseItems);
+  const merged = applyCustomOverrides(baseItems, filters);
   const total = merged.length;
   const offset = filters.offset ?? 0;
   const limit = filters.limit ?? 250;

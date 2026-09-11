@@ -41,7 +41,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: SP 
       flag: str("flag"),
       min: num("min"),
       max: num("max"),
-      limit: 60,
+      limit: 350,
     }),
     getCategories(),
   ]);

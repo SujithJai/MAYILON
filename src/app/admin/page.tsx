@@ -606,39 +606,91 @@ export default function AdminPage() {
       let list = pRes?.success && Array.isArray(pRes?.data?.items) ? pRes.data.items : [];
       const serverOrder = (pRes?.data?.productOrder || []) as string[];
 
-      // Clear stale pre-122 browser cache
+      // 1. Two-way sync: Merge any locally saved/added products with server list (Zero Loss on Hard Refresh)
+      let localProds: any[] = [];
       try {
         if (typeof window !== "undefined") {
-          const V_KEY = "mayilon_catalog_v2026_clean_v3";
-          if (localStorage.getItem(V_KEY) !== "true") {
-            localStorage.removeItem("mayilon_permanent_product_order");
-            localStorage.removeItem("mayilon_custom_products");
-            localStorage.setItem(V_KEY, "true");
+          const raw = localStorage.getItem("mayilon_custom_products");
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              localProds = parsed;
+            }
           }
         }
-      } catch (err) {}
+      } catch {}
+
+      if (localProds.length > 0) {
+        const serverIds = new Set(list.map((it: any) => String(it.id)));
+        const serverSkus = new Set(list.map((it: any) => String(it.sku)));
+        const missingFromServer = localProds.filter(
+          (lp: any) => lp && lp.id && !serverIds.has(String(lp.id)) && !serverSkus.has(String(lp.sku))
+        );
+
+        if (missingFromServer.length > 0) {
+          list = [...list, ...missingFromServer];
+          // Auto-sync missing custom products to server so they are permanently stored
+          void fetch("/api/v1/products", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "publish_all",
+              products: list,
+              order: list.map((p: any) => p.id),
+            }),
+          });
+        }
+      }
+
+      // 2. Apply custom product sequence
+      let effectiveOrder = serverOrder;
+      try {
+        if (typeof window !== "undefined") {
+          const savedOrder = localStorage.getItem("mayilon_permanent_product_order");
+          if (savedOrder) {
+            const parsedOrder = JSON.parse(savedOrder);
+            if (Array.isArray(parsedOrder) && parsedOrder.length > 0) {
+              effectiveOrder = parsedOrder;
+            }
+          }
+        }
+      } catch {}
+
+      if (Array.isArray(effectiveOrder) && effectiveOrder.length > 0) {
+        const orderMap = new Map<string, number>();
+        effectiveOrder.forEach((id: string, idx: number) => orderMap.set(String(id), idx));
+        list.sort((a: any, b: any) => {
+          const pa = orderMap.has(String(a.id)) ? orderMap.get(String(a.id))! : 99999;
+          const pb = orderMap.has(String(b.id)) ? orderMap.get(String(b.id))! : 99999;
+          return pa - pb;
+        });
+      }
 
       if (list.length > 0) {
-        setProducts(
-          list.map((it: Record<string, unknown>) => ({
-            id: String(it.id),
-            sku: String(it.sku),
-            name: String(it.name),
-            categoryName: String(it.categoryName || "Special Fireworks"),
-            mrp: Number(it.mrp),
-            offerPrice: Number(it.offerPrice),
-            packing: String(it.packing || "1 Box"),
-            moq: Number(it.moq || 1),
-            stock: Number(it.stock || 100),
-            imageUrl: String(it.imageUrl || ""),
-            imageUrl2: String(it.imageUrl2 || ""),
-            imageUrl3: String(it.imageUrl3 || ""),
-            videoUrl: String(it.videoUrl || ""),
-            isNewArrival: Boolean(it.isNewArrival),
-            isBestSeller: Boolean(it.isBestSeller),
-            isPremium: Boolean(it.isPremium),
-          })),
-        );
+        const formatted = list.map((it: Record<string, unknown>) => ({
+          id: String(it.id),
+          sku: String(it.sku),
+          name: String(it.name),
+          categoryName: String(it.categoryName || "Special Fireworks"),
+          mrp: Number(it.mrp),
+          offerPrice: Number(it.offerPrice),
+          packing: String(it.packing || "1 Box"),
+          moq: Number(it.moq || 1),
+          stock: Number(it.stock || 100),
+          imageUrl: String(it.imageUrl || ""),
+          imageUrl2: String(it.imageUrl2 || ""),
+          imageUrl3: String(it.imageUrl3 || ""),
+          videoUrl: String(it.videoUrl || ""),
+          isNewArrival: Boolean(it.isNewArrival),
+          isBestSeller: Boolean(it.isBestSeller),
+          isPremium: Boolean(it.isPremium),
+        }));
+        setProducts(formatted);
+        try {
+          if (typeof window !== "undefined") {
+            localStorage.setItem("mayilon_custom_products", JSON.stringify(formatted));
+          }
+        } catch {}
       }
     } catch (err) {
       console.warn("[Admin load] Error loading products:", err);
@@ -1037,6 +1089,17 @@ export default function AdminPage() {
           order: newOrderIds,
         }),
       });
+
+      // Also publish entire catalogue to guarantee disk & serverless instance persistence
+      void fetch("/api/v1/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "publish_all",
+          products: updatedProducts,
+          order: newOrderIds,
+        }),
+      });
       const data = await res.json();
       if (!data?.success) {
         alert("Warning: " + (data?.message || "Failed to save product"));
@@ -1078,6 +1141,13 @@ export default function AdminPage() {
     try {
       if (typeof window !== "undefined") {
         localStorage.setItem("mayilon_custom_products", JSON.stringify(remaining));
+        const savedOrder = localStorage.getItem("mayilon_permanent_product_order");
+        if (savedOrder) {
+          const parsed = JSON.parse(savedOrder);
+          if (Array.isArray(parsed)) {
+            localStorage.setItem("mayilon_permanent_product_order", JSON.stringify(parsed.filter((item: string) => item !== id)));
+          }
+        }
       }
     } catch {}
     try {

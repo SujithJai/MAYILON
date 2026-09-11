@@ -184,30 +184,106 @@ async function saveProductItem(body: any) {
   saveProductToStore(productRecord);
   await persistProductsToDb().catch(() => null);
 
-  // 2. Direct PostgreSQL update if database is accessible
+  // 2. Direct write to data/products-store.json for server disk persistence
   try {
-    const { pool } = await import("@/db");
-    await pool.query(
-      `UPDATE products 
-       SET name = $1, mrp = $2, offer_price = $3, packing = $4, stock = $5, image_url = $6, updated_at = NOW()
-       WHERE sku = $7 OR id::text = $8 OR slug = $9;`,
-      [
-        productRecord.name,
-        String(productRecord.mrp),
-        String(productRecord.offerPrice),
-        productRecord.packing,
-        productRecord.stock,
-        productRecord.imageUrl,
-        productRecord.sku,
-        productRecord.id,
-        productRecord.slug,
-      ],
+    const fs = require("fs");
+    const path = require("path");
+    const dataDir = path.join(process.cwd(), "data");
+    if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+    const allProds = Array.from(getFullStoreState().products);
+    const allOrder = getProductOrderFromStore();
+    fs.writeFileSync(
+      path.join(dataDir, "products-store.json"),
+      JSON.stringify({ products: allProds, productOrder: allOrder, publishedAt: new Date().toISOString() }, null, 2),
+      "utf-8"
     );
-  } catch (sqlErr) {
-    console.warn("[saveProductItem] DB direct SQL update note:", sqlErr);
+  } catch (diskErr) {
+    console.warn("[saveProductItem] Disk write note:", diskErr);
   }
 
-  // 3. Instant Next.js Cache Revalidation
+  // 3. Direct PostgreSQL update & insert if database is accessible
+  try {
+    const { pool } = await import("@/db");
+    // Resolve category UUID
+    let categoryId: string | null = null;
+    const catSlug = slugify(productRecord.categoryName);
+    const catRes = await pool.query(
+      `SELECT id FROM categories WHERE LOWER(name) = LOWER($1) OR slug = $2 LIMIT 1;`,
+      [productRecord.categoryName, catSlug]
+    );
+    if (catRes?.rows?.length > 0) {
+      categoryId = catRes.rows[0].id;
+    } else {
+      const insCat = await pool.query(
+        `INSERT INTO categories (name, slug, sort_order) 
+         VALUES ($1, $2, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM categories))
+         RETURNING id;`,
+        [productRecord.categoryName, catSlug]
+      );
+      if (insCat?.rows?.length > 0) {
+        categoryId = insCat.rows[0].id;
+      }
+    }
+
+    if (categoryId) {
+      const updRes = await pool.query(
+        `UPDATE products 
+         SET name = $1, mrp = $2, offer_price = $3, packing = $4, stock = $5, image_url = $6, updated_at = NOW(), category_id = $10
+         WHERE sku = $7 OR id::text = $8 OR slug = $9;`,
+        [
+          productRecord.name,
+          String(productRecord.mrp),
+          String(productRecord.offerPrice),
+          productRecord.packing,
+          productRecord.stock,
+          productRecord.imageUrl,
+          productRecord.sku,
+          productRecord.id,
+          productRecord.slug,
+          categoryId,
+        ],
+      );
+
+      if ((updRes.rowCount ?? 0) === 0) {
+        await pool.query(
+          `INSERT INTO products (
+             sku, slug, name, name_ta, category_id, packing, mrp, offer_price, discount_percent, stock, image_url, video_url, is_new_arrival, is_best_seller, is_premium, status
+           )
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+           ON CONFLICT (sku) DO UPDATE SET
+             name = EXCLUDED.name,
+             mrp = EXCLUDED.mrp,
+             offer_price = EXCLUDED.offer_price,
+             packing = EXCLUDED.packing,
+             stock = EXCLUDED.stock,
+             image_url = EXCLUDED.image_url,
+             updated_at = NOW();`,
+          [
+            productRecord.sku,
+            productRecord.slug,
+            productRecord.name,
+            productRecord.nameTa || null,
+            categoryId,
+            productRecord.packing,
+            String(productRecord.mrp),
+            String(productRecord.offerPrice),
+            productRecord.discountPercent,
+            productRecord.stock,
+            productRecord.imageUrl,
+            productRecord.videoUrl || null,
+            Boolean(productRecord.isNewArrival),
+            Boolean(productRecord.isBestSeller),
+            Boolean(productRecord.isPremium),
+            "ACTIVE",
+          ],
+        );
+      }
+    }
+  } catch (sqlErr) {
+    console.warn("[saveProductItem] DB direct SQL note:", sqlErr);
+  }
+
+  // 4. Instant Next.js Cache Revalidation
   try {
     revalidatePath("/", "layout");
     revalidatePath("/products");
@@ -258,6 +334,29 @@ export async function DELETE(req: Request) {
   deleteProductFromStore(id);
   await persistProductsToDb().catch(() => null);
   await persistProductOrderToDb(getProductOrderFromStore()).catch(() => null);
+
+  // Direct SQL soft-delete
+  try {
+    const { pool } = await import("@/db");
+    await pool.query(
+      `UPDATE products SET deleted_at = NOW(), status = 'INACTIVE' WHERE id::text = $1 OR sku = $1;`,
+      [id]
+    ).catch(() => null);
+  } catch {}
+
+  // Update disk file
+  try {
+    const fs = require("fs");
+    const path = require("path");
+    const dataDir = path.join(process.cwd(), "data");
+    const allProds = Array.from(getFullStoreState().products);
+    const allOrder = getProductOrderFromStore();
+    fs.writeFileSync(
+      path.join(dataDir, "products-store.json"),
+      JSON.stringify({ products: allProds, productOrder: allOrder, publishedAt: new Date().toISOString() }, null, 2),
+      "utf-8"
+    );
+  } catch {}
 
   try {
     revalidatePath("/", "layout");

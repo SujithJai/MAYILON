@@ -8,6 +8,8 @@ import { ProductCard, type CardProduct } from "./ProductCard";
 import { PriceListDownloadModal } from "./PriceListDownloadModal";
 import { useEstimate } from "@/components/estimate/EstimateProvider";
 import { formatINR } from "@/lib/estimate";
+import { resolveCategorySlug } from "@/lib/slug";
+import { useSearchParams } from "next/navigation";
 import type { CategorySummary } from "@/lib/data";
 
 export function ProductBrowser({
@@ -24,18 +26,12 @@ export function ProductBrowser({
   const [productTotal, setProductTotal] = useState<number>(total);
   const [downloadOpen, setDownloadOpen] = useState(false);
   const { add } = useEstimate();
+  const searchParams = useSearchParams();
+  const activeCategory = searchParams.get("category") ?? "all";
 
   // 1. Instant rehydration from client storage (zero flicker on refresh)
   useEffect(() => {
     try {
-      if (typeof window !== "undefined") {
-        const V_KEY = "mayilon_catalog_v2026_clean_v3";
-        if (localStorage.getItem(V_KEY) !== "true") {
-          localStorage.removeItem("mayilon_permanent_product_order");
-          localStorage.removeItem("mayilon_custom_products");
-          localStorage.setItem(V_KEY, "true");
-        }
-      }
       let list = [...items];
       const localProds = typeof window !== "undefined" ? localStorage.getItem("mayilon_custom_products") : null;
       if (localProds) {
@@ -45,6 +41,8 @@ export function ProductBrowser({
           parsed.forEach((p: any) => {
             if (p?.id) map.set(p.id, p);
           });
+
+          // 1a. Update existing products with local price/stock edits
           list = list.map((item) => {
             const m = map.get(item.id);
             return m
@@ -58,9 +56,55 @@ export function ProductBrowser({
                 }
               : item;
           });
+
+          // 1b. Merge any custom added products that are not yet in SSR items
+          const existingIds = new Set(list.map((it) => it.id));
+          const existingSkus = new Set(list.map((it) => it.sku));
+          const currentSp = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : new URLSearchParams();
+          const activeCat = currentSp.get("category");
+
+          for (const p of parsed) {
+            if (!p || !p.id) continue;
+            if (existingIds.has(p.id) || (p.sku && existingSkus.has(p.sku))) continue;
+
+            const pSlug = resolveCategorySlug(p.categoryName);
+            if (activeCat && activeCat !== "all") {
+              const activeSlug = resolveCategorySlug(activeCat);
+              if (pSlug !== activeSlug && p.categorySlug !== activeCat) continue;
+            }
+
+            const mrpNum = Number(p.mrp) || 100;
+            const offerNum = Number(p.offerPrice) || mrpNum;
+            const cat = categories.find((c) => c.slug === pSlug);
+
+            list.push({
+              id: p.id,
+              sku: p.sku || "MYL-PROD",
+              slug: p.slug || p.name?.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+              name: p.name,
+              nameTa: p.nameTa || null,
+              categoryName: p.categoryName || cat?.name || "Special Fireworks",
+              categorySlug: pSlug,
+              categoryAccent: cat?.accent || "#D4AF37",
+              packing: p.packing || "1 Box",
+              mrp: mrpNum.toFixed(2),
+              offerPrice: offerNum.toFixed(2),
+              discountPercent: p.discountPercent || Math.round(((mrpNum - offerNum) / mrpNum) * 100),
+              stock: p.stock !== undefined ? p.stock : 500,
+              moq: p.moq || 1,
+              imageUrl: p.imageUrl || "/images/placeholder.jpg",
+              gallery: [p.imageUrl || "/images/placeholder.jpg"],
+              isNewArrival: Boolean(p.isNewArrival),
+              isBestSeller: Boolean(p.isBestSeller),
+              isPremium: Boolean(p.isPremium),
+              rating: "4.8",
+              reviewCount: 20,
+            } as CardProduct);
+          }
         }
       }
 
+      // 1c. Sort by permanent sequence
       const savedOrder = typeof window !== "undefined" ? localStorage.getItem("mayilon_permanent_product_order") : null;
       if (savedOrder) {
         const orderIds = JSON.parse(savedOrder);
@@ -68,29 +112,81 @@ export function ProductBrowser({
           const map = new Map<string, number>();
           orderIds.forEach((id: string, idx: number) => map.set(id, idx));
           list.sort((a, b) => {
-            const pa = map.has(a.id) ? map.get(a.id)! : 99999;
-            const pb = map.has(b.id) ? map.get(b.id)! : 99999;
+            const pa = map.has(a.id) ? map.get(a.id)! : map.has(a.sku || "") ? map.get(a.sku || "")! : 99999;
+            const pb = map.has(b.id) ? map.get(b.id)! : map.has(b.sku || "") ? map.get(b.sku || "")! : 99999;
             return pa - pb;
           });
         }
       }
       setProductList(list);
-      setProductTotal(total);
+      setProductTotal(list.length);
     } catch {
       setProductList(items);
       setProductTotal(total);
     }
-  }, [items, total]);
+  }, [items, total, categories]);
 
-  // 2. Real-time background sync (Immediate on mount + every 3.5 seconds)
+  // 2. Real-time background sync (Passes active URL query so category filters are NEVER wiped out!)
   useEffect(() => {
     let mounted = true;
     const fetchLatest = async () => {
       try {
-        const res = await fetch("/api/v1/products?limit=250", { cache: "no-store" });
+        const search = typeof window !== "undefined" ? window.location.search : "";
+        const sp = new URLSearchParams(search);
+        if (!sp.has("limit")) sp.set("limit", "350");
+        const res = await fetch(`/api/v1/products?${sp.toString()}`, { cache: "no-store" });
         const json = await res.json();
         if (mounted && json?.success && Array.isArray(json?.data?.items)) {
           let fresh = json.data.items as CardProduct[];
+
+          // Merge local custom products that are not yet in server response
+          try {
+            const localRaw = typeof window !== "undefined" ? localStorage.getItem("mayilon_custom_products") : null;
+            if (localRaw) {
+              const localProds = JSON.parse(localRaw);
+              if (Array.isArray(localProds) && localProds.length > 0) {
+                const freshIds = new Set(fresh.map((p) => p.id));
+                const freshSkus = new Set(fresh.map((p) => p.sku));
+                const activeCat = sp.get("category");
+
+                for (const lp of localProds) {
+                  if (!lp || !lp.id) continue;
+                  if (freshIds.has(lp.id) || (lp.sku && freshSkus.has(lp.sku))) continue;
+
+                  const lpSlug = resolveCategorySlug(lp.categoryName);
+                  if (activeCat && activeCat !== "all") {
+                    const activeSlug = resolveCategorySlug(activeCat);
+                    if (lpSlug !== activeSlug && lp.categorySlug !== activeCat) continue;
+                  }
+
+                  fresh.push({
+                    id: lp.id,
+                    sku: lp.sku || "MYL-PROD",
+                    slug: lp.slug || lp.name?.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+                    name: lp.name,
+                    nameTa: lp.nameTa || null,
+                    categoryName: lp.categoryName || "Special Fireworks",
+                    categorySlug: lpSlug,
+                    categoryAccent: "#D4AF37",
+                    packing: lp.packing || "1 Box",
+                    mrp: String(lp.mrp || 100),
+                    offerPrice: String(lp.offerPrice || lp.mrp || 100),
+                    discountPercent: lp.discountPercent || 80,
+                    stock: lp.stock !== undefined ? lp.stock : 500,
+                    moq: lp.moq || 1,
+                    imageUrl: lp.imageUrl || "/images/placeholder.jpg",
+                    gallery: [lp.imageUrl || "/images/placeholder.jpg"],
+                    isNewArrival: Boolean(lp.isNewArrival),
+                    isBestSeller: Boolean(lp.isBestSeller),
+                    isPremium: Boolean(lp.isPremium),
+                    rating: "4.8",
+                    reviewCount: 20,
+                  } as CardProduct);
+                }
+              }
+            }
+          } catch {}
+
           try {
             const savedOrder = typeof window !== "undefined" ? localStorage.getItem("mayilon_permanent_product_order") : null;
             if (savedOrder) {
@@ -113,15 +209,14 @@ export function ProductBrowser({
             return prevHash !== freshHash ? fresh : prev;
           });
           if (typeof json.data.total === "number") {
-            setProductTotal(json.data.total);
+            setProductTotal(Math.max(json.data.total, fresh.length));
           }
         }
       } catch {}
     };
 
-    // Run IMMEDIATELY on page load
     void fetchLatest();
-    const interval = setInterval(fetchLatest, 3500);
+    const interval = setInterval(fetchLatest, 4000);
 
     return () => {
       mounted = false;
@@ -138,7 +233,37 @@ export function ProductBrowser({
         onViewChange={setView}
       />
 
-      <div>
+      <div id="products-grid">
+        {/* Quick Category Navigation Bar for smooth scrolling and 1-tap filtering */}
+        <div className="mb-6 flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+          <Link
+            href="/products"
+            className={`whitespace-nowrap rounded-full px-4 py-2 text-xs font-bold transition shadow-sm ${
+              activeCategory === "all"
+                ? "bg-red-600 text-white shadow-red-600/30"
+                : "border border-slate-200 bg-white text-slate-700 hover:border-red-400 hover:bg-red-50"
+            }`}
+          >
+            All Categories ({total})
+          </Link>
+          {categories.map((c) => {
+            const isActive = activeCategory === c.slug;
+            return (
+              <Link
+                key={c.id}
+                href={`/products?category=${c.slug}`}
+                className={`whitespace-nowrap rounded-full px-4 py-2 text-xs font-bold transition shadow-sm ${
+                  isActive
+                    ? "bg-red-600 text-white shadow-red-600/30"
+                    : "border border-slate-200 bg-white text-slate-700 hover:border-red-400 hover:bg-red-50"
+                }`}
+              >
+                {c.name} ({c.productCount})
+              </Link>
+            );
+          })}
+        </div>
+
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <p className="text-[12.5px] font-bold uppercase tracking-[2px] text-slate-500">
             Showing {productList.length} of {productTotal} products
