@@ -114,6 +114,46 @@ const TABS = [
 
 type TabKey = (typeof TABS)[number]["k"];
 
+const OFFICIAL_CATEGORIES = [
+  "One Sound / 2 Sound Crackers",
+  "Bijili Crackers",
+  "SOUND CRACKERS",
+  "Ground Chakkars",
+  "Twinkling Stars",
+  "Flower Pots",
+  "Rockets",
+  "Pencils",
+  "Bombs",
+  "Fountains",
+  "KIDS SPECIAL",
+  "Aerial Shots",
+  "Multi Shots",
+  "PREMIUM FOUNTAINS",
+  "Sparklers",
+  "Colour Matches & Novelties",
+  "Gift Boxes",
+];
+
+const CATEGORY_ICONS: Record<string, string> = {
+  "One Sound / 2 Sound Crackers": "🧨",
+  "Bijili Crackers": "⚡",
+  "SOUND CRACKERS": "💥",
+  "Ground Chakkars": "🌀",
+  "Twinkling Stars": "⭐",
+  "Flower Pots": "🌸",
+  "Rockets": "🚀",
+  "Pencils": "✏️",
+  "Bombs": "💣",
+  "Fountains": "⛲",
+  "KIDS SPECIAL": "✨",
+  "Aerial Shots": "🎆",
+  "Multi Shots": "🎇",
+  "PREMIUM FOUNTAINS": "👑",
+  "Sparklers": "🪄",
+  "Colour Matches & Novelties": "🎁",
+  "Gift Boxes": "📦",
+};
+
 export default function AdminPage() {
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [passcode, setPasscode] = useState("");
@@ -125,6 +165,7 @@ export default function AdminPage() {
   const [enquiries, setEnquiries] = useState<Record<string, string>[]>([]);
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>("ALL");
   const [draggedId, setDraggedId] = useState<string | null>(null);
 
   // Product Modal & Inline Edit State
@@ -258,71 +299,14 @@ export default function AdminPage() {
       let list = pRes?.success && Array.isArray(pRes?.data?.items) ? pRes.data.items : [];
       const serverOrder = (pRes?.data?.productOrder || []) as string[];
 
-      // 1. Permanent Product Order Rehydration from browser storage (Survives 100 days!)
+      // Clear stale pre-122 browser cache
       try {
-        const localOrderRaw = typeof window !== "undefined" ? localStorage.getItem("mayilon_permanent_product_order") : null;
-        if (localOrderRaw) {
-          const localOrder = JSON.parse(localOrderRaw) as string[];
-          if (Array.isArray(localOrder) && localOrder.length > 0) {
-            const posMap = new Map<string, number>();
-            localOrder.forEach((id, idx) => posMap.set(id, idx));
-            list.sort((a: any, b: any) => {
-              const pa = posMap.has(a.id) ? posMap.get(a.id)! : 99999;
-              const pb = posMap.has(b.id) ? posMap.get(b.id)! : 99999;
-              return pa - pb;
-            });
-
-            // If serverless container cold-started or reset, re-hydrate server automatically!
-            if (serverOrder.length === 0 || JSON.stringify(serverOrder) !== JSON.stringify(localOrder)) {
-              void fetch("/api/v1/products", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ action: "reorder", order: localOrder }),
-              });
-            }
-          }
-        }
-      } catch (err) {
-        console.warn("[Admin load] Local product order restoration note:", err);
-      }
-
-      // 2. Rehydrate custom edited product prices/attributes with bulletproof multi-key lookup
-      try {
-        const localProdsRaw = typeof window !== "undefined" ? localStorage.getItem("mayilon_custom_products") : null;
-        if (localProdsRaw) {
-          const localProds = JSON.parse(localProdsRaw);
-          if (Array.isArray(localProds) && localProds.length > 0) {
-            const lMap = new Map<string, any>();
-            localProds.forEach((p: any) => {
-              if (p && p.id) lMap.set(p.id, p);
-              if (p && p.sku) lMap.set(p.sku, p);
-              if (p && p.slug) lMap.set(p.slug, p);
-              if (p && p.name) lMap.set(p.name.trim().toLowerCase(), p);
-            });
-            list = list.map((item: any) => {
-              const matched =
-                lMap.get(item.id) ||
-                (item.sku ? lMap.get(item.sku) : undefined) ||
-                (item.slug ? lMap.get(item.slug) : undefined) ||
-                (item.name ? lMap.get(item.name.trim().toLowerCase()) : undefined);
-              return matched
-                ? {
-                    ...item,
-                    ...matched,
-                    mrp: Number(matched.mrp ?? item.mrp),
-                    offerPrice: Number(matched.offerPrice ?? item.offerPrice),
-                    packing: String(matched.packing ?? item.packing),
-                    stock: Number(matched.stock ?? item.stock),
-                  }
-                : item;
-            });
-
-            // Auto-sync custom edits to serverless backend if cold started
-            void fetch("/api/v1/products", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ action: "sync_all", state: { products: localProds } }),
-            });
+        if (typeof window !== "undefined") {
+          const V_KEY = "mayilon_catalog_v2026_122_fixed";
+          if (localStorage.getItem(V_KEY) !== "true") {
+            localStorage.removeItem("mayilon_permanent_product_order");
+            localStorage.removeItem("mayilon_custom_products");
+            localStorage.setItem(V_KEY, "true");
           }
         }
       } catch (err) {}
@@ -958,6 +942,71 @@ export default function AdminPage() {
       p.categoryName.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
+  const allCategoryPills = useMemo(() => {
+    const countMap = new Map<string, number>();
+    for (const p of products) {
+      const cat = p.categoryName || "Special Fireworks";
+      countMap.set(cat, (countMap.get(cat) || 0) + 1);
+    }
+    const pills: { name: string; count: number; icon: string }[] = [];
+    for (const cat of OFFICIAL_CATEGORIES) {
+      if (countMap.has(cat)) {
+        pills.push({ name: cat, count: countMap.get(cat)!, icon: CATEGORY_ICONS[cat] || "🎇" });
+        countMap.delete(cat);
+      }
+    }
+    for (const [cat, count] of countMap.entries()) {
+      pills.push({ name: cat, count, icon: CATEGORY_ICONS[cat] || "🎇" });
+    }
+    return pills;
+  }, [products]);
+
+  const categoryGroups = useMemo(() => {
+    const map = new Map<string, ProductItem[]>();
+
+    for (const p of filteredProducts) {
+      const cat = p.categoryName || "Special Fireworks";
+      if (!map.has(cat)) {
+        map.set(cat, []);
+      }
+      map.get(cat)!.push(p);
+    }
+
+    const groups: { category: string; icon: string; items: ProductItem[] }[] = [];
+
+    for (const cat of OFFICIAL_CATEGORIES) {
+      if (map.has(cat)) {
+        const items = map.get(cat)!;
+        if (items.length > 0) {
+          groups.push({
+            category: cat,
+            icon: CATEGORY_ICONS[cat] || "🎇",
+            items,
+          });
+          map.delete(cat);
+        }
+      }
+    }
+
+    for (const [cat, items] of map.entries()) {
+      if (items.length > 0) {
+        groups.push({
+          category: cat,
+          icon: CATEGORY_ICONS[cat] || "🎇",
+          items,
+        });
+      }
+    }
+
+    if (selectedCategoryFilter !== "ALL") {
+      return groups.filter(
+        (g) => g.category.toLowerCase() === selectedCategoryFilter.toLowerCase(),
+      );
+    }
+
+    return groups;
+  }, [filteredProducts, selectedCategoryFilter]);
+
   return (
     <div className="flex min-h-screen bg-slate-50 text-slate-900">
       {/* Toast Notification Alert */}
@@ -1310,17 +1359,22 @@ export default function AdminPage() {
               <Panel
                 title={
                   <div className="flex flex-wrap items-center justify-between gap-4">
-                    <span>Product Catalogue ({filteredProducts.length})</span>
+                    <div className="flex items-center gap-3">
+                      <span>Product Catalogue ({filteredProducts.length})</span>
+                      <span className="rounded-full bg-amber-100 text-amber-900 border border-amber-300 px-2.5 py-0.5 text-xs font-bold">
+                        Category-Wise Grouped
+                      </span>
+                    </div>
                     <div className="flex items-center gap-2">
                       <button
                         onClick={handleClearAllProducts}
-                        className="flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-[12px] font-bold text-red-600 hover:bg-red-600 hover:text-white transition-all shadow-sm"
+                        className="flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-[12px] font-bold text-red-600 hover:bg-red-600 hover:text-white transition-all shadow-sm cursor-pointer"
                       >
                         <Trash2 size={14} /> Clear All (Fresh Start)
                       </button>
                       <button
                         onClick={openAddProduct}
-                        className="btn-gold flex items-center gap-2 px-5 py-2.5 text-[12.5px] uppercase font-bold"
+                        className="btn-gold flex items-center gap-2 px-5 py-2.5 text-[12.5px] uppercase font-bold cursor-pointer"
                       >
                         <Plus size={16} /> Upload New Product
                       </button>
@@ -1328,205 +1382,242 @@ export default function AdminPage() {
                   </div>
                 }
               >
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                  <div className="relative flex-1 min-w-[280px]">
-                    <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Filter by product name, SKU or category…"
-                      className="field pl-11 !bg-slate-50 !border-slate-200 !text-slate-900 font-bold"
-                    />
+                {/* Search & Category Filter Header */}
+                <div className="mb-5 space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="relative flex-1 min-w-[280px]">
+                      <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Search by product name, SKU or category…"
+                        className="field pl-11 !bg-slate-50 !border-slate-200 !text-slate-900 font-bold"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs font-bold text-slate-600">Category Filter:</label>
+                      <select
+                        value={selectedCategoryFilter}
+                        onChange={(e) => setSelectedCategoryFilter(e.target.value)}
+                        className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-800 shadow-xs focus:border-red-500 focus:outline-hidden cursor-pointer"
+                      >
+                        <option value="ALL">All Categories ({products.length})</option>
+                        {allCategoryPills.map((cat) => (
+                          <option key={cat.name} value={cat.name}>
+                            {cat.icon} {cat.name} ({cat.count})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 text-[12px] font-bold text-slate-600 bg-red-50 border border-red-200 rounded-xl px-3.5 py-2 shadow-xs">
-                    <span>💡 <b>Scroll & Place:</b> Use ⬆️ ⬇️ buttons or drag rows to change order.</span>
+
+                  {/* Horizontal Scrollable Category Pills */}
+                  <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin">
+                    <button
+                      onClick={() => setSelectedCategoryFilter("ALL")}
+                      className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold transition cursor-pointer ${
+                        selectedCategoryFilter === "ALL"
+                          ? "bg-red-600 text-white shadow-sm"
+                          : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                      }`}
+                    >
+                      <span>🔥 All Categories</span>
+                      <span className={`rounded-full px-1.5 py-0.2 text-[10px] ${
+                        selectedCategoryFilter === "ALL" ? "bg-white/20 text-white" : "bg-slate-200 text-slate-700"
+                      }`}>
+                        {products.length}
+                      </span>
+                    </button>
+                    {allCategoryPills.map((cat) => {
+                      const isActive = selectedCategoryFilter.toLowerCase() === cat.name.toLowerCase();
+                      return (
+                        <button
+                          key={cat.name}
+                          onClick={() => setSelectedCategoryFilter(isActive ? "ALL" : cat.name)}
+                          className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold transition cursor-pointer ${
+                            isActive
+                              ? "bg-red-600 text-white shadow-sm"
+                              : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                          }`}
+                        >
+                          <span>{cat.icon} {cat.name}</span>
+                          <span className={`rounded-full px-1.5 py-0.2 text-[10px] ${
+                            isActive ? "bg-white/20 text-white" : "bg-slate-200 text-slate-700"
+                          }`}>
+                            {cat.count}
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
-                <div className="max-h-[720px] overflow-y-auto overflow-x-auto rounded-2xl border border-slate-200 shadow-inner">
-                  <table className="w-full min-w-[880px] text-[13.5px] relative">
-                    <thead className="sticky top-0 z-10 bg-slate-100/95 backdrop-blur-xs border-b border-slate-200 text-left text-[11px] font-bold uppercase tracking-[2px] text-slate-600 shadow-xs">
-                      <tr>
-                        <th className="py-3.5 px-3 text-center w-[140px]">Order & Place</th>
-                        <th className="py-3.5 px-2">SKU</th>
-                        <th className="py-3.5 px-2">Product Name</th>
-                        <th className="py-3.5 px-2">Category</th>
-                        <th className="py-3.5 px-2 text-right">MRP</th>
-                        <th className="py-3.5 px-2 text-right">Offer Price</th>
-                        <th className="py-3.5 px-2 text-right">Stock</th>
-                        <th className="py-3.5 px-3 text-center">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 bg-white">
-                      {filteredProducts.map((p, idx) => {
-                        const fullIdx = products.findIndex((it) => it.id === p.id);
-                        const isDragging = draggedId === p.id;
-                        return (
-                          <tr
-                            key={String(p.id)}
-                            draggable={true}
-                            onDragStart={() => handleDragStart(p.id)}
-                            onDragOver={handleDragOver}
-                            onDrop={() => handleDrop(p.id)}
-                            className={`transition-colors hover:bg-slate-50 ${
-                              isDragging ? "opacity-30 bg-red-50 ring-2 ring-red-500" : ""
-                            }`}
-                          >
-                            <td className="py-2.5 px-3">
-                              <div className="flex items-center gap-1.5 justify-center">
-                                <span
-                                  title="Drag to reposition"
-                                  className="cursor-grab active:cursor-grabbing p-1 text-slate-400 hover:text-red-600"
+                {/* Category-Wise Grouped Product Sections */}
+                <div className="space-y-6">
+                  {categoryGroups.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-slate-300 p-12 text-center text-slate-400">
+                      No products found matching your filter.
+                    </div>
+                  ) : (
+                    categoryGroups.map((group, gIdx) => (
+                      <div
+                        key={group.category}
+                        className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+                      >
+                        {/* Category Header Card */}
+                        <div className="flex flex-wrap items-center justify-between gap-3 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 px-5 py-3 text-white">
+                          <div className="flex items-center gap-2.5">
+                            <span className="text-xl">{group.icon}</span>
+                            <h3 className="text-sm font-black uppercase tracking-wider text-amber-400">
+                              {group.category}
+                            </h3>
+                            <span className="rounded-full bg-red-600 px-2.5 py-0.5 text-[10px] font-bold text-white shadow-xs">
+                              {group.items.length} {group.items.length === 1 ? "Product" : "Products"}
+                            </span>
+                          </div>
+                          <span className="text-[11px] text-slate-400 font-medium">
+                            Category #{gIdx + 1}
+                          </span>
+                        </div>
+
+                        {/* Category Table */}
+                        <div className="overflow-x-auto">
+                          <table className="w-full min-w-[880px] text-[13.5px]">
+                            <thead className="bg-slate-50 border-b border-slate-200 text-left text-[11px] font-bold uppercase tracking-[1.5px] text-slate-600">
+                              <tr>
+                                <th className="py-3 px-3 text-center w-[70px]">#</th>
+                                <th className="py-3 px-2 w-[130px]">SKU</th>
+                                <th className="py-3 px-2">Product Name</th>
+                                <th className="py-3 px-2 w-[140px]">Packing</th>
+                                <th className="py-3 px-2 text-right w-[110px]">MRP</th>
+                                <th className="py-3 px-2 text-right w-[120px]">Offer Price</th>
+                                <th className="py-3 px-2 text-right w-[90px]">Stock</th>
+                                <th className="py-3 px-3 text-center w-[200px]">Action</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 bg-white">
+                              {group.items.map((p, idx) => (
+                                <tr
+                                  key={String(p.id)}
+                                  className="transition-colors hover:bg-amber-50/40"
                                 >
-                                  <GripVertical size={16} />
-                                </span>
-                                <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[11px] font-mono font-bold text-slate-700 min-w-[28px] text-center border border-slate-200">
-                                  #{idx + 1}
-                                </span>
-                                <div className="inline-flex items-center rounded-lg border border-slate-200 bg-white shadow-xs">
-                                  <button
-                                    title="Move to Top"
-                                    onClick={() => moveProduct(fullIdx, "top")}
-                                    disabled={fullIdx <= 0}
-                                    className="p-1 text-slate-500 hover:bg-red-50 hover:text-red-600 disabled:opacity-20"
-                                  >
-                                    <ChevronsUp size={13} />
-                                  </button>
-                                  <button
-                                    title="Move Up"
-                                    onClick={() => moveProduct(fullIdx, "up")}
-                                    disabled={fullIdx <= 0}
-                                    className="p-1 text-slate-500 hover:bg-red-50 hover:text-red-600 disabled:opacity-20"
-                                  >
-                                    <ArrowUp size={13} />
-                                  </button>
-                                  <button
-                                    title="Move Down"
-                                    onClick={() => moveProduct(fullIdx, "down")}
-                                    disabled={fullIdx >= products.length - 1}
-                                    className="p-1 text-slate-500 hover:bg-red-50 hover:text-red-600 disabled:opacity-20"
-                                  >
-                                    <ArrowDown size={13} />
-                                  </button>
-                                  <button
-                                    title="Move to Bottom"
-                                    onClick={() => moveProduct(fullIdx, "bottom")}
-                                    disabled={fullIdx >= products.length - 1}
-                                    className="p-1 text-slate-500 hover:bg-red-50 hover:text-red-600 disabled:opacity-20"
-                                  >
-                                    <ChevronsDown size={13} />
-                                  </button>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="py-2.5 px-2 font-bold text-slate-500">{p.sku}</td>
-                            <td className="py-2.5 px-2">
-                              <div className="font-bold text-slate-900">{p.name}</div>
-                              {p.packing && (
-                                <div className="text-[11px] text-slate-400 font-medium">{p.packing}</div>
-                              )}
-                            </td>
-                            <td className="py-2.5 px-2 font-medium text-slate-600">{p.categoryName}</td>
-                            <td className="py-2.5 px-2 text-right">
-                              {inlineEditingId === p.id ? (
-                                <input
-                                  type="number"
-                                  value={inlineMrp}
-                                  onChange={(e) => setInlineMrp(Number(e.target.value))}
-                                  className="w-20 rounded-lg border border-slate-300 bg-white px-2 py-1 text-right text-xs font-bold text-slate-800 shadow-inner"
-                                  placeholder="MRP"
-                                />
-                              ) : (
-                                <span className="text-slate-400 line-through">{formatINR(Number(p.mrp))}</span>
-                              )}
-                            </td>
-                            <td className="py-2.5 px-2 text-right">
-                              {inlineEditingId === p.id ? (
-                                <input
-                                  type="number"
-                                  value={inlineOfferPrice}
-                                  onChange={(e) => setInlineOfferPrice(Number(e.target.value))}
-                                  className="w-20 rounded-lg border-2 border-red-500 bg-red-50 px-2 py-1 text-right text-xs font-black text-red-600 shadow-inner focus:outline-hidden"
-                                  placeholder="Offer ₹"
-                                />
-                              ) : (
-                                <span className="font-black text-red-600">{formatINR(Number(p.offerPrice))}</span>
-                              )}
-                            </td>
-                            <td className="py-2.5 px-2 text-right">
-                              {inlineEditingId === p.id ? (
-                                <input
-                                  type="number"
-                                  value={inlineStock}
-                                  onChange={(e) => setInlineStock(Number(e.target.value))}
-                                  className="w-16 rounded-lg border border-slate-300 bg-white px-2 py-1 text-right text-xs font-bold text-slate-800 shadow-inner"
-                                  placeholder="Stock"
-                                />
-                              ) : (
-                                <span
-                                  className={`font-bold ${
-                                    Number(p.stock) < 200 ? "text-red-600" : "text-emerald-600"
-                                  }`}
-                                >
-                                  {p.stock}
-                                </span>
-                              )}
-                            </td>
-                            <td className="py-2.5 px-3 text-center">
-                              {inlineEditingId === p.id ? (
-                                <div className="flex items-center justify-center gap-1.5">
-                                  <button
-                                    onClick={() => handleQuickSaveInline(p)}
-                                    disabled={savingInline}
-                                    title="Save Price & Stock changes"
-                                    className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 text-white px-3 py-1.5 text-[11.5px] font-black hover:bg-emerald-700 shadow-sm transition disabled:opacity-50 cursor-pointer"
-                                  >
-                                    <Check size={13} /> {savingInline ? "Saving..." : "Save"}
-                                  </button>
-                                  <button
-                                    onClick={() => setInlineEditingId(null)}
-                                    title="Cancel"
-                                    className="rounded-lg border border-slate-200 bg-slate-100 px-2 py-1.5 text-[11px] font-bold text-slate-600 hover:bg-slate-200 cursor-pointer"
-                                  >
-                                    <X size={13} />
-                                  </button>
-                                </div>
-                              ) : (
-                                <div className="flex items-center justify-center gap-1.5">
-                                  <button
-                                    onClick={() => {
-                                      setInlineEditingId(p.id);
-                                      setInlineMrp(Number(p.mrp));
-                                      setInlineOfferPrice(Number(p.offerPrice));
-                                      setInlineStock(Number(p.stock));
-                                    }}
-                                    title="Quick Price Change"
-                                    className="inline-flex items-center gap-1 rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1 text-[11px] font-black text-amber-900 hover:bg-amber-100 shadow-2xs transition cursor-pointer"
-                                  >
-                                    <Zap size={12} className="text-amber-600 fill-amber-600" /> ₹ Edit
-                                  </button>
-                                  <button
-                                    onClick={() => openEditProduct(p)}
-                                    title="Edit Full Details"
-                                    className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:border-red-500 hover:text-red-600 shadow-2xs transition cursor-pointer"
-                                  >
-                                    <Edit size={12} /> Full Edit
-                                  </button>
-                                  <button
-                                    onClick={() => handleDeleteProduct(p.id)}
-                                    title="Delete product"
-                                    className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-bold text-slate-400 hover:border-red-600 hover:bg-red-600 hover:text-white transition shadow-2xs cursor-pointer"
-                                  >
-                                    <Trash2 size={12} />
-                                  </button>
-                                </div>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                                  <td className="py-2.5 px-3 text-center">
+                                    <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-mono font-bold text-slate-700 border border-slate-200">
+                                      #{idx + 1}
+                                    </span>
+                                  </td>
+                                  <td className="py-2.5 px-2 font-mono font-bold text-slate-600">
+                                    {p.sku}
+                                  </td>
+                                  <td className="py-2.5 px-2">
+                                    <div className="font-bold text-slate-900">{p.name}</div>
+                                  </td>
+                                  <td className="py-2.5 px-2 text-slate-500 text-[12px] font-medium">
+                                    {p.packing || "1 Box"}
+                                  </td>
+                                  <td className="py-2.5 px-2 text-right">
+                                    {inlineEditingId === p.id ? (
+                                      <input
+                                        type="number"
+                                        value={inlineMrp}
+                                        onChange={(e) => setInlineMrp(Number(e.target.value))}
+                                        className="w-20 rounded-lg border border-slate-300 bg-white px-2 py-1 text-right text-xs font-bold text-slate-800 shadow-inner"
+                                        placeholder="MRP"
+                                      />
+                                    ) : (
+                                      <span className="text-slate-400 line-through text-xs">{formatINR(Number(p.mrp))}</span>
+                                    )}
+                                  </td>
+                                  <td className="py-2.5 px-2 text-right">
+                                    {inlineEditingId === p.id ? (
+                                      <input
+                                        type="number"
+                                        value={inlineOfferPrice}
+                                        onChange={(e) => setInlineOfferPrice(Number(e.target.value))}
+                                        className="w-20 rounded-lg border-2 border-red-500 bg-red-50 px-2 py-1 text-right text-xs font-black text-red-600 shadow-inner focus:outline-hidden"
+                                        placeholder="Offer ₹"
+                                      />
+                                    ) : (
+                                      <span className="font-black text-red-600 text-[14px]">{formatINR(Number(p.offerPrice))}</span>
+                                    )}
+                                  </td>
+                                  <td className="py-2.5 px-2 text-right">
+                                    {inlineEditingId === p.id ? (
+                                      <input
+                                        type="number"
+                                        value={inlineStock}
+                                        onChange={(e) => setInlineStock(Number(e.target.value))}
+                                        className="w-16 rounded-lg border border-slate-300 bg-white px-2 py-1 text-right text-xs font-bold text-slate-800 shadow-inner"
+                                        placeholder="Stock"
+                                      />
+                                    ) : (
+                                      <span
+                                        className={`font-bold text-xs ${
+                                          Number(p.stock) < 200 ? "text-red-600" : "text-emerald-600"
+                                        }`}
+                                      >
+                                        {p.stock}
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td className="py-2.5 px-3 text-center">
+                                    {inlineEditingId === p.id ? (
+                                      <div className="flex items-center justify-center gap-1.5">
+                                        <button
+                                          onClick={() => handleQuickSaveInline(p)}
+                                          disabled={savingInline}
+                                          title="Save Price & Stock changes"
+                                          className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 text-white px-3 py-1.5 text-[11.5px] font-black hover:bg-emerald-700 shadow-sm transition disabled:opacity-50 cursor-pointer"
+                                        >
+                                          <Check size={13} /> {savingInline ? "Saving..." : "Save"}
+                                        </button>
+                                        <button
+                                          onClick={() => setInlineEditingId(null)}
+                                          title="Cancel"
+                                          className="rounded-lg border border-slate-200 bg-slate-100 px-2 py-1.5 text-[11px] font-bold text-slate-600 hover:bg-slate-200 cursor-pointer"
+                                        >
+                                          <X size={13} />
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <div className="flex items-center justify-center gap-1.5">
+                                        <button
+                                          onClick={() => {
+                                            setInlineEditingId(p.id);
+                                            setInlineMrp(Number(p.mrp));
+                                            setInlineOfferPrice(Number(p.offerPrice));
+                                            setInlineStock(Number(p.stock));
+                                          }}
+                                          title="Quick Price Change"
+                                          className="inline-flex items-center gap-1 rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1 text-[11px] font-black text-amber-900 hover:bg-amber-100 shadow-2xs transition cursor-pointer"
+                                        >
+                                          <Zap size={12} className="text-amber-600 fill-amber-600" /> ₹ Edit
+                                        </button>
+                                        <button
+                                          onClick={() => openEditProduct(p)}
+                                          title="Edit Full Details"
+                                          className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:border-red-500 hover:text-red-600 shadow-2xs transition cursor-pointer"
+                                        >
+                                          <Edit size={12} /> Full Edit
+                                        </button>
+                                        <button
+                                          onClick={() => handleDeleteProduct(p.id)}
+                                          title="Delete product"
+                                          className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-bold text-slate-400 hover:border-red-600 hover:bg-red-600 hover:text-white transition shadow-2xs cursor-pointer"
+                                        >
+                                          <Trash2 size={12} />
+                                        </button>
+                                      </div>
+                                    )}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </Panel>
             )}
