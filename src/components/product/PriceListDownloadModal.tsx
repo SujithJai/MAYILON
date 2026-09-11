@@ -90,16 +90,15 @@ export function PriceListDownloadModal({
       let globalIdx = 0;
       groups.forEach((g) => {
         csvContent += `\n"--- ${g.category.toUpperCase()} (${g.items.length} PRODUCTS) ---",,,,,,\n`;
-        csvContent += "S.No,SKU,Category,Product Name,Packing,MRP (Rs.),Discount %,Offer Price (Rs.)\n";
+        csvContent += "S.No,SKU,Product Name,Packing,MRP (Rs.),Discount %,Offer Price (Rs.)\n";
         g.items.forEach((p) => {
           globalIdx += 1;
           const mrp = Number(p.mrp) || 0;
           const offer = Number(p.offerPrice) || mrp;
           const disc = p.discountPercent || (mrp > 0 ? Math.round(((mrp - offer) / mrp) * 100) : 80);
           const cleanName = `"${String(p.name).replace(/"/g, '""')}"`;
-          const cleanCat = `"${String(g.category).replace(/"/g, '""')}"`;
           const cleanPack = `"${String(p.packing || "1 Box").replace(/"/g, '""')}"`;
-          csvContent += `${globalIdx},${p.sku || `MYL-${globalIdx}`},${cleanCat},${cleanName},${cleanPack},${mrp.toFixed(2)},${disc}%,${offer.toFixed(2)}\n`;
+          csvContent += `${globalIdx},${p.sku || `MYL-${globalIdx}`},${cleanName},${cleanPack},${mrp.toFixed(2)},${disc}%,${offer.toFixed(2)}\n`;
         });
       });
 
@@ -129,7 +128,7 @@ export function PriceListDownloadModal({
       groups.forEach((g) => {
         tableRows += `
           <tr style="background-color: #fee2e2; border-top: 2px solid #dc2626; border-bottom: 2px solid #dc2626;">
-            <td colspan="8" style="padding: 10px; font-weight: bold; font-size: 13px; color: #991b1b; text-transform: uppercase;">
+            <td colspan="7" style="padding: 10px; font-weight: bold; font-size: 13px; color: #991b1b; text-transform: uppercase;">
               🎆 ${g.category} &nbsp;—&nbsp; <span style="font-size: 11px; color: #7f1d1d;">(${g.items.length} Products)</span>
             </td>
           </tr>
@@ -142,7 +141,6 @@ export function PriceListDownloadModal({
             <tr style="border-bottom: 1px solid #ddd; ${wordIdx % 2 === 0 ? "background-color: #f9f9f9;" : ""}">
               <td style="padding: 8px; text-align: center;">${wordIdx}</td>
               <td style="padding: 8px; font-weight: bold; color: #b91c1c;">${p.sku || `MYL-${wordIdx}`}</td>
-              <td style="padding: 8px;">${g.category}</td>
               <td style="padding: 8px; font-weight: bold;">${p.name}</td>
               <td style="padding: 8px;">${p.packing || "1 Box"}</td>
               <td style="padding: 8px; text-decoration: line-through; color: #888;">₹${mrp.toFixed(2)}</td>
@@ -178,7 +176,6 @@ export function PriceListDownloadModal({
               <tr>
                 <th>#</th>
                 <th>SKU</th>
-                <th>Category</th>
                 <th>Product Name</th>
                 <th>Packing</th>
                 <th>MRP (₹)</th>
@@ -229,7 +226,7 @@ export function PriceListDownloadModal({
       groups.forEach((g) => {
         rows += `
           <tr class="category-divider-row" style="background: #fef2f2; border-top: 2px solid #dc2626; border-bottom: 2px solid #dc2626;">
-            <td colspan="8" style="padding: 8px 12px; font-weight: 900; font-size: 12.5px; color: #991b1b; text-transform: uppercase; letter-spacing: 0.5px;">
+            <td colspan="7" style="padding: 8px 12px; font-weight: 900; font-size: 12.5px; color: #991b1b; text-transform: uppercase; letter-spacing: 0.5px;">
               🎇 ${g.category} <span style="font-size: 10.5px; font-weight: 700; background: #ffffff; color: #991b1b; padding: 2px 8px; border-radius: 9999px; margin-left: 8px; border: 1px solid #fca5a5;">${g.items.length} Products</span>
             </td>
           </tr>
@@ -242,7 +239,6 @@ export function PriceListDownloadModal({
             <tr class="${pdfIdx % 2 === 0 ? "even" : ""}">
               <td style="text-align: center; width: 35px;">${pdfIdx}</td>
               <td style="font-weight: 600; color: #991b1b; width: 90px;">${p.sku || `MYL-${pdfIdx}`}</td>
-              <td style="width: 130px; font-size: 11px;">${g.category}</td>
               <td style="font-weight: 700; font-size: 12.5px;">${p.name}</td>
               <td style="width: 100px; font-size: 11.5px;">${p.packing || "1 Box"}</td>
               <td style="text-align: right; text-decoration: line-through; color: #777; width: 75px;">₹${mrp.toFixed(2)}</td>
@@ -309,7 +305,6 @@ export function PriceListDownloadModal({
               <tr>
                 <th style="text-align: center;">#</th>
                 <th>SKU</th>
-                <th>Category</th>
                 <th>Product Description</th>
                 <th>Packing</th>
                 <th style="text-align: right;">MRP (₹)</th>

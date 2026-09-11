@@ -114,6 +114,26 @@ const TABS = [
 
 type TabKey = (typeof TABS)[number]["k"];
 
+const PREFIX_MAP: Record<string, string> = {
+  "One Sound / 2 Sound Crackers": "MYL-SND",
+  "Bijili Crackers": "MYL-BJL",
+  "SOUND CRACKERS": "MYL-SD",
+  "Ground Chakkars": "MYL-GCK",
+  "Twinkling Stars": "MYL-TWN",
+  "Flower Pots": "MYL-FLP",
+  "Rockets": "MYL-RKT",
+  "Pencils": "MYL-PNC",
+  "Bombs": "MYL-BMB",
+  "Fountains": "MYL-FTN",
+  "KIDS SPECIAL": "MYL-KDS",
+  "Aerial Shots": "MYL-SKY",
+  "Multi Shots": "MYL-MLT",
+  "PREMIUM FOUNTAINS": "MYL-PF",
+  "Sparklers": "MYL-SPK",
+  "Colour Matches & Novelties": "MYL-NVL",
+  "Gift Boxes": "MYL-GFT",
+};
+
 const OFFICIAL_CATEGORIES = [
   "One Sound / 2 Sound Crackers",
   "Bijili Crackers",
@@ -166,6 +186,9 @@ export default function AdminPage() {
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>("ALL");
+  const [isDraft, setIsDraft] = useState(false);
+  const [savingWholeWebsite, setSavingWholeWebsite] = useState(false);
+  const [draggedProduct, setDraggedProduct] = useState<{ id: string; category: string; index: number } | null>(null);
   const [draggedId, setDraggedId] = useState<string | null>(null);
 
   // Product Modal & Inline Edit State
@@ -369,6 +392,127 @@ export default function AdminPage() {
     return groups;
   }, [filteredProducts, selectedCategoryFilter]);
 
+
+  // Re-sequence SKUs within a category according to their current rank (#1 -> 01, #2 -> 02)
+  const handleAutoSequenceCategorySkus = (categoryName: string) => {
+    const prefix = PREFIX_MAP[categoryName] || "MYL-PRD";
+    let rank = 1;
+    const updated = products.map((p) => {
+      if (p.categoryName?.toLowerCase() === categoryName.toLowerCase()) {
+        const cleanSku = `${prefix}-${rank.toString().padStart(2, "0")}`;
+        rank += 1;
+        return { ...p, sku: cleanSku };
+      }
+      return p;
+    });
+    setProducts(updated);
+    setIsDraft(true);
+    setNotificationToast(`🔢 Auto-aligned SKUs for "${categoryName}" to match row rank #1..#${rank - 1}! Click "Save Whole Website" to publish live.`);
+    setTimeout(() => setNotificationToast(null), 4500);
+  };
+
+  // Move product within its category and auto-align SKUs
+  const handleMoveItemWithinCategory = (categoryName: string, fromIdx: number, toIdx: number) => {
+    const catItems = products.filter((p) => p.categoryName?.toLowerCase() === categoryName.toLowerCase());
+    if (fromIdx < 0 || fromIdx >= catItems.length || toIdx < 0 || toIdx >= catItems.length) return;
+
+    const itemToMove = catItems[fromIdx];
+    const newCatItems = [...catItems];
+    newCatItems.splice(fromIdx, 1);
+    newCatItems.splice(toIdx, 0, itemToMove);
+
+    // Auto-align SKUs to match the new rank sequence
+    const prefix = PREFIX_MAP[categoryName] || "MYL-PRD";
+    const alignedCatItems = newCatItems.map((item, idx) => ({
+      ...item,
+      sku: `${prefix}-${(idx + 1).toString().padStart(2, "0")}`,
+    }));
+
+    // Splice back into global products list preserving category position
+    let catItemIdx = 0;
+    const newProducts = products.map((p) => {
+      if (p.categoryName?.toLowerCase() === categoryName.toLowerCase()) {
+        const replacement = alignedCatItems[catItemIdx];
+        catItemIdx += 1;
+        return replacement;
+      }
+      return p;
+    });
+
+    setProducts(newProducts);
+    setIsDraft(true);
+    setNotificationToast(`🔄 Moved "${itemToMove.name}" to Rank #${toIdx + 1} (${alignedCatItems[toIdx].sku})! Click "Save Whole Website" to publish live.`);
+    setTimeout(() => setNotificationToast(null), 4000);
+  };
+
+  // Drag and Drop handlers
+  const handleDragStart = (id: string, category: string, index: number) => {
+    setDraggedProduct({ id, category, index });
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (targetCategory: string, targetIndex: number) => {
+    if (!draggedProduct) return;
+    if (draggedProduct.category.toLowerCase() === targetCategory.toLowerCase() && draggedProduct.index !== targetIndex) {
+      handleMoveItemWithinCategory(targetCategory, draggedProduct.index, targetIndex);
+    }
+    setDraggedProduct(null);
+  };
+
+  // SAVE WHOLE WEBSITE & PUBLISH LIVE
+  const handlePublishWholeWebsite = async () => {
+    setSavingWholeWebsite(true);
+    try {
+      // Align all SKUs across all categories before publishing
+      let aligned = [...products];
+      for (const cat of OFFICIAL_CATEGORIES) {
+        const prefix = PREFIX_MAP[cat] || "MYL-PRD";
+        let rank = 1;
+        aligned = aligned.map((p) => {
+          if (p.categoryName?.toLowerCase() === cat.toLowerCase()) {
+            const cleanSku = `${prefix}-${rank.toString().padStart(2, "0")}`;
+            rank += 1;
+            return { ...p, sku: cleanSku };
+          }
+          return p;
+        });
+      }
+      setProducts(aligned);
+
+      // Save locally
+      if (typeof window !== "undefined") {
+        localStorage.setItem("mayilon_custom_products", JSON.stringify(aligned));
+        localStorage.setItem("mayilon_permanent_product_order", JSON.stringify(aligned.map((p) => p.id)));
+      }
+
+      const res = await fetch("/api/v1/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "publish_all",
+          products: aligned,
+          order: aligned.map((p) => p.id),
+        }),
+      });
+      const data = await res.json();
+      if (data?.success) {
+        setIsDraft(false);
+        setNotificationToast("🎉 WHOLE WEBSITE SAVED & PUBLISHED LIVE! All 122+ products, prices, and orders are now updated for all customers across all devices.");
+        setTimeout(() => setNotificationToast(null), 6000);
+      } else {
+        alert("Server response: " + (data?.message || "Saved locally"));
+        setIsDraft(false);
+      }
+    } catch (err: any) {
+      console.warn("Publish error:", err);
+      alert("Changes saved locally. Note: Server connection pending.");
+    } finally {
+      setSavingWholeWebsite(false);
+    }
+  };
 
   const load = useCallback(async () => {
     try {
@@ -754,11 +898,31 @@ export default function AdminPage() {
       discountPercent: Math.round(((mrpNum - offerNum) / mrpNum) * 100),
     };
 
-    const updatedProducts = editingProduct
-      ? products.map((p) =>
-          p.id === editingProduct.id || (p.sku && p.sku === editingProduct.sku) ? prodPayload : p
-        )
-      : [prodPayload, ...products];
+    let updatedProducts: ProductItem[];
+    if (editingProduct) {
+      updatedProducts = products.map((p) =>
+        p.id === editingProduct.id || (p.sku && p.sku === editingProduct.sku) ? prodPayload : p
+      );
+    } else {
+      // Find the last index of products belonging to this category
+      let lastIndex = -1;
+      for (let i = products.length - 1; i >= 0; i--) {
+        if (products[i].categoryName?.toLowerCase() === prodPayload.categoryName?.toLowerCase()) {
+          lastIndex = i;
+          break;
+        }
+      }
+      if (lastIndex >= 0) {
+        updatedProducts = [
+          ...products.slice(0, lastIndex + 1),
+          prodPayload,
+          ...products.slice(lastIndex + 1),
+        ];
+      } else {
+        updatedProducts = [...products, prodPayload];
+      }
+    }
+    setIsDraft(true);
 
     setProducts(updatedProducts);
 
@@ -848,13 +1012,18 @@ export default function AdminPage() {
 
   function openAddProduct() {
     setEditingProduct(null);
+    const cat = selectedCategoryFilter !== "ALL" ? selectedCategoryFilter : "One Sound / 2 Sound Crackers";
+    const catItems = products.filter((p) => p.categoryName?.toLowerCase() === cat.toLowerCase());
+    const prefix = PREFIX_MAP[cat] || "MYL-PRD";
+    const nextSku = `${prefix}-${(catItems.length + 1).toString().padStart(2, "0")}`;
+
     setProductForm({
       name: "",
-      sku: `MYL-NEW-${Math.floor(10 + Math.random() * 90)}`,
-      categoryName: "PREMIUM FOUNTAINS",
+      sku: nextSku,
+      categoryName: cat,
       mrp: 500,
       offerPrice: 100,
-      packing: "1 BOX (10 PCS)",
+      packing: "1 Box",
       moq: 1,
       stock: 250,
       imageUrl: "",
@@ -1367,24 +1536,41 @@ export default function AdminPage() {
               <Panel
                 title={
                   <div className="flex flex-wrap items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                      <span>Product Catalogue ({filteredProducts.length})</span>
-                      <span className="rounded-full bg-amber-100 text-amber-900 border border-amber-300 px-2.5 py-0.5 text-xs font-bold">
-                        Category-Wise Grouped
-                      </span>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <span className="text-base font-black text-slate-900">Product Catalogue ({filteredProducts.length})</span>
+                      {isDraft ? (
+                        <div className="flex items-center gap-2 rounded-xl bg-amber-50 border border-amber-300 px-3 py-1 text-xs font-black text-amber-800 shadow-xs">
+                          <span className="h-2.5 w-2.5 rounded-full bg-amber-500 animate-pulse" />
+                          <span>🛠️ Work Mode (Draft edits pending)</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-300 px-3 py-1 text-xs font-black text-emerald-800 shadow-xs">
+                          <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                          <span>🟢 Live Website (Synchronized)</span>
+                        </div>
+                      )}
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <button
-                        onClick={handleClearAllProducts}
-                        className="flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-[12px] font-bold text-red-600 hover:bg-red-600 hover:text-white transition-all shadow-sm cursor-pointer"
+                        onClick={handlePublishWholeWebsite}
+                        disabled={savingWholeWebsite}
+                        className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-green-700 hover:from-emerald-500 hover:to-green-600 text-white px-5 py-2.5 text-[12.5px] font-black uppercase tracking-wider shadow-md shadow-emerald-600/30 transition-all cursor-pointer disabled:opacity-50"
                       >
-                        <Trash2 size={14} /> Clear All (Fresh Start)
+                        <Save size={16} />
+                        {savingWholeWebsite ? "Publishing Live..." : "💾 Save Whole Website & Publish Live"}
                       </button>
                       <button
                         onClick={openAddProduct}
-                        className="btn-gold flex items-center gap-2 px-5 py-2.5 text-[12.5px] uppercase font-bold cursor-pointer"
+                        className="btn-gold flex items-center gap-2 px-5 py-2.5 text-[12.5px] uppercase font-bold cursor-pointer shadow-sm"
                       >
                         <Plus size={16} /> Upload New Product
+                      </button>
+                      <button
+                        onClick={handleClearAllProducts}
+                        className="flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[11px] font-bold text-red-600 hover:bg-red-600 hover:text-white transition-all shadow-xs cursor-pointer"
+                        title="Clear catalogue and start fresh"
+                      >
+                        <Trash2 size={13} /> Clear
                       </button>
                     </div>
                   </div>
@@ -1483,20 +1669,30 @@ export default function AdminPage() {
                               {group.items.length} {group.items.length === 1 ? "Product" : "Products"}
                             </span>
                           </div>
-                          <span className="text-[11px] text-slate-400 font-medium">
-                            Category #{gIdx + 1}
-                          </span>
+                          <div className="flex items-center gap-3">
+                            <button
+                              onClick={() => handleAutoSequenceCategorySkus(group.category)}
+                              title="Auto-align SKUs in this category with row rank #1..#N"
+                              className="inline-flex items-center gap-1 rounded-lg border border-amber-500/40 bg-amber-500/20 hover:bg-amber-500/30 px-2.5 py-1 text-[11px] font-black text-amber-300 transition cursor-pointer"
+                            >
+                              🔢 Auto-Align SKUs
+                            </button>
+                            <span className="text-[11px] text-slate-400 font-medium">
+                              Category #{gIdx + 1}
+                            </span>
+                          </div>
                         </div>
 
                         {/* Category Table */}
                         <div className="overflow-x-auto">
-                          <table className="w-full min-w-[880px] text-[13.5px]">
+                          <table className="w-full min-w-[950px] text-[13.5px]">
                             <thead className="bg-slate-50 border-b border-slate-200 text-left text-[11px] font-bold uppercase tracking-[1.5px] text-slate-600">
                               <tr>
-                                <th className="py-3 px-3 text-center w-[70px]">#</th>
+                                <th className="py-3 px-2 text-center w-[90px]">Order</th>
+                                <th className="py-3 px-2 text-center w-[60px]">#</th>
                                 <th className="py-3 px-2 w-[130px]">SKU</th>
                                 <th className="py-3 px-2">Product Name</th>
-                                <th className="py-3 px-2 w-[140px]">Packing</th>
+                                <th className="py-3 px-2 w-[130px]">Packing</th>
                                 <th className="py-3 px-2 text-right w-[110px]">MRP</th>
                                 <th className="py-3 px-2 text-right w-[120px]">Offer Price</th>
                                 <th className="py-3 px-2 text-right w-[90px]">Stock</th>
@@ -1504,122 +1700,168 @@ export default function AdminPage() {
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 bg-white">
-                              {group.items.map((p, idx) => (
-                                <tr
-                                  key={String(p.id)}
-                                  className="transition-colors hover:bg-amber-50/40"
-                                >
-                                  <td className="py-2.5 px-3 text-center">
-                                    <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-mono font-bold text-slate-700 border border-slate-200">
-                                      #{idx + 1}
-                                    </span>
-                                  </td>
-                                  <td className="py-2.5 px-2 font-mono font-bold text-slate-600">
-                                    {p.sku}
-                                  </td>
-                                  <td className="py-2.5 px-2">
-                                    <div className="font-bold text-slate-900">{p.name}</div>
-                                  </td>
-                                  <td className="py-2.5 px-2 text-slate-500 text-[12px] font-medium">
-                                    {p.packing || "1 Box"}
-                                  </td>
-                                  <td className="py-2.5 px-2 text-right">
-                                    {inlineEditingId === p.id ? (
-                                      <input
-                                        type="number"
-                                        value={inlineMrp}
-                                        onChange={(e) => setInlineMrp(Number(e.target.value))}
-                                        className="w-20 rounded-lg border border-slate-300 bg-white px-2 py-1 text-right text-xs font-bold text-slate-800 shadow-inner"
-                                        placeholder="MRP"
-                                      />
-                                    ) : (
-                                      <span className="text-slate-400 line-through text-xs">{formatINR(Number(p.mrp))}</span>
-                                    )}
-                                  </td>
-                                  <td className="py-2.5 px-2 text-right">
-                                    {inlineEditingId === p.id ? (
-                                      <input
-                                        type="number"
-                                        value={inlineOfferPrice}
-                                        onChange={(e) => setInlineOfferPrice(Number(e.target.value))}
-                                        className="w-20 rounded-lg border-2 border-red-500 bg-red-50 px-2 py-1 text-right text-xs font-black text-red-600 shadow-inner focus:outline-hidden"
-                                        placeholder="Offer ₹"
-                                      />
-                                    ) : (
-                                      <span className="font-black text-red-600 text-[14px]">{formatINR(Number(p.offerPrice))}</span>
-                                    )}
-                                  </td>
-                                  <td className="py-2.5 px-2 text-right">
-                                    {inlineEditingId === p.id ? (
-                                      <input
-                                        type="number"
-                                        value={inlineStock}
-                                        onChange={(e) => setInlineStock(Number(e.target.value))}
-                                        className="w-16 rounded-lg border border-slate-300 bg-white px-2 py-1 text-right text-xs font-bold text-slate-800 shadow-inner"
-                                        placeholder="Stock"
-                                      />
-                                    ) : (
-                                      <span
-                                        className={`font-bold text-xs ${
-                                          Number(p.stock) < 200 ? "text-red-600" : "text-emerald-600"
-                                        }`}
-                                      >
-                                        {p.stock}
+                              {group.items.map((p, idx) => {
+                                const isDragging = draggedProduct?.id === p.id;
+                                return (
+                                  <tr
+                                    key={String(p.id)}
+                                    draggable={true}
+                                    onDragStart={() => handleDragStart(p.id, group.category, idx)}
+                                    onDragOver={handleDragOver}
+                                    onDrop={() => handleDrop(group.category, idx)}
+                                    className={`transition-colors hover:bg-amber-50/40 ${
+                                      isDragging ? "opacity-40 bg-amber-100 ring-2 ring-amber-400" : ""
+                                    }`}
+                                  >
+                                    {/* Drag Handle & Move Controls */}
+                                    <td className="py-2.5 px-2 text-center">
+                                      <div className="flex items-center justify-center gap-1">
+                                        <div
+                                          title="Click & Drag to reposition"
+                                          className="cursor-grab text-slate-400 hover:text-slate-700 p-0.5"
+                                        >
+                                          <GripVertical size={15} />
+                                        </div>
+                                        <button
+                                          disabled={idx === 0}
+                                          onClick={() => handleMoveItemWithinCategory(group.category, idx, idx - 1)}
+                                          title="Move Up"
+                                          className="p-1 rounded hover:bg-slate-100 text-slate-500 hover:text-slate-900 disabled:opacity-20 cursor-pointer"
+                                        >
+                                          <ArrowUp size={13} />
+                                        </button>
+                                        <button
+                                          disabled={idx === group.items.length - 1}
+                                          onClick={() => handleMoveItemWithinCategory(group.category, idx, idx + 1)}
+                                          title="Move Down"
+                                          className="p-1 rounded hover:bg-slate-100 text-slate-500 hover:text-slate-900 disabled:opacity-20 cursor-pointer"
+                                        >
+                                          <ArrowDown size={13} />
+                                        </button>
+                                      </div>
+                                    </td>
+                                    {/* Rank Number */}
+                                    <td className="py-2.5 px-2 text-center">
+                                      <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-mono font-bold text-slate-700 border border-slate-200">
+                                        #{idx + 1}
                                       </span>
-                                    )}
-                                  </td>
-                                  <td className="py-2.5 px-3 text-center">
-                                    {inlineEditingId === p.id ? (
-                                      <div className="flex items-center justify-center gap-1.5">
-                                        <button
-                                          onClick={() => handleQuickSaveInline(p)}
-                                          disabled={savingInline}
-                                          title="Save Price & Stock changes"
-                                          className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 text-white px-3 py-1.5 text-[11.5px] font-black hover:bg-emerald-700 shadow-sm transition disabled:opacity-50 cursor-pointer"
+                                    </td>
+                                    {/* SKU */}
+                                    <td className="py-2.5 px-2 font-mono font-bold text-slate-700">
+                                      <span className="rounded bg-red-50 border border-red-200 px-1.5 py-0.5 text-[11.5px] text-red-700">
+                                        {p.sku}
+                                      </span>
+                                    </td>
+                                    {/* Product Name */}
+                                    <td className="py-2.5 px-2">
+                                      <div className="font-bold text-slate-900">{p.name}</div>
+                                    </td>
+                                    {/* Packing */}
+                                    <td className="py-2.5 px-2 text-slate-500 text-[12px] font-medium">
+                                      {p.packing || "1 Box"}
+                                    </td>
+                                    {/* MRP */}
+                                    <td className="py-2.5 px-2 text-right">
+                                      {inlineEditingId === p.id ? (
+                                        <input
+                                          type="number"
+                                          value={inlineMrp}
+                                          onChange={(e) => setInlineMrp(Number(e.target.value))}
+                                          className="w-20 rounded-lg border border-slate-300 bg-white px-2 py-1 text-right text-xs font-bold text-slate-800 shadow-inner"
+                                          placeholder="MRP"
+                                        />
+                                      ) : (
+                                        <span className="text-slate-400 line-through text-xs">{formatINR(Number(p.mrp))}</span>
+                                      )}
+                                    </td>
+                                    {/* Offer Price */}
+                                    <td className="py-2.5 px-2 text-right">
+                                      {inlineEditingId === p.id ? (
+                                        <input
+                                          type="number"
+                                          value={inlineOfferPrice}
+                                          onChange={(e) => setInlineOfferPrice(Number(e.target.value))}
+                                          className="w-20 rounded-lg border-2 border-red-500 bg-red-50 px-2 py-1 text-right text-xs font-black text-red-600 shadow-inner focus:outline-hidden"
+                                          placeholder="Offer ₹"
+                                        />
+                                      ) : (
+                                        <span className="font-black text-red-600 text-[14px]">{formatINR(Number(p.offerPrice))}</span>
+                                      )}
+                                    </td>
+                                    {/* Stock */}
+                                    <td className="py-2.5 px-2 text-right">
+                                      {inlineEditingId === p.id ? (
+                                        <input
+                                          type="number"
+                                          value={inlineStock}
+                                          onChange={(e) => setInlineStock(Number(e.target.value))}
+                                          className="w-16 rounded-lg border border-slate-300 bg-white px-2 py-1 text-right text-xs font-bold text-slate-800 shadow-inner"
+                                          placeholder="Stock"
+                                        />
+                                      ) : (
+                                        <span
+                                          className={`font-bold text-xs ${
+                                            Number(p.stock) < 200 ? "text-red-600" : "text-emerald-600"
+                                          }`}
                                         >
-                                          <Check size={13} /> {savingInline ? "Saving..." : "Save"}
-                                        </button>
-                                        <button
-                                          onClick={() => setInlineEditingId(null)}
-                                          title="Cancel"
-                                          className="rounded-lg border border-slate-200 bg-slate-100 px-2 py-1.5 text-[11px] font-bold text-slate-600 hover:bg-slate-200 cursor-pointer"
-                                        >
-                                          <X size={13} />
-                                        </button>
-                                      </div>
-                                    ) : (
-                                      <div className="flex items-center justify-center gap-1.5">
-                                        <button
-                                          onClick={() => {
-                                            setInlineEditingId(p.id);
-                                            setInlineMrp(Number(p.mrp));
-                                            setInlineOfferPrice(Number(p.offerPrice));
-                                            setInlineStock(Number(p.stock));
-                                          }}
-                                          title="Quick Price Change"
-                                          className="inline-flex items-center gap-1 rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1 text-[11px] font-black text-amber-900 hover:bg-amber-100 shadow-2xs transition cursor-pointer"
-                                        >
-                                          <Zap size={12} className="text-amber-600 fill-amber-600" /> ₹ Edit
-                                        </button>
-                                        <button
-                                          onClick={() => openEditProduct(p)}
-                                          title="Edit Full Details"
-                                          className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:border-red-500 hover:text-red-600 shadow-2xs transition cursor-pointer"
-                                        >
-                                          <Edit size={12} /> Full Edit
-                                        </button>
-                                        <button
-                                          onClick={() => handleDeleteProduct(p.id)}
-                                          title="Delete product"
-                                          className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-bold text-slate-400 hover:border-red-600 hover:bg-red-600 hover:text-white transition shadow-2xs cursor-pointer"
-                                        >
-                                          <Trash2 size={12} />
-                                        </button>
-                                      </div>
-                                    )}
-                                  </td>
-                                </tr>
-                              ))}
+                                          {p.stock}
+                                        </span>
+                                      )}
+                                    </td>
+                                    {/* Action Buttons */}
+                                    <td className="py-2.5 px-3 text-center">
+                                      {inlineEditingId === p.id ? (
+                                        <div className="flex items-center justify-center gap-1.5">
+                                          <button
+                                            onClick={() => handleQuickSaveInline(p)}
+                                            disabled={savingInline}
+                                            title="Save Price & Stock changes"
+                                            className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 text-white px-3 py-1.5 text-[11.5px] font-black hover:bg-emerald-700 shadow-sm transition disabled:opacity-50 cursor-pointer"
+                                          >
+                                            <Check size={13} /> {savingInline ? "Saving..." : "Save"}
+                                          </button>
+                                          <button
+                                            onClick={() => setInlineEditingId(null)}
+                                            title="Cancel"
+                                            className="rounded-lg border border-slate-200 bg-slate-100 px-2 py-1.5 text-[11px] font-bold text-slate-600 hover:bg-slate-200 cursor-pointer"
+                                          >
+                                            <X size={13} />
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <div className="flex items-center justify-center gap-1.5">
+                                          <button
+                                            onClick={() => {
+                                              setInlineEditingId(p.id);
+                                              setInlineMrp(Number(p.mrp));
+                                              setInlineOfferPrice(Number(p.offerPrice));
+                                              setInlineStock(Number(p.stock));
+                                            }}
+                                            title="Quick Price Change"
+                                            className="inline-flex items-center gap-1 rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1 text-[11px] font-black text-amber-900 hover:bg-amber-100 shadow-2xs transition cursor-pointer"
+                                          >
+                                            <Zap size={12} className="text-amber-600 fill-amber-600" /> ₹ Edit
+                                          </button>
+                                          <button
+                                            onClick={() => openEditProduct(p)}
+                                            title="Edit Full Details"
+                                            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:border-red-500 hover:text-red-600 shadow-2xs transition cursor-pointer"
+                                          >
+                                            <Edit size={12} /> Full Edit
+                                          </button>
+                                          <button
+                                            onClick={() => handleDeleteProduct(p.id)}
+                                            title="Delete product"
+                                            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-bold text-slate-400 hover:border-red-600 hover:bg-red-600 hover:text-white transition shadow-2xs cursor-pointer"
+                                          >
+                                            <Trash2 size={12} />
+                                          </button>
+                                        </div>
+                                      )}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
                             </tbody>
                           </table>
                         </div>

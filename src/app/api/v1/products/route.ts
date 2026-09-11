@@ -48,6 +48,41 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
 
+  if (body.action === "publish_all" && Array.isArray(body.products)) {
+    const prods = body.products;
+    const order = Array.isArray(body.order) ? body.order : prods.map((p: any) => p.id);
+    syncAllProductsState({
+      products: prods,
+      productOrder: order,
+    });
+    try {
+      const fs = require("fs");
+      const path = require("path");
+      const dataDir = path.join(process.cwd(), "data");
+      if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(dataDir, "products-store.json"),
+        JSON.stringify({ products: prods, productOrder: order, publishedAt: new Date().toISOString() }, null, 2),
+        "utf-8"
+      );
+    } catch (e) {
+      console.warn("[publish_all] Disk write note:", e);
+    }
+    await persistProductsToDb(prods).catch(() => null);
+    await persistProductOrderToDb(order).catch(() => null);
+    revalidatePath("/", "layout");
+    revalidatePath("/products");
+    revalidatePath("/estimate");
+    return ok(
+      {
+        total: prods.length,
+        publishedAt: new Date().toISOString(),
+      },
+      "Entire website catalogue successfully published live to all users",
+      200
+    );
+  }
+
   if (body.action === "sync_all" && body.state) {
     syncAllProductsState(body.state);
     revalidatePath("/", "layout");

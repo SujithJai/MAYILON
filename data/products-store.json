@@ -2,7 +2,7 @@
   "products": [
     {
       "id": "prod-1",
-      "sku": "MYL-SND-06",
+      "sku": "MYL-SND-01",
       "slug": "2-3-4-kuruvi",
       "name": "2 3/4\" Kuruvi",
       "categoryName": "One Sound / 2 Sound Crackers",
@@ -18,7 +18,7 @@
     },
     {
       "id": "prod-2",
-      "sku": "MYL-SND-01",
+      "sku": "MYL-SND-02",
       "slug": "3-1-2-laxmi",
       "name": "3 1/2\" Laxmi",
       "categoryName": "One Sound / 2 Sound Crackers",
@@ -34,7 +34,7 @@
     },
     {
       "id": "prod-3",
-      "sku": "MYL-SND-07",
+      "sku": "MYL-SND-03",
       "slug": "4-laxmi",
       "name": "4\" Laxmi",
       "categoryName": "One Sound / 2 Sound Crackers",
@@ -50,7 +50,7 @@
     },
     {
       "id": "prod-4",
-      "sku": "MYL-SND-02",
+      "sku": "MYL-SND-04",
       "slug": "4-deluxe-laxmi",
       "name": "4\" Deluxe Laxmi",
       "categoryName": "One Sound / 2 Sound Crackers",
@@ -66,7 +66,7 @@
     },
     {
       "id": "prod-5",
-      "sku": "MYL-SND-03",
+      "sku": "MYL-SND-05",
       "slug": "4-gold-laxmi",
       "name": "4\" Gold Laxmi",
       "categoryName": "One Sound / 2 Sound Crackers",
@@ -82,7 +82,7 @@
     },
     {
       "id": "prod-6",
-      "sku": "MYL-SND-04",
+      "sku": "MYL-SND-06",
       "slug": "5-laxmi",
       "name": "5\" Laxmi",
       "categoryName": "One Sound / 2 Sound Crackers",
@@ -98,7 +98,7 @@
     },
     {
       "id": "prod-7",
-      "sku": "MYL-SND-05",
+      "sku": "MYL-SND-07",
       "slug": "6-lion",
       "name": "6\"Lion",
       "categoryName": "One Sound / 2 Sound Crackers",
@@ -338,7 +338,7 @@
     },
     {
       "id": "prod-22",
-      "sku": "MYL-GNC-06",
+      "sku": "MYL-GCK-05",
       "slug": "wire-chakkar",
       "name": "Wire Chakkar",
       "categoryName": "Ground Chakkars",
@@ -466,7 +466,7 @@
     },
     {
       "id": "prod-30",
-      "sku": "MYL-RKT-02",
+      "sku": "MYL-RKT-01",
       "slug": "rocket-bomb",
       "name": "Rocket Bomb",
       "categoryName": "Rockets",
@@ -482,7 +482,7 @@
     },
     {
       "id": "prod-31",
-      "sku": "MYL-RKT-01",
+      "sku": "MYL-RKT-02",
       "slug": "musical-rocket",
       "name": "Musical Rocket",
       "categoryName": "Rockets",
@@ -722,7 +722,7 @@
     },
     {
       "id": "prod-46",
-      "sku": "MYL-FTN-12",
+      "sku": "MYL-FTN-07",
       "slug": "mini-siren",
       "name": "Mini Siren",
       "categoryName": "Fountains",
@@ -802,7 +802,7 @@
     },
     {
       "id": "prod-51",
-      "sku": "MYL-FTN-13",
+      "sku": "MYL-FTN-12",
       "slug": "peacock-multicolour",
       "name": "Peacock Multicolour",
       "categoryName": "Fountains",
@@ -818,7 +818,7 @@
     },
     {
       "id": "prod-52",
-      "sku": "MYL-FTN-14",
+      "sku": "MYL-FTN-13",
       "slug": "bada-peacock",
       "name": "Bada Peacock",
       "categoryName": "Fountains",
@@ -834,7 +834,7 @@
     },
     {
       "id": "prod-53",
-      "sku": "MYL-FTN-15",
+      "sku": "MYL-FTN-14",
       "slug": "colour-smoke",
       "name": "Colour Smoke",
       "categoryName": "Fountains",
@@ -850,7 +850,7 @@
     },
     {
       "id": "prod-54",
-      "sku": "MYL-FTN-16",
+      "sku": "MYL-FTN-15",
       "slug": "4x4-whistling-wheel",
       "name": "4x4 Whistling Wheel",
       "categoryName": "Fountains",
@@ -866,7 +866,7 @@
     },
     {
       "id": "prod-55",
-      "sku": "MYL-FTN-17",
+      "sku": "MYL-FTN-16",
       "slug": "lotus-wheel",
       "name": "Lotus Wheel",
       "categoryName": "Fountains",
@@ -882,7 +882,7 @@
     },
     {
       "id": "prod-56",
-      "sku": "MYL-FTN-18",
+      "sku": "MYL-FTN-17",
       "slug": "tin",
       "name": "Tin",
       "categoryName": "Fountains",
@@ -994,7 +994,7 @@
     },
     {
       "id": "prod-63",
-      "sku": "MYL-FTN-07",
+      "sku": "MYL-KDS-07",
       "slug": "free-fire-gun",
       "name": "Free Fire Gun",
       "categoryName": "KIDS SPECIAL",
@@ -1346,7 +1346,7 @@
     },
     {
       "id": "prod-85",
-      "sku": "MYL-NEW-83",
+      "sku": "MYL-PF-01",
       "slug": "hand-shot-new",
       "name": "HAND SHOT New",
       "categoryName": "PREMIUM FOUNTAINS",
@@ -1778,7 +1778,7 @@
     },
     {
       "id": "prod-112",
-      "sku": "MYL-NVL-03",
+      "sku": "MYL-NVL-02",
       "slug": "black-serpents",
       "name": "BLACK SERPENTS",
       "categoryName": "Colour Matches & Novelties",
@@ -1794,7 +1794,7 @@
     },
     {
       "id": "prod-113",
-      "sku": "MYL-NVL-04",
+      "sku": "MYL-NVL-03",
       "slug": "super-matches",
       "name": "SUPER MATCHES",
       "categoryName": "Colour Matches & Novelties",
@@ -1810,7 +1810,7 @@
     },
     {
       "id": "prod-114",
-      "sku": "MYL-NVL-06",
+      "sku": "MYL-NVL-04",
       "slug": "laptop-mega-10-in-1-matches",
       "name": "LAPTOP MEGA 10 in 1 MATCHES",
       "categoryName": "Colour Matches & Novelties",
