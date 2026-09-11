@@ -28,6 +28,14 @@ export function ProductBrowser({
   // 1. Instant rehydration from client storage (zero flicker on refresh)
   useEffect(() => {
     try {
+      if (typeof window !== "undefined") {
+        const V_KEY = "mayilon_catalog_v2026_clean_v3";
+        if (localStorage.getItem(V_KEY) !== "true") {
+          localStorage.removeItem("mayilon_permanent_product_order");
+          localStorage.removeItem("mayilon_custom_products");
+          localStorage.setItem(V_KEY, "true");
+        }
+      }
       let list = [...items];
       const localProds = typeof window !== "undefined" ? localStorage.getItem("mayilon_custom_products") : null;
       if (localProds) {
@@ -36,10 +44,9 @@ export function ProductBrowser({
           const map = new Map<string, any>();
           parsed.forEach((p: any) => {
             if (p?.id) map.set(p.id, p);
-            if (p?.sku) map.set(p.sku, p);
           });
           list = list.map((item) => {
-            const m = map.get(item.id) || map.get(item.sku);
+            const m = map.get(item.id);
             return m
               ? {
                   ...item,
@@ -61,8 +68,8 @@ export function ProductBrowser({
           const map = new Map<string, number>();
           orderIds.forEach((id: string, idx: number) => map.set(id, idx));
           list.sort((a, b) => {
-            const pa = map.has(a.id) ? map.get(a.id)! : map.has(a.sku || "") ? map.get(a.sku || "")! : 99999;
-            const pb = map.has(b.id) ? map.get(b.id)! : map.has(b.sku || "") ? map.get(b.sku || "")! : 99999;
+            const pa = map.has(a.id) ? map.get(a.id)! : 99999;
+            const pb = map.has(b.id) ? map.get(b.id)! : 99999;
             return pa - pb;
           });
         }

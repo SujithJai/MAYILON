@@ -187,6 +187,8 @@ export default function AdminPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>("ALL");
   const [isDraft, setIsDraft] = useState(false);
+  const [draftCategories, setDraftCategories] = useState<Set<string>>(new Set());
+  const [savingCategory, setSavingCategory] = useState<string | null>(null);
   const [savingWholeWebsite, setSavingWholeWebsite] = useState(false);
   const [draggedProduct, setDraggedProduct] = useState<{ id: string; category: string; index: number } | null>(null);
   const [draggedId, setDraggedId] = useState<string | null>(null);
@@ -398,7 +400,7 @@ export default function AdminPage() {
     const prefix = PREFIX_MAP[categoryName] || "MYL-PRD";
     let rank = 1;
     const updated = products.map((p) => {
-      if (p.categoryName?.toLowerCase() === categoryName.toLowerCase()) {
+      if (p.categoryName?.trim().toLowerCase() === categoryName.trim().toLowerCase()) {
         const cleanSku = `${prefix}-${rank.toString().padStart(2, "0")}`;
         rank += 1;
         return { ...p, sku: cleanSku };
@@ -407,32 +409,26 @@ export default function AdminPage() {
     });
     setProducts(updated);
     setIsDraft(true);
-    setNotificationToast(`🔢 Auto-aligned SKUs for "${categoryName}" to match row rank #1..#${rank - 1}! Click "Save Whole Website" to publish live.`);
+    setDraftCategories((prev) => new Set(prev).add(categoryName));
+    setNotificationToast(`🔢 Auto-aligned SKUs for "${categoryName}" to match row rank #1..#${rank - 1}! Click "💾 Save Category" to lock.`);
     setTimeout(() => setNotificationToast(null), 4500);
   };
 
-  // Move product within its category and auto-align SKUs
+  // Move product within its category (Draft state - pure reorder by unique id, no SKU overwrite yet)
   const handleMoveItemWithinCategory = (categoryName: string, fromIdx: number, toIdx: number) => {
-    const catItems = products.filter((p) => p.categoryName?.toLowerCase() === categoryName.toLowerCase());
-    if (fromIdx < 0 || fromIdx >= catItems.length || toIdx < 0 || toIdx >= catItems.length) return;
+    const catItems = products.filter((p) => p.categoryName?.trim().toLowerCase() === categoryName.trim().toLowerCase());
+    if (fromIdx < 0 || fromIdx >= catItems.length || toIdx < 0 || toIdx >= catItems.length || fromIdx === toIdx) return;
 
     const itemToMove = catItems[fromIdx];
     const newCatItems = [...catItems];
     newCatItems.splice(fromIdx, 1);
     newCatItems.splice(toIdx, 0, itemToMove);
 
-    // Auto-align SKUs to match the new rank sequence
-    const prefix = PREFIX_MAP[categoryName] || "MYL-PRD";
-    const alignedCatItems = newCatItems.map((item, idx) => ({
-      ...item,
-      sku: `${prefix}-${(idx + 1).toString().padStart(2, "0")}`,
-    }));
-
-    // Splice back into global products list preserving category position
+    // Reinsert into products preserving order of this category
     let catItemIdx = 0;
     const newProducts = products.map((p) => {
-      if (p.categoryName?.toLowerCase() === categoryName.toLowerCase()) {
-        const replacement = alignedCatItems[catItemIdx];
+      if (p.categoryName?.trim().toLowerCase() === categoryName.trim().toLowerCase()) {
+        const replacement = newCatItems[catItemIdx];
         catItemIdx += 1;
         return replacement;
       }
@@ -441,8 +437,69 @@ export default function AdminPage() {
 
     setProducts(newProducts);
     setIsDraft(true);
-    setNotificationToast(`🔄 Moved "${itemToMove.name}" to Rank #${toIdx + 1} (${alignedCatItems[toIdx].sku})! Click "Save Whole Website" to publish live.`);
-    setTimeout(() => setNotificationToast(null), 4000);
+    setDraftCategories((prev) => new Set(prev).add(categoryName));
+    setNotificationToast(`🔄 Moved "${itemToMove.name}" to Rank #${toIdx + 1} (Draft). Click "💾 Save Category" to lock.`);
+    setTimeout(() => setNotificationToast(null), 3500);
+  };
+
+  // Level 2: Save Category Order & Lock SKUs cleanly
+  const handleSaveCategory = async (categoryName: string) => {
+    setSavingCategory(categoryName);
+    try {
+      const prefix = PREFIX_MAP[categoryName] || "MYL-PRD";
+      let rank = 1;
+      const updatedProducts = products.map((p) => {
+        if (p.categoryName?.trim().toLowerCase() === categoryName.trim().toLowerCase()) {
+          const cleanSku = `${prefix}-${rank.toString().padStart(2, "0")}`;
+          rank += 1;
+          return { ...p, sku: cleanSku };
+        }
+        return p;
+      });
+
+      setProducts(updatedProducts);
+
+      // Save locally
+      if (typeof window !== "undefined") {
+        localStorage.setItem("mayilon_custom_products", JSON.stringify(updatedProducts));
+        localStorage.setItem(
+          "mayilon_permanent_product_order",
+          JSON.stringify(updatedProducts.map((p) => p.id))
+        );
+      }
+
+      // Save to server
+      const catProducts = updatedProducts.filter(
+        (p) => p.categoryName?.trim().toLowerCase() === categoryName.trim().toLowerCase()
+      );
+
+      const res = await fetch("/api/v1/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "save_category",
+          categoryName,
+          products: catProducts,
+          order: updatedProducts.map((p) => p.id),
+        }),
+      });
+      const data = await res.json();
+
+      setDraftCategories((prev) => {
+        const next = new Set(prev);
+        next.delete(categoryName);
+        if (next.size === 0) setIsDraft(false);
+        return next;
+      });
+
+      setNotificationToast(`💾 Category "${categoryName}" locked & saved! SKUs cleanly aligned (#1..#${rank - 1}).`);
+      setTimeout(() => setNotificationToast(null), 4500);
+    } catch (err: any) {
+      console.warn("Error saving category:", err);
+      setNotificationToast(`Saved locally. Server sync pending.`);
+    } finally {
+      setSavingCategory(null);
+    }
   };
 
   // Drag and Drop handlers
@@ -500,11 +557,13 @@ export default function AdminPage() {
       const data = await res.json();
       if (data?.success) {
         setIsDraft(false);
+        setDraftCategories(new Set());
         setNotificationToast("🎉 WHOLE WEBSITE SAVED & PUBLISHED LIVE! All 122+ products, prices, and orders are now updated for all customers across all devices.");
         setTimeout(() => setNotificationToast(null), 6000);
       } else {
         alert("Server response: " + (data?.message || "Saved locally"));
         setIsDraft(false);
+        setDraftCategories(new Set());
       }
     } catch (err: any) {
       console.warn("Publish error:", err);
@@ -525,7 +584,7 @@ export default function AdminPage() {
       // Clear stale pre-122 browser cache
       try {
         if (typeof window !== "undefined") {
-          const V_KEY = "mayilon_catalog_v2026_122_fixed";
+          const V_KEY = "mayilon_catalog_v2026_clean_v3";
           if (localStorage.getItem(V_KEY) !== "true") {
             localStorage.removeItem("mayilon_permanent_product_order");
             localStorage.removeItem("mayilon_custom_products");
@@ -868,7 +927,7 @@ export default function AdminPage() {
     let updatedProducts: ProductItem[];
     if (editingProduct) {
       updatedProducts = products.map((p) =>
-        p.id === editingProduct.id || (p.sku && p.sku === editingProduct.sku) ? prodPayload : p
+        p.id === editingProduct.id ? prodPayload : p
       );
     } else {
       // Find the last index of products belonging to this category
@@ -1635,8 +1694,34 @@ export default function AdminPage() {
                             <span className="rounded-full bg-red-600 px-2.5 py-0.5 text-[10px] font-bold text-white shadow-xs">
                               {group.items.length} {group.items.length === 1 ? "Product" : "Products"}
                             </span>
+                            {draftCategories.has(group.category) ? (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/20 border border-amber-400/40 px-2.5 py-0.5 text-[10px] font-black text-amber-300 animate-pulse">
+                                🟡 Draft Order
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-0.5 text-[10px] font-bold text-emerald-400">
+                                <Check size={10} /> Saved
+                              </span>
+                            )}
                           </div>
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2.5">
+                            <button
+                              onClick={() => handleSaveCategory(group.category)}
+                              disabled={savingCategory === group.category}
+                              title="Save category order and lock SKUs cleanly"
+                              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-black shadow-sm transition cursor-pointer disabled:opacity-50 ${
+                                draftCategories.has(group.category)
+                                  ? "bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 hover:from-amber-400 hover:to-yellow-400 ring-2 ring-amber-300 font-black scale-105"
+                                  : "border border-emerald-500/40 bg-emerald-600/30 text-emerald-300 hover:bg-emerald-600/50"
+                              }`}
+                            >
+                              <Save size={13} />
+                              {savingCategory === group.category
+                                ? "Saving..."
+                                : draftCategories.has(group.category)
+                                ? "💾 Save Category *"
+                                : "💾 Save Category"}
+                            </button>
                             <button
                               onClick={() => handleAutoSequenceCategorySkus(group.category)}
                               title="Auto-align SKUs in this category with row rank #1..#N"

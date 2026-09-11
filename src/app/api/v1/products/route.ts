@@ -95,6 +95,28 @@ export async function POST(req: Request) {
     return ok({ state: getFullStoreState() }, "Full snapshot retrieved", 200);
   }
 
+  if (body.action === "save_category" && Array.isArray(body.products)) {
+    for (const p of body.products) {
+      if (p && p.id) saveProductToStore(p);
+    }
+    if (Array.isArray(body.order)) {
+      setProductOrderInStore(body.order);
+      await persistProductOrderToDb(body.order).catch(() => null);
+    }
+    await persistProductsToDb().catch(() => null);
+    revalidatePath("/", "layout");
+    revalidatePath("/products");
+    revalidatePath("/estimate");
+    return ok(
+      {
+        categoryName: body.categoryName,
+        count: body.products.length,
+      },
+      `Category "${body.categoryName}" saved successfully`,
+      200
+    );
+  }
+
   if (body.action === "clear-all") {
     clearAllProductsInStore();
     revalidatePath("/", "layout");

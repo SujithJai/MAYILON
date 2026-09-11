@@ -216,7 +216,6 @@ export function saveProductToStore(prod: ProductRecord): ProductRecord {
   loadFromDisk();
   DELETED_SET.delete(prod.id);
   STORE.set(prod.id, prod);
-  if (prod.sku) STORE.set(prod.sku, prod);
   
   // If product is newly added and not in order, prepend to front
   if (!g.__mayilonProductOrder?.includes(prod.id)) {

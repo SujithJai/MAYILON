@@ -163,11 +163,8 @@ function applyCustomOverrides(items: ProductWithCategory[]): ProductWithCategory
 
     if (Array.isArray(customList) && customList.length > 0) {
       for (const c of customList) {
-        const match =
-          (c.sku ? skuMap.get(c.sku) : undefined) ||
-          idMap.get(c.id) ||
-          (c.slug ? slugMap.get(c.slug) : undefined) ||
-          (c.name ? nameMap.get(c.name.trim().toLowerCase()) : undefined);
+        // Match solely by permanent unique ID so reordering/renaming never overwrites other products
+        const match = idMap.get(c.id);
 
         const mrpNum = Number(c.mrp) || 100;
         const offerNum = Number(c.offerPrice) || mrpNum;
@@ -219,10 +216,10 @@ function applyCustomOverrides(items: ProductWithCategory[]): ProductWithCategory
         };
 
         if (match) {
-          const idx = updatedItems.findIndex((it) => it.id === match.id || it.sku === match.sku);
+          const idx = updatedItems.findIndex((it) => it.id === match.id);
           if (idx !== -1) updatedItems[idx] = override;
         } else {
-          updatedItems.unshift(override);
+          updatedItems.push(override);
         }
       }
     }
