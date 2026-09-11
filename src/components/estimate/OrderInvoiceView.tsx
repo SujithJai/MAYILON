@@ -54,6 +54,23 @@ export function OrderInvoiceView({
         console.warn("[OrderInvoiceView] Error reading local order backup:", err);
       }
     }
+
+    // Live polling: Check for Admin status updates every 5 seconds
+    const pollLatest = async () => {
+      try {
+        const res = await fetch(`/api/v1/estimates/${encodeURIComponent(number)}`, { cache: "no-store" });
+        const json = await res.json();
+        if (json?.success && json?.data?.estimate) {
+          setEstimate(json.data.estimate);
+          if (Array.isArray(json.data.items) && json.data.items.length > 0) {
+            setItems(json.data.items);
+          }
+        }
+      } catch (err) {}
+    };
+
+    const pollInterval = setInterval(pollLatest, 5000);
+    return () => clearInterval(pollInterval);
   }, [number, initialEstimate]);
 
   const activeEst = estimate || {

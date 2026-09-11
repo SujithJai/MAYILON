@@ -223,8 +223,10 @@ export default function AdminPage() {
   // Notification Toast State
   const [notificationToast, setNotificationToast] = useState<string | null>(null);
 
-  // Payment Modal State
+  // Payment Modal & Lock States
   const [paymentModalOrder, setPaymentModalOrder] = useState<EstimateRow | null>(null);
+  const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
+  const [paymentUpdatingId, setPaymentUpdatingId] = useState<string | null>(null);
 
   // Categories State
   const [categoriesList, setCategoriesList] = useState<{ id: string; name: string; slug: string; productCount: number }[]>([]);
@@ -694,7 +696,13 @@ export default function AdminPage() {
   }, []);
 
   useEffect(() => {
-    if (authed) void load();
+    if (!authed) return;
+    void load();
+    // 5-second live polling for immediate arrival of incoming customer orders
+    const pollInterval = setInterval(() => {
+      void load();
+    }, 5000);
+    return () => clearInterval(pollInterval);
   }, [authed, load]);
 
   async function login(e: React.FormEvent) {
@@ -724,29 +732,45 @@ export default function AdminPage() {
   }
 
   async function updateStatus(number: string, status: string, customerMobile?: string) {
-    setEstimates((prev) =>
-      prev.map((e) => (e.estimateNumber === number ? { ...e, status } : e)),
-    );
-    await fetch(`/api/v1/estimates/${number}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
+    if (updatingStatusId) return;
+    setUpdatingStatusId(`${number}-${status}`);
+
+    setEstimates((prev) => {
+      const next = prev.map((e) => (e.estimateNumber === number ? { ...e, status } : e));
+      try {
+        if (typeof window !== "undefined") {
+          localStorage.setItem("mayilon_recent_orders", JSON.stringify(next));
+        }
+      } catch {}
+      return next;
     });
 
-    // Notify Customer simulation
-    const msg = `📲 Notification sent to +91 ${customerMobile || "Customer"}: Order ${number} status updated to [${status}]! 📦✨`;
-    setNotificationToast(msg);
-    setTimeout(() => setNotificationToast(null), 5000);
+    try {
+      await fetch(`/api/v1/estimates/${number}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
 
-    void load();
+      const msg = `📲 Order ${number} updated to [${status}]! Live on Customer Tracking 📦✨`;
+      setNotificationToast(msg);
+      setTimeout(() => setNotificationToast(null), 4000);
+    } catch (err) {
+      console.warn("Error updating status:", err);
+    } finally {
+      setUpdatingStatusId(null);
+      void load();
+    }
   }
 
   async function markPaymentReceived(estimateNumber: string, method = "UPI Verification") {
     const existing = estimates.find((e) => e.estimateNumber === estimateNumber);
-    if (existing?.paymentStatus === "PAID") return;
+    if (existing?.paymentStatus === "PAID" || paymentUpdatingId === estimateNumber) return;
 
-    setEstimates((prev) =>
-      prev.map((e) =>
+    setPaymentUpdatingId(estimateNumber);
+
+    setEstimates((prev) => {
+      const next = prev.map((e) =>
         e.estimateNumber === estimateNumber
           ? {
               ...e,
@@ -755,8 +779,14 @@ export default function AdminPage() {
               status: e.status === "NEW" ? "PAYMENT RECEIVED" : e.status,
             }
           : e,
-      ),
-    );
+      );
+      try {
+        if (typeof window !== "undefined") {
+          localStorage.setItem("mayilon_recent_orders", JSON.stringify(next));
+        }
+      } catch {}
+      return next;
+    });
 
     try {
       await fetch(`/api/v1/estimates/${estimateNumber}`, {
@@ -768,14 +798,15 @@ export default function AdminPage() {
           status: existing?.status === "NEW" ? "PAYMENT RECEIVED" : undefined,
         }),
       });
+      setNotificationToast(`🟢 Payment Confirmed for Order ${estimateNumber}! Locked permanently as PAID.`);
+      setTimeout(() => setNotificationToast(null), 4000);
     } catch (err) {
       console.warn("[markPaymentReceived] API update note:", err);
+    } finally {
+      setPaymentUpdatingId(null);
+      setPaymentModalOrder(null);
+      void load();
     }
-
-    setPaymentModalOrder(null);
-    setNotificationToast(`🟢 Payment Confirmed for Order ${estimateNumber}! Locked as PAID.`);
-    setTimeout(() => setNotificationToast(null), 4000);
-    void load();
   }
 
   function handleMarkPaid(estimateNumber: string, method: string) {
@@ -1449,7 +1480,7 @@ export default function AdminPage() {
                               {formatINR(Number(e.grandTotal))}
                             </td>
 
-                            {/* 6. Payment Status & Action */}
+                            {/* 6. Payment Status & Action (One-Time Use, Permanently Locked Once Paid) */}
                             <td className="py-4 px-3 min-w-[170px]">
                               <div className="flex flex-col gap-1.5">
                                 {e.paymentStatus === "PAID" ? (
@@ -1461,14 +1492,16 @@ export default function AdminPage() {
                                 ) : (
                                   <>
                                     <button
+                                      disabled={paymentUpdatingId === e.estimateNumber}
                                       onClick={() => markPaymentReceived(e.estimateNumber, "UPI Verification")}
-                                      className="rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white px-3 py-1.5 text-[11px] font-bold shadow-sm flex items-center justify-center gap-1 transition-all"
+                                      className="rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white px-3 py-1.5 text-[11px] font-bold shadow-sm flex items-center justify-center gap-1 transition-all disabled:opacity-50 cursor-pointer"
                                     >
-                                      <CheckCircle2 size={13} /> Mark Payment Received
+                                      <CheckCircle2 size={13} /> {paymentUpdatingId === e.estimateNumber ? "Confirming..." : "Mark Payment Received"}
                                     </button>
                                     <button
+                                      disabled={paymentUpdatingId === e.estimateNumber}
                                       onClick={() => setPaymentModalOrder(e)}
-                                      className="rounded-xl bg-amber-50 border border-amber-300 px-2 py-1 text-[10px] font-bold text-amber-800 hover:bg-amber-100 text-center"
+                                      className="rounded-xl bg-amber-50 border border-amber-300 px-2 py-1 text-[10px] font-bold text-amber-800 hover:bg-amber-100 text-center disabled:opacity-50 cursor-pointer"
                                     >
                                       💳 Confirm Other Method
                                     </button>
@@ -1477,7 +1510,7 @@ export default function AdminPage() {
                               </div>
                             </td>
 
-                            {/* 7. Fulfillment Workflow Action Buttons */}
+                            {/* 7. Fulfillment Workflow Action Buttons (Strictly One-Time Sequential Use) */}
                             <td className="py-4 px-3">
                               {(() => {
                                 const isPackaged = e.status === "PACKAGE READY" || e.status === "SHIPPED" || e.status === "OUT FOR DELIVERY" || e.status === "DELIVERED";
@@ -1489,60 +1522,68 @@ export default function AdminPage() {
                                   <div className="flex flex-col gap-1.5 min-w-[165px]">
                                     {/* Step A: Package Ready */}
                                     <button
-                                      disabled={isPackaged}
+                                      disabled={isPackaged || updatingStatusId === `${e.estimateNumber}-PACKAGE READY`}
                                       onClick={() => updateStatus(e.estimateNumber, "PACKAGE READY", e.mobile)}
                                       className={`flex items-center justify-center gap-1 rounded-xl px-3 py-1.5 text-[11px] font-bold transition ${
                                         isPackaged
-                                          ? "bg-purple-100 border border-purple-300 text-purple-800 opacity-80 cursor-default"
-                                          : "bg-purple-600 hover:bg-purple-700 text-white shadow-sm"
+                                          ? "bg-purple-100 border border-purple-300 text-purple-800 opacity-90 cursor-default"
+                                          : updatingStatusId === `${e.estimateNumber}-PACKAGE READY`
+                                            ? "bg-purple-400 text-white cursor-wait"
+                                            : "bg-purple-600 hover:bg-purple-700 text-white shadow-sm cursor-pointer"
                                       }`}
                                     >
-                                      <Package size={13} /> {isPackaged ? "✓ Packaged" : "Mark Packaged"}
+                                      <Package size={13} /> {isPackaged ? "✓ Packaged (Locked)" : updatingStatusId === `${e.estimateNumber}-PACKAGE READY` ? "Updating..." : "Mark Packaged"}
                                     </button>
 
                                     {/* Step B: Shipped */}
                                     <button
-                                      disabled={isShipped || !isPackaged}
+                                      disabled={isShipped || !isPackaged || updatingStatusId === `${e.estimateNumber}-SHIPPED`}
                                       onClick={() => updateStatus(e.estimateNumber, "SHIPPED", e.mobile)}
                                       className={`flex items-center justify-center gap-1 rounded-xl px-3 py-1.5 text-[11px] font-bold transition ${
                                         isShipped
-                                          ? "bg-blue-100 border border-blue-300 text-blue-800 opacity-80 cursor-default"
+                                          ? "bg-blue-100 border border-blue-300 text-blue-800 opacity-90 cursor-default"
                                           : isPackaged
-                                            ? "bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+                                            ? updatingStatusId === `${e.estimateNumber}-SHIPPED`
+                                              ? "bg-blue-400 text-white cursor-wait"
+                                              : "bg-blue-600 hover:bg-blue-700 text-white shadow-sm cursor-pointer"
                                             : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
                                       }`}
                                     >
-                                      <Truck size={13} /> {isShipped ? "✓ Shipped" : "Mark Shipped"}
+                                      <Truck size={13} /> {isShipped ? "✓ Shipped (Locked)" : updatingStatusId === `${e.estimateNumber}-SHIPPED` ? "Updating..." : "Mark Shipped"}
                                     </button>
 
                                     {/* Step C: Out for Delivery */}
                                     <button
-                                      disabled={isOutForDelivery || !isShipped}
+                                      disabled={isOutForDelivery || !isShipped || updatingStatusId === `${e.estimateNumber}-OUT FOR DELIVERY`}
                                       onClick={() => updateStatus(e.estimateNumber, "OUT FOR DELIVERY", e.mobile)}
                                       className={`flex items-center justify-center gap-1 rounded-xl px-3 py-1.5 text-[11px] font-bold transition ${
                                         isOutForDelivery
-                                          ? "bg-amber-100 border border-amber-300 text-amber-800 opacity-80 cursor-default"
+                                          ? "bg-amber-100 border border-amber-300 text-amber-800 opacity-90 cursor-default"
                                           : isShipped
-                                            ? "bg-amber-600 hover:bg-amber-700 text-white shadow-sm"
+                                            ? updatingStatusId === `${e.estimateNumber}-OUT FOR DELIVERY`
+                                              ? "bg-amber-400 text-white cursor-wait"
+                                              : "bg-amber-600 hover:bg-amber-700 text-white shadow-sm cursor-pointer"
                                             : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
                                       }`}
                                     >
-                                      <Truck size={13} /> {isOutForDelivery ? "✓ Out for Delivery" : "Mark Out for Delivery"}
+                                      <Truck size={13} /> {isOutForDelivery ? "✓ Out for Delivery (Locked)" : updatingStatusId === `${e.estimateNumber}-OUT FOR DELIVERY` ? "Updating..." : "Mark Out for Delivery"}
                                     </button>
 
                                     {/* Step D: Delivered */}
                                     <button
-                                      disabled={isDelivered || !isOutForDelivery}
+                                      disabled={isDelivered || !isOutForDelivery || updatingStatusId === `${e.estimateNumber}-DELIVERED`}
                                       onClick={() => updateStatus(e.estimateNumber, "DELIVERED", e.mobile)}
                                       className={`flex items-center justify-center gap-1 rounded-xl px-3 py-1.5 text-[11px] font-bold transition ${
                                         isDelivered
-                                          ? "bg-emerald-100 border border-emerald-300 text-emerald-800 opacity-80 cursor-default"
+                                          ? "bg-emerald-100 border border-emerald-300 text-emerald-800 opacity-90 cursor-default"
                                           : isOutForDelivery
-                                            ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+                                            ? updatingStatusId === `${e.estimateNumber}-DELIVERED`
+                                              ? "bg-emerald-400 text-white cursor-wait"
+                                              : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm cursor-pointer"
                                             : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
                                       }`}
                                     >
-                                      <CheckCircle2 size={13} /> {isDelivered ? "✓ Delivered (Done)" : "Mark Delivered"}
+                                      <CheckCircle2 size={13} /> {isDelivered ? "✓ Delivered (Complete)" : updatingStatusId === `${e.estimateNumber}-DELIVERED` ? "Updating..." : "Mark Delivered"}
                                     </button>
                                   </div>
                                 );

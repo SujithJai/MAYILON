@@ -156,6 +156,16 @@ export function saveOrderToStore(order: OrderRecord): OrderRecord {
   return order;
 }
 
+/** Get all orders matching customer mobile (sorted newest first) */
+export function getOrdersByMobileFromStore(mobile: string): OrderRecord[] {
+  loadOrdersFromDisk();
+  const clean = mobile.replace(/\D/g, "").slice(-10);
+  if (!clean) return [];
+  return Array.from(STORE.values())
+    .filter((o) => (o.mobile || "").replace(/\D/g, "").slice(-10) === clean)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+}
+
 /** Retrieve order by estimate number */
 export function getOrderFromStore(estimateNumber: string): OrderRecord | undefined {
   loadOrdersFromDisk();

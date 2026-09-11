@@ -1,3 +1,4 @@
+import { desc, ilike } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { customers, estimateItems, estimates } from "@/db/schema";
@@ -203,18 +204,31 @@ export async function POST(req: Request) {
   );
 }
 
-/** Admin listing (Merges Store + DB) */
-export async function GET() {
+/** Orders listing with mobile filter for customer order history & live tracking */
+export async function GET(req: Request) {
   await syncOrdersWithDb().catch(() => null);
+  const url = new URL(req.url);
+  const mobileParam = url.searchParams.get("mobile");
+  const cleanMobile = mobileParam ? mobileParam.replace(/\D/g, "").slice(-10) : null;
+
   const storeOrders = getAllOrdersFromStore();
   let dbRows: any[] = [];
 
   try {
-    dbRows = await db
-      .select()
-      .from(estimates)
-      .orderBy(estimates.createdAt)
-      .limit(100);
+    if (cleanMobile) {
+      dbRows = await db
+        .select()
+        .from(estimates)
+        .where(ilike(estimates.mobile, `%${cleanMobile}%`))
+        .orderBy(desc(estimates.createdAt))
+        .limit(100);
+    } else {
+      dbRows = await db
+        .select()
+        .from(estimates)
+        .orderBy(desc(estimates.createdAt))
+        .limit(100);
+    }
   } catch (err) {
     console.warn("[GET /estimates] DB read fallback:", err);
   }
@@ -222,7 +236,14 @@ export async function GET() {
   // Merge store orders and db rows, avoiding duplicates by estimateNumber
   const map = new Map<string, any>();
   for (const o of storeOrders) {
-    map.set(o.estimateNumber, o);
+    if (cleanMobile) {
+      const orderMobile = (o.mobile || "").replace(/\D/g, "").slice(-10);
+      if (orderMobile === cleanMobile) {
+        map.set(o.estimateNumber, o);
+      }
+    } else {
+      map.set(o.estimateNumber, o);
+    }
   }
   for (const r of dbRows) {
     if (!map.has(r.estimateNumber)) {
