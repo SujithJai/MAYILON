@@ -106,8 +106,10 @@ export default function ContactPage() {
         <Reveal delay={0.08}>
           <div className="space-y-4">
             {[
-              { icon: Phone, t: "Call Sales", d: SITE.phone, href: `tel:${SITE.phoneRaw}` },
-              { icon: MessageCircle, t: "WhatsApp", d: "Instant price list & photos", href: waLink("Hi Mayilon Crackers!") },
+              { icon: Phone, t: "Call Sales / Line 1", d: "+91 70101 16061", href: "tel:917010116061" },
+              { icon: Phone, t: "Call Sales / Line 2", d: "+91 99949 48674", href: "tel:919994948674" },
+              { icon: Phone, t: "Call Sales / Line 3", d: "+91 97865 10405", href: "tel:919786510405" },
+              { icon: MessageCircle, t: "WhatsApp (Fast Quote)", d: "+91 70101 16061 / 99949 48674", href: waLink("Hi Mayilon Crackers!") },
               { icon: Mail, t: "Email", d: SITE.email, href: `mailto:${SITE.email}` },
             ].map((c) => (
               <a

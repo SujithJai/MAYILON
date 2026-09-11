@@ -85,7 +85,7 @@ export function PriceListDownloadModal({
       let csvContent = "\uFEFF"; // UTF-8 BOM for Excel
       csvContent += "MAYILON PYROWORLD - OFFICIAL SIVAKASI FESTIVAL PRICE LIST 2026\n";
       csvContent += "Address: 4/95, Pachayaman Kovil Street, Naranapuram, Sivakasi - 626189, Virudhunagar District\n";
-      csvContent += "GSTIN: 33AABCM1234K1ZQ | PESO Licence: E-13579 | Phone: +91 90470 12345\n\n";
+      csvContent += "Phone: +91 70101 16061 / +91 99949 48674 / +91 97865 10405 | Web: https://mayiloncrackers.com\n\n";
 
       let globalIdx = 0;
       groups.forEach((g) => {
@@ -169,7 +169,7 @@ export function PriceListDownloadModal({
           <div class="sub">
             <strong>Factory Direct Sivakasi Fireworks Price List 2026</strong><br/>
             Address: 4/95, Pachayaman Kovil Street, Naranapuram, Sivakasi - 626189, Virudhunagar District, Tamil Nadu<br/>
-            Phone: +91 90470 12345 | Web: https://mayiloncrackers.com | PESO Lic: E-13579 | GSTIN: 33AABCM1234K1ZQ
+            Phone: +91 70101 16061 / +91 99949 48674 / +91 97865 10405 | Web: https://mayiloncrackers.com
           </div>
           <table>
             <thead>
@@ -290,14 +290,13 @@ export function PriceListDownloadModal({
             <div class="meta">
               <strong>Official Deepavali Price List 2026</strong><br/>
               4/95, Pachayaman Kovil Street, Naranapuram, Sivakasi - 626189, Virudhunagar District<br/>
-              PESO Licence: E-13579 | GSTIN: 33AABCM1234K1ZQ<br/>
-              Customer Care: +91 90470 12345
+              Phone: +91 70101 16061 | +91 99949 48674 | +91 97865 10405
             </div>
           </div>
 
           <div class="tagline-banner">
             <span>🔥 FACTORY-DIRECT SIVAKASI FIREWORKS · 80% OFF MRP</span>
-            <span>⚡ ALL PRICES INCLUSIVE OF 18% GST</span>
+            <span>⚡ ALL TAMIL NADU & ALL INDIA DISPATCH</span>
           </div>
 
           <table>
@@ -318,7 +317,7 @@ export function PriceListDownloadModal({
           </table>
 
           <div class="footer">
-            <span>Visit: https://mayiloncrackers.com | WhatsApp: +91 90470 12345</span>
+            <span>Visit: https://mayiloncrackers.com | WhatsApp: +91 70101 16061 / 99949 48674 / 97865 10405</span>
             <span>Generated on ${new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span>
           </div>
 

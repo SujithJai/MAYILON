@@ -162,6 +162,7 @@ export function Navbar() {
               <a
                 href={`tel:${SITE.phoneRaw}`}
                 aria-label="Call Mayilon Crackers"
+                title="Call: +91 70101 16061 / 99949 48674 / 97865 10405"
                 className="hidden h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm transition-all duration-300 hover:border-red-600 hover:text-red-600 sm:flex"
               >
                 <Phone size={16} />
@@ -239,6 +240,14 @@ export function Navbar() {
                     >
                       <User size={16} /> {userMobile ? `Logged in (+91 ${userMobile})` : "Customer Login"}
                     </button>
+                    <div className="mt-3 rounded-2xl bg-red-50/70 border border-red-200/60 p-3.5 text-center text-xs">
+                      <p className="font-bold text-red-900 mb-1.5 uppercase tracking-wider text-[11px]">📞 Call / WhatsApp Sales:</p>
+                      <div className="flex flex-col gap-1 font-bold text-red-700">
+                        <a href="tel:917010116061" className="hover:underline">+91 70101 16061</a>
+                        <a href="tel:919994948674" className="hover:underline">+91 99949 48674</a>
+                        <a href="tel:919786510405" className="hover:underline">+91 97865 10405</a>
+                      </div>
+                    </div>
                   </div>
                 </nav>
               </motion.div>

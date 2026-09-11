@@ -78,10 +78,12 @@ export function Footer() {
             Factory-direct premium fireworks from Sivakasi. PESO licensed manufacturing, cinematic
             quality, wholesale pricing and safe nationwide dispatch.
           </p>
-          <p className="mt-4 text-sm font-bold text-amber-300">{SITE.tagline}</p>
-          <div className="mt-5 space-y-1 text-xs text-slate-400 font-medium">
-            <p>GSTIN: {SITE.gst}</p>
-            <p>Licence: {SITE.license}</p>
+          <div className="mt-5 space-y-1.5 text-xs text-slate-300 font-medium">
+            <p className="font-bold text-amber-400 uppercase tracking-wider">📞 Contact / Sales Desk:</p>
+            <p><a href="tel:917010116061" className="hover:text-amber-300 transition">+91 70101 16061</a></p>
+            <p><a href="tel:919994948674" className="hover:text-amber-300 transition">+91 99949 48674</a></p>
+            <p><a href="tel:919786510405" className="hover:text-amber-300 transition">+91 97865 10405</a></p>
+            <p className="pt-1 text-slate-400 font-normal">📍 4/95, Pachayaman Kovil St, Sivakasi - 626189</p>
           </div>
         </div>
 

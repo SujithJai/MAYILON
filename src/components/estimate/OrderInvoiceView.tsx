@@ -149,7 +149,7 @@ export function OrderInvoiceView({
               </p>
               <p className="text-[12px] font-medium text-slate-600 print:text-black">{SITE.address}</p>
               <p className="text-[12px] font-medium text-slate-600 print:text-black">
-                GSTIN {SITE.gst} · {SITE.phone}
+                Phone: {SITE.phone}
               </p>
             </div>
           </div>

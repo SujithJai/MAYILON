@@ -217,20 +217,26 @@ export default async function HomePage() {
                 Bulk orders, temple festivals, weddings or export enquiries — our team responds
                 within 30 minutes during business hours.
               </p>
-              <div className="mt-9 flex flex-wrap items-center justify-center gap-4">
-                <a href={`tel:${SITE.phoneRaw}`} className="btn-gold flex items-center gap-2 px-7 py-3.5 text-sm uppercase">
-                  <Phone size={16} /> {SITE.phone}
+              <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
+                <a href="tel:917010116061" className="btn-gold flex items-center gap-2 px-5 py-3.5 text-xs sm:text-sm font-bold uppercase">
+                  <Phone size={15} /> +91 70101 16061
+                </a>
+                <a href="tel:919994948674" className="btn-gold flex items-center gap-2 px-5 py-3.5 text-xs sm:text-sm font-bold uppercase">
+                  <Phone size={15} /> +91 99949 48674
+                </a>
+                <a href="tel:919786510405" className="btn-gold flex items-center gap-2 px-5 py-3.5 text-xs sm:text-sm font-bold uppercase">
+                  <Phone size={15} /> +91 97865 10405
                 </a>
                 <a
                   href={waLink("Hi Mayilon Crackers, I need a quotation for Deepavali.")}
                   target="_blank"
                   rel="noreferrer"
-                  className="btn-ghost flex items-center gap-2 px-7 py-3.5 text-sm uppercase"
+                  className="btn-ghost flex items-center gap-2 px-5 py-3.5 text-xs sm:text-sm font-bold uppercase"
                 >
-                  <MessageCircle size={16} /> WhatsApp
+                  <MessageCircle size={15} /> WhatsApp
                 </a>
-                <Link href="/contact" className="btn-ghost px-7 py-3.5 text-sm uppercase">
-                  Request a Quote
+                <Link href="/contact" className="btn-ghost px-5 py-3.5 text-xs sm:text-sm font-bold uppercase">
+                  Request Quote
                 </Link>
               </div>
             </div>

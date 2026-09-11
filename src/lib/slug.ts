@@ -11,14 +11,15 @@ export const SITE = {
   name: "Mayilon Crackers",
   tagline: "ஒவ்வொரு வெடியிலும் மகிழ்ச்சி!",
   taglineEn: "Joy in every burst",
-  phone: "+91 90470 12345",
-  phoneRaw: "919047012345",
-  whatsapp: "919047012345",
+  phone: "+91 70101 16061 / +91 99949 48674 / +91 97865 10405",
+  phones: ["+91 70101 16061", "+91 99949 48674", "+91 97865 10405"],
+  phoneRaw: "917010116061",
+  whatsapp: "917010116061",
   email: "sales@mayiloncrackers.com",
   address: "4/95, Pachayaman Kovil Street, Naranapuram, Sivakasi - 626189, Virudhunagar District, Tamil Nadu",
   url: "https://mayiloncrackers.com",
-  gst: "33AABCM1234K1ZQ",
-  license: "PESO / E-13579 / Sivakasi",
+  gst: "",
+  license: "PESO / Sivakasi",
 };
 
 export function waLink(text: string) {
