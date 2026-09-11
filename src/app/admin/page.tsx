@@ -806,39 +806,6 @@ export default function AdminPage() {
     );
   }
 
-  function handleDragStart(id: string) {
-    setDraggedId(id);
-  }
-
-  function handleDragOver(e: React.DragEvent) {
-    e.preventDefault();
-  }
-
-  function handleDrop(targetId: string) {
-    if (!draggedId || draggedId === targetId) {
-      setDraggedId(null);
-      return;
-    }
-
-    const fromIndex = products.findIndex((p) => p.id === draggedId);
-    const toIndex = products.findIndex((p) => p.id === targetId);
-
-    if (fromIndex === -1 || toIndex === -1) {
-      setDraggedId(null);
-      return;
-    }
-
-    const newProducts = [...products];
-    const [moved] = newProducts.splice(fromIndex, 1);
-    newProducts.splice(toIndex, 0, moved);
-
-    setDraggedId(null);
-    void handleReorder(
-      newProducts,
-      `↕️ Reordered: "${moved.name}" moved to #${toIndex + 1} (Live on Storefront)`,
-    );
-  }
-
   async function handleQuickSaveInline(p: ProductItem) {
     setSavingInline(true);
     const mrp = Number(inlineMrp) || Number(p.mrp) || 100;

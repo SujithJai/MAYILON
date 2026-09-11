@@ -319,3 +319,49 @@ export const SEED_PRODUCTS: [string, string, number, string, number, string, str
   ["MYL-GFT-07", "42 items(10pc Pack)", 3000, "1 BOX", 1, "", "/categories/gift-boxes.jpg", 600],
   ["MYL-GFT-08", "50 items (10pc Pack)", 4000, "1 BOX", 1, "", "/categories/gift-boxes.jpg", 800],
 ];
+
+export const SEED_REVIEWS = [
+  {
+    name: "Karthik Subramanian",
+    location: "Chennai, Tamil Nadu",
+    rating: 5,
+    title: "Factory price, 80% discount quality",
+    body: "Ordered a ₹28,000 estimate for our apartment Deepavali. Packing was flawless, 80% off MRP pricing is genuine and sky shots were show-grade.",
+  },
+  {
+    name: "Priya Ramesh",
+    location: "Coimbatore, Tamil Nadu",
+    rating: 5,
+    title: "The kids box & sparklers are brilliant",
+    body: "Low sound items actually are low sound. Sparklers and flower pots are genuine Sivakasi quality. Will reorder every year.",
+  },
+  {
+    name: "Mohan Reddy",
+    location: "Hyderabad, Telangana",
+    rating: 5,
+    title: "Best dealer & wholesale pricing",
+    body: "I run 3 retail outlets. The 80% discount plus transport coordination saved me nearly 20% versus my previous supplier in Sivakasi.",
+  },
+  {
+    name: "Anitha Vasanth",
+    location: "Madurai, Tamil Nadu",
+    rating: 5,
+    title: "Wedding multi-shot was cinematic",
+    body: "We booked the 120 multi color shot ultra for a wedding entry. The team advised on safety distance and the sky show looked stunning.",
+  },
+  {
+    name: "Rajesh Kumar",
+    location: "Bengaluru, Karnataka",
+    rating: 4,
+    title: "Smooth estimate process",
+    body: "Submitted estimate at midnight, got a WhatsApp confirmation and a call by 10am. Transparent transport charge — no hidden costs.",
+  },
+  {
+    name: "Fathima Noor",
+    location: "Kochi, Kerala",
+    rating: 5,
+    title: "Genuine Sivakasi stock",
+    body: "Everything arrived sealed with batch codes and safety leaflets. This is what factory-direct should feel like.",
+  },
+];
+
