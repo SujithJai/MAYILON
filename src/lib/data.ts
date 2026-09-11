@@ -64,13 +64,13 @@ function getInMemoryProducts(): ProductWithCategory[] {
     const cat = catMap.get(catSlug);
     if (!cat) continue;
     rows.forEach((row, idx) => {
-      const [name, mrp, packing, pieces, flags = "", customImg, customOffer] = row;
+      const [sku, name, mrp, packing, pieces, flags = "", customImg, customOffer] = row;
       const offer = customOffer !== undefined ? customOffer : Math.round((mrp * 20) / 100);
       const discount = Math.round(((mrp - offer) / mrp) * 100);
       const img = customImg ?? IMAGE_POOL[n % IMAGE_POOL.length];
       list.push({
         id: `prod-${n + 1}`,
-        sku: `MYL-${CATEGORY_CODE[catSlug] ?? "GEN"}-${`${idx + 1}`.padStart(2, "0")}`,
+        sku: sku,
         slug: slugify(name),
         name,
         nameTa: null,
@@ -164,8 +164,8 @@ function applyCustomOverrides(items: ProductWithCategory[]): ProductWithCategory
     if (Array.isArray(customList) && customList.length > 0) {
       for (const c of customList) {
         const match =
-          idMap.get(c.id) ||
           (c.sku ? skuMap.get(c.sku) : undefined) ||
+          idMap.get(c.id) ||
           (c.slug ? slugMap.get(c.slug) : undefined) ||
           (c.name ? nameMap.get(c.name.trim().toLowerCase()) : undefined);
 
@@ -308,12 +308,12 @@ async function seed() {
       const categoryId = bySlug.get(catSlug);
       if (!categoryId) continue;
       rows.forEach((row, idx) => {
-        const [name, mrp, packing, pieces, flags = "", customImg, customOffer] = row;
+        const [sku, name, mrp, packing, pieces, flags = "", customImg, customOffer] = row;
         const offer = customOffer !== undefined ? customOffer : Math.round((mrp * 20) / 100);
         const discount = Math.round(((mrp - offer) / mrp) * 100);
         const img = customImg ?? IMAGE_POOL[n % IMAGE_POOL.length];
         productRows.push({
-          sku: `MYL-${CATEGORY_CODE[catSlug] ?? "GEN"}-${`${idx + 1}`.padStart(2, "0")}`,
+          sku: sku,
           slug: slugify(name),
           name,
           categoryId,
