@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState, Fragment } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Activity,
@@ -1748,7 +1748,7 @@ export default function AdminPage() {
                           const itemsCount = e.items?.length || e.itemCount || 0;
 
                           return (
-                            <React.Fragment key={e.id || e.estimateNumber}>
+                            <Fragment key={e.id || e.estimateNumber}>
                               <tr className={`border-b border-slate-100 hover:bg-slate-50/80 transition-colors ${isExpanded ? "bg-amber-50/40" : ""}`}>
                                 {/* 1. Order Ref & Slip Download */}
                                 <td className="py-4 px-3 font-bold">
@@ -2006,7 +2006,7 @@ export default function AdminPage() {
                                   </td>
                                 </tr>
                               )}
-                            </React.Fragment>
+                            </Fragment>
                           );
                         })}
                       </tbody>
