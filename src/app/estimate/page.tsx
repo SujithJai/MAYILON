@@ -733,11 +733,6 @@ export default function CheckoutPage() {
               {totals.discount > 0 && (
                 <Row label={`Coupon (${coupon.toUpperCase()})`} value={`- ${formatINR(totals.discount)}`} accent="verde" />
               )}
-              <Row
-                label="Transport charge"
-                value={totals.transportCharge === 0 ? "FREE" : formatINR(totals.transportCharge)}
-              />
-              <Row label="GST 18%" value={formatINR(totals.gstAmount)} />
             </div>
 
             <div className="mt-5 flex items-end justify-between border-t border-slate-200 pt-5">

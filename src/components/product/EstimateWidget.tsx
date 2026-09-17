@@ -53,7 +53,7 @@ export function EstimateWidget({ p }: { p: P }) {
       <div className="mt-5 grid grid-cols-2 gap-3 text-[12.5px]">
         <Info label="Packing" value={p.packing} />
         <Info label="MOQ" value={`${p.moq} unit${p.moq > 1 ? "s" : ""}`} />
-        <Info label="GST" value="18% (included in estimate)" />
+        <Info label="Factory Rate" value="Direct Sivakasi Pricing" />
         <Info
           label="Wholesale"
           value={p.dealerPrice ? `${formatINR(p.dealerPrice)} / unit` : "On request"}

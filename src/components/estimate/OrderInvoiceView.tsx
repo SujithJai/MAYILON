@@ -298,11 +298,6 @@ export function OrderInvoiceView({
           {Number(activeEst.discount) > 0 && (
             <Line label={`Coupon ${activeEst.couponCode ?? ""}`} value={`- ${formatINR(Number(activeEst.discount))}`} accent />
           )}
-          <Line
-            label="Transport charge"
-            value={Number(activeEst.transportCharge) === 0 ? "FREE" : formatINR(Number(activeEst.transportCharge))}
-          />
-          <Line label="GST 18%" value={formatINR(Number(activeEst.gstAmount))} />
           <div className="mt-3 flex w-full max-w-sm items-center justify-between border-t border-slate-200 pt-3">
             <span className="text-[12px] font-bold uppercase tracking-[2px] text-slate-500 print:text-black">
               Grand Total

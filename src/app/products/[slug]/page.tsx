@@ -107,7 +107,7 @@ export default async function ProductPage({ params }: { params: Params }) {
     ["Age recommendation", p.ageRecommendation],
     ["Usage", p.usage],
     ["Minimum order qty", String(p.moq)],
-    ["GST", `${p.gstPercent}%`],
+    ["Price type", "Direct Factory Rate (Net Price)"],
     ["Storage", "Cool, dry place away from heat & direct sunlight"],
     ["Manufacturer", "Mayilon Crackers, Sivakasi, Tamil Nadu"],
   ];

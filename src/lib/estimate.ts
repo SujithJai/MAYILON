@@ -89,16 +89,9 @@ export function calculateTotals(
   const discount = couponValid && coupon ? round((subtotal * coupon.percent) / 100) : 0;
 
   const netAfterDiscount = Math.max(0, subtotal - discount);
-  // Transport: free above ₹50,000, otherwise ~3.5% of net capped at ₹2,400 (min ₹250)
-  const transportCharge =
-    netAfterDiscount <= 0
-      ? 0
-      : netAfterDiscount >= 50000
-        ? 0
-        : Math.min(2400, Math.max(250, round(netAfterDiscount * 0.035)));
-
-  const gstAmount = round(netAfterDiscount * 0.18);
-  const grandTotal = round(netAfterDiscount + transportCharge + gstAmount);
+  const transportCharge = 0;
+  const gstAmount = 0;
+  const grandTotal = round(netAfterDiscount);
 
   return {
     itemCount: safeLines.length,
