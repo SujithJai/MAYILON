@@ -49,16 +49,47 @@ export function PriceListDownloadModal({
   }
 
   async function getCatalog(): Promise<ProductItem[]> {
+    let list: ProductItem[] = [];
     try {
       const res = await fetch("/api/v1/products?limit=500", { cache: "no-store" }).then((r) => r.json());
       if (res?.data?.items && Array.isArray(res.data.items) && res.data.items.length > 0) {
-        return applyOrder(res.data.items, res?.data?.productOrder);
+        list = res.data.items;
       }
     } catch {}
-    if (products && products.length > 0) {
-      return applyOrder(products);
+
+    if (list.length === 0 && products && products.length > 0) {
+      list = [...products];
     }
-    return [];
+
+    // 1. Two-way sync: Merge any locally saved/added products (e.g., TEST PATTASU) from localStorage
+    try {
+      if (typeof window !== "undefined") {
+        const localRaw = localStorage.getItem("mayilon_custom_products");
+        if (localRaw) {
+          const localProds = JSON.parse(localRaw);
+          if (Array.isArray(localProds) && localProds.length > 0) {
+            const existingIds = new Set(list.map((it) => String(it.id)));
+            const existingSkus = new Set(list.map((it) => String(it.sku)));
+
+            for (const lp of localProds) {
+              if (!lp) continue;
+              if (lp.id && existingIds.has(String(lp.id))) {
+                const idx = list.findIndex((it) => String(it.id) === String(lp.id));
+                if (idx !== -1) list[idx] = { ...list[idx], ...lp };
+              } else if (lp.sku && existingSkus.has(String(lp.sku))) {
+                const idx = list.findIndex((it) => String(it.sku) === String(lp.sku));
+                if (idx !== -1) list[idx] = { ...list[idx], ...lp };
+              } else {
+                list.push(lp);
+              }
+            }
+          }
+        }
+      }
+    } catch (err) {}
+
+    // 2. Apply custom sequence order
+    return applyOrder(list);
   }
 
   function groupByCategory(items: ProductItem[]) {

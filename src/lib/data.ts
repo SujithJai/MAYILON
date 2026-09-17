@@ -565,26 +565,23 @@ export async function getCategories(): Promise<CategorySummary[]> {
   } catch {}
 
 
-  // Update category productCounts with custom products
+  // Dynamically calculate 100% accurate productCount per category from merged product list
   try {
-    const { getCustomProductsFromStore, getDeletedProductIds } = await import("./products-store");
-    const customList = getCustomProductsFromStore();
-    const deletedSet = getDeletedProductIds();
-    if (customList && customList.length > 0) {
-      const countBySlug = new Map<string, number>();
-      for (const p of customList) {
-        if (!p || !p.id) continue;
-        if (deletedSet && (deletedSet.has(p.id) || deletedSet.has(p.sku))) continue;
-        const slug = resolveCategorySlug(p.categoryName);
-        countBySlug.set(slug, (countBySlug.get(slug) || 0) + 1);
-      }
-      for (const cat of list) {
-        if (countBySlug.has(cat.slug)) {
-          cat.productCount = Math.max(cat.productCount, countBySlug.get(cat.slug)!);
-        }
+    const { items: allProds } = await getProducts({ limit: 500 });
+    const countMap = new Map<string, number>();
+    for (const p of allProds) {
+      if (!p) continue;
+      const slug = resolveCategorySlug(p.categoryName || p.categorySlug);
+      countMap.set(slug, (countMap.get(slug) || 0) + 1);
+    }
+    for (const cat of list) {
+      if (countMap.has(cat.slug)) {
+        cat.productCount = countMap.get(cat.slug)!;
       }
     }
-  } catch {}
+  } catch (err) {
+    console.warn("[getCategories] Count calc note:", err);
+  }
 
   return list;
 }
