@@ -117,20 +117,20 @@ export default async function ProductPage({ params }: { params: Params }) {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
 
       <section className="shell pt-6">
-        <nav className="flex flex-wrap items-center gap-2 text-[12px] text-white/40">
-          <Link href="/" className="hover:text-gold">Home</Link>
-          <span className="text-gold/50">/</span>
-          <Link href="/products" className="hover:text-gold">Products</Link>
-          <span className="text-gold/50">/</span>
-          <Link href={`/products?category=${p.categorySlug}`} className="hover:text-gold">
+        <nav className="flex flex-wrap items-center gap-2 text-[12.5px] font-medium text-slate-500">
+          <Link href="/" className="hover:text-red-600 transition">Home</Link>
+          <span className="text-slate-300">/</span>
+          <Link href="/products" className="hover:text-red-600 transition">Products</Link>
+          <span className="text-slate-300">/</span>
+          <Link href={`/products?category=${p.categorySlug}`} className="hover:text-red-600 transition">
             {p.categoryName}
           </Link>
-          <span className="text-gold/50">/</span>
-          <span className="text-gold">{p.name}</span>
+          <span className="text-slate-300">/</span>
+          <span className="text-red-600 font-bold truncate max-w-[200px] sm:max-w-none">{p.name}</span>
         </nav>
       </section>
 
-      <section className="shell grid gap-10 py-10 lg:grid-cols-[1fr_460px]">
+      <section className="shell grid gap-8 lg:gap-12 py-8 lg:py-10 lg:grid-cols-[1fr_480px] items-start">
         <Reveal>
           <ProductGallery
             images={
@@ -148,45 +148,45 @@ export default async function ProductPage({ params }: { params: Params }) {
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <span
-                  className="rounded-full px-3 py-1 text-[10.5px] uppercase tracking-[2px]"
+                  className="rounded-full px-3 py-1 text-[10.5px] font-bold uppercase tracking-[2px]"
                   style={{
-                    color: p.categoryAccent,
-                    background: `${p.categoryAccent}1a`,
-                    border: `1px solid ${p.categoryAccent}55`,
+                    color: p.categoryAccent || "#dc2626",
+                    background: `${p.categoryAccent || "#dc2626"}15`,
+                    border: `1px solid ${p.categoryAccent || "#dc2626"}40`,
                   }}
                 >
                   {p.categoryName}
                 </span>
                 {p.isBestSeller && (
-                  <span className="rounded-full bg-ember/15 px-3 py-1 text-[10.5px] uppercase tracking-[2px] text-ember">
+                  <span className="rounded-full bg-orange-100 border border-orange-200 px-3 py-1 text-[10.5px] font-bold uppercase tracking-[2px] text-orange-700">
                     Best Seller
                   </span>
                 )}
                 {p.isPremium && (
-                  <span className="rounded-full bg-gold/15 px-3 py-1 text-[10.5px] uppercase tracking-[2px] text-gold">
+                  <span className="rounded-full bg-amber-100 border border-amber-200 px-3 py-1 text-[10.5px] font-bold uppercase tracking-[2px] text-amber-700">
                     Premium
                   </span>
                 )}
               </div>
 
-              <h1 className="mt-4 font-display text-[32px] font-bold leading-tight sm:text-[40px]">
+              <h1 className="mt-3.5 font-display text-[28px] sm:text-[38px] font-bold leading-tight text-slate-900">
                 {p.name}
               </h1>
 
-              <div className="mt-3 flex flex-wrap items-center gap-4 text-[13px] text-white/50">
-                <span className="flex items-center gap-1.5 text-gold">
-                  <Star size={14} fill="currentColor" /> {Number(p.rating).toFixed(1)}
-                  <span className="text-white/40">({p.reviewCount} reviews)</span>
+              <div className="mt-3 flex flex-wrap items-center gap-3 text-[13px] text-slate-600 font-medium">
+                <span className="flex items-center gap-1.5 text-amber-600 font-bold">
+                  <Star size={15} fill="currentColor" /> {Number(p.rating).toFixed(1)}
+                  <span className="text-slate-500 font-normal">({p.reviewCount} reviews)</span>
                 </span>
-                <span className="text-white/25">|</span>
-                <span className="uppercase tracking-[2px]">{p.sku}</span>
-                <span className="text-white/25">|</span>
-                <span className={p.stock > 60 ? "text-verde" : "text-flame"}>
-                  {p.stock > 0 ? `${p.stock} in stock` : "Out of stock"}
+                <span className="text-slate-300">|</span>
+                <span className="uppercase tracking-[2px] font-mono font-bold text-slate-700">{p.sku}</span>
+                <span className="text-slate-300">|</span>
+                <span className={`font-bold ${p.stock > 60 ? "text-emerald-600" : "text-amber-600"}`}>
+                  {p.stock > 0 ? `${p.stock} units available` : "Out of stock"}
                 </span>
               </div>
 
-              <p className="mt-5 text-[14.5px] leading-relaxed text-white/60">
+              <p className="mt-4 text-[14.5px] leading-relaxed text-slate-600 font-medium">
                 {p.shortDescription}
               </p>
             </div>
@@ -213,16 +213,16 @@ export default async function ProductPage({ params }: { params: Params }) {
           </Reveal>
 
           <Reveal delay={0.15}>
-            <div className="glass rounded-[26px] border-ember/25 p-6">
-              <div className="flex items-center gap-2 text-ember">
-                <ShieldAlert size={17} />
-                <h3 className="font-display text-[15px] font-semibold">Safety information</h3>
+            <div className="glass rounded-[24px] border-red-500/20 p-5 bg-red-50/60 shadow-sm">
+              <div className="flex items-center gap-2 text-red-600">
+                <ShieldAlert size={18} />
+                <h3 className="font-display text-[15px] font-bold">Safety Instructions</h3>
               </div>
-              <ul className="mt-3 space-y-2 text-[13px] text-white/55">
-                <li>• Always use outdoors in an open area, minimum 10 metres from buildings.</li>
-                <li>• Adult supervision mandatory. Keep a bucket of water/sand nearby.</li>
-                <li>• Never relight a dud. Wait 5 minutes, then soak in water.</li>
-                <li>• Store away from heat sources, in original sealed packaging.</li>
+              <ul className="mt-3 space-y-2 text-[13px] text-slate-700 font-medium">
+                <li>• Always light outdoors in open clear ground, minimum 10 metres away.</li>
+                <li>• Strict adult supervision required for kids. Keep water/sand bucket nearby.</li>
+                <li>• Do not re-ignite a failed cracker. Wait 5 minutes and douse in water.</li>
+                <li>• Store in a cool dry place inside original factory carton.</li>
               </ul>
             </div>
           </Reveal>
@@ -230,15 +230,15 @@ export default async function ProductPage({ params }: { params: Params }) {
       </section>
 
       {/* Specifications + description */}
-      <section className="shell grid gap-8 py-12 lg:grid-cols-2">
+      <section className="shell grid gap-8 py-10 lg:grid-cols-2">
         <Reveal>
-          <div className="glass h-full rounded-[30px] p-8">
-            <h3 className="font-display text-xl font-semibold text-white">Specifications</h3>
-            <dl className="mt-5 divide-y divide-white/6">
+          <div className="glass h-full rounded-[28px] p-6 sm:p-8 bg-white border border-red-500/15 shadow-md">
+            <h3 className="font-display text-xl font-bold text-slate-900">Specifications</h3>
+            <dl className="mt-5 divide-y divide-slate-100">
               {specs.map(([k, v]) => (
-                <div key={k} className="flex justify-between gap-6 py-2.5 text-[13.5px]">
-                  <dt className="text-white/45">{k}</dt>
-                  <dd className="text-right text-white/85">{v}</dd>
+                <div key={k} className="flex justify-between gap-6 py-3 text-[13.5px]">
+                  <dt className="text-slate-500 font-medium">{k}</dt>
+                  <dd className="text-right text-slate-900 font-bold">{v}</dd>
                 </div>
               ))}
             </dl>
@@ -247,9 +247,9 @@ export default async function ProductPage({ params }: { params: Params }) {
 
         <Reveal delay={0.08}>
           <div className="space-y-8">
-            <div className="glass rounded-[30px] p-8">
-              <h3 className="font-display text-xl font-semibold text-white">Product description</h3>
-              <p className="mt-4 text-[14px] leading-relaxed text-white/60">{p.description}</p>
+            <div className="glass rounded-[28px] p-6 sm:p-8 bg-white border border-red-500/15 shadow-md">
+              <h3 className="font-display text-xl font-bold text-slate-900">Product Description</h3>
+              <p className="mt-4 text-[14px] leading-relaxed text-slate-600 font-medium">{p.description}</p>
               <div className="mt-6 grid grid-cols-2 gap-3">
                 {[
                   { icon: PackageCheck, t: "Sealed packing", d: "Moisture barrier carton" },
@@ -257,29 +257,29 @@ export default async function ProductPage({ params }: { params: Params }) {
                   { icon: CheckCircle2, t: "Batch tested", d: "In-house QC bench" },
                   { icon: ShieldAlert, t: "PESO compliant", d: "Licensed manufacture" },
                 ].map((b) => (
-                  <div key={b.t} className="rounded-2xl border border-white/8 bg-white/3 p-4">
-                    <b.icon size={16} className="text-gold" />
-                    <p className="mt-2 text-[13px] font-medium text-white">{b.t}</p>
-                    <p className="text-[11.5px] text-white/40">{b.d}</p>
+                  <div key={b.t} className="rounded-2xl border border-red-500/15 bg-red-50/40 p-4">
+                    <b.icon size={18} className="text-red-600" />
+                    <p className="mt-2 text-[13px] font-bold text-slate-900">{b.t}</p>
+                    <p className="text-[11.5px] text-slate-500 font-medium">{b.d}</p>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="glass rounded-[30px] p-8">
-              <h3 className="font-display text-xl font-semibold text-white">Delivery timeline</h3>
+            <div className="glass rounded-[28px] p-6 sm:p-8 bg-white border border-red-500/15 shadow-md">
+              <h3 className="font-display text-xl font-bold text-slate-900">Delivery Timeline</h3>
               <div className="mt-5 space-y-4">
                 {TIMELINE.map((s, i) => (
                   <div key={s.t} className="flex gap-4">
                     <div className="flex flex-col items-center">
-                      <span className="flex h-7 w-7 items-center justify-center rounded-full border border-gold/50 bg-gold/10 text-[11px] font-bold text-gold">
+                      <span className="flex h-7 w-7 items-center justify-center rounded-full border border-red-500/30 bg-red-50 text-[11px] font-bold text-red-600">
                         {i + 1}
                       </span>
-                      {i < TIMELINE.length - 1 && <span className="mt-1 h-full w-px bg-gold/25" />}
+                      {i < TIMELINE.length - 1 && <span className="mt-1 h-full w-px bg-red-200" />}
                     </div>
                     <div className="pb-3">
-                      <p className="text-[14px] font-medium text-white">{s.t}</p>
-                      <p className="text-[12.5px] text-white/45">{s.d}</p>
+                      <p className="text-[14px] font-bold text-slate-900">{s.t}</p>
+                      <p className="text-[12.5px] text-slate-500 font-medium">{s.d}</p>
                     </div>
                   </div>
                 ))}
@@ -290,34 +290,34 @@ export default async function ProductPage({ params }: { params: Params }) {
       </section>
 
       {/* Reviews */}
-      <section className="shell py-12">
+      <section className="shell py-10">
         <SectionHeading
           align="left"
-          eyebrow="Verified reviews"
+          eyebrow="Verified Reviews"
           title={
             <>
-              What buyers say about <span className="gold-text">{p.categoryName}</span>
+              What Buyers Say About <span className="gold-text">{p.categoryName}</span>
             </>
           }
         />
         <div className="grid gap-6 md:grid-cols-3">
           {reviews.map((r, i) => (
             <Reveal key={r.id} delay={i * 0.06}>
-              <div className="glass h-full rounded-[26px] p-6">
+              <div className="glass h-full rounded-[26px] p-6 bg-white border border-red-500/15 shadow-md">
                 <div className="flex gap-1">
                   {Array.from({ length: 5 }).map((_, k) => (
                     <Star
                       key={k}
-                      size={13}
-                      className={k < r.rating ? "text-gold" : "text-white/15"}
+                      size={14}
+                      className={k < r.rating ? "text-amber-500" : "text-slate-200"}
                       fill="currentColor"
                     />
                   ))}
                 </div>
-                <p className="mt-3 font-display text-[15px] font-semibold text-white">{r.title}</p>
-                <p className="mt-2 text-[13px] leading-relaxed text-white/55">{r.body}</p>
-                <p className="mt-4 text-[12px] text-gold">
-                  {r.name} · <span className="text-white/35">{r.location}</span>
+                <p className="mt-3 font-display text-[15px] font-bold text-slate-900">{r.title}</p>
+                <p className="mt-2 text-[13px] leading-relaxed text-slate-600 font-medium">{r.body}</p>
+                <p className="mt-4 text-[12px] font-bold text-red-600">
+                  {r.name} · <span className="text-slate-400 font-normal">{r.location}</span>
                 </p>
               </div>
             </Reveal>
@@ -326,25 +326,25 @@ export default async function ProductPage({ params }: { params: Params }) {
       </section>
 
       {/* Related */}
-      <section className="shell py-12">
+      <section className="shell py-10">
         <SectionHeading
           align="left"
-          eyebrow="Frequently bought together"
+          eyebrow="Frequently Bought Together"
           title={
             <>
-              More from <span className="gold-text">{p.categoryName}</span>
+              More From <span className="gold-text">{p.categoryName}</span>
             </>
           }
           action={
             <Link
               href={`/products?category=${p.categorySlug}`}
-              className="btn-ghost px-6 py-3 text-sm uppercase"
+              className="btn-ghost px-6 py-3 text-sm uppercase font-bold"
             >
-              View category
+              View Category
             </Link>
           }
         />
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:gap-6 grid-cols-2 lg:grid-cols-4">
           {related.map((r, i) => (
             <ProductCard key={r.id} p={r} index={i} />
           ))}
@@ -352,10 +352,10 @@ export default async function ProductPage({ params }: { params: Params }) {
       </section>
 
       <section className="shell pb-16">
-        <div className="glass rounded-[30px] p-7 text-center text-[13px] text-white/50">
+        <div className="glass rounded-[28px] p-6 text-center text-[13.5px] text-slate-600 font-medium bg-white border border-red-500/15 shadow-md">
           Estimated value for {p.moq} × {p.name}:{" "}
-          <span className="text-gold">{formatINR(price * p.moq)}</span> — final invoice is confirmed
-          by our sales desk after stock verification.
+          <span className="text-red-600 font-bold">{formatINR(price * p.moq)}</span> — final invoice is confirmed
+          by our Sivakasi sales desk upon order submission.
         </div>
       </section>
     </>

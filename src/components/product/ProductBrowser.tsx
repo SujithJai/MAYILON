@@ -295,7 +295,7 @@ export function ProductBrowser({
         )}
 
         {view === "grid" ? (
-          <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-3.5 sm:gap-6 grid-cols-2 md:grid-cols-3 xl:grid-cols-3">
             {productList.map((p, i) => (
               <ProductCard key={p.id} p={p} index={i} />
             ))}

@@ -141,7 +141,7 @@ export function Hero({ stats }: { stats: { products: number; categories: number 
           </button>
 
           {/* Coverflow Slide Track */}
-          <div className="relative flex h-[350px] w-full max-w-[420px] items-center justify-center perspective-1000">
+          <div className="relative flex h-[350px] w-full max-w-[360px] sm:max-w-[420px] items-center justify-center perspective-1000">
             {SHOWCASE.map((item, index) => {
               let offset = index - active;
               if (offset > 2) offset -= SHOWCASE.length;
@@ -152,9 +152,9 @@ export function Hero({ stats }: { stats: { products: number; categories: number 
 
               if (!isVisible) return null;
 
-              const translateX = offset * 110;
+              const translateX = offset * 75;
               const scale = isCenter ? 1 : 0.82;
-              const rotateY = offset * -25;
+              const rotateY = offset * -20;
               const zIndex = 20 - Math.abs(offset) * 5;
               const opacity = isCenter ? 1 : Math.abs(offset) === 1 ? 0.7 : 0.35;
 
@@ -162,7 +162,7 @@ export function Hero({ stats }: { stats: { products: number; categories: number 
                 <motion.div
                   key={item.label}
                   onClick={() => setActive(index)}
-                  className="absolute h-[340px] w-[240px] cursor-pointer overflow-hidden rounded-[32px] border bg-white transition-all duration-700 sm:h-[380px] sm:w-[270px]"
+                  className="absolute h-[320px] w-[210px] cursor-pointer overflow-hidden rounded-[28px] border bg-white transition-all duration-700 sm:h-[380px] sm:w-[270px]"
                   animate={{
                     x: translateX,
                     scale,
@@ -186,17 +186,17 @@ export function Hero({ stats }: { stats: { products: number; categories: number 
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/25 to-transparent" />
 
                   <div
-                    className="absolute inset-x-0 bottom-0 p-6"
+                    className="absolute inset-x-0 bottom-0 p-5 sm:p-6"
                     style={{ borderTop: isCenter ? `1px solid ${item.color}66` : "1px solid rgba(255,255,255,0.15)" }}
                   >
-                    <p className="text-[11px] font-bold uppercase tracking-[3px]" style={{ color: item.color }}>
+                    <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[3px]" style={{ color: item.color }}>
                       {item.tamil}
                     </p>
-                    <p className="font-display text-xl font-bold text-white mt-1">{item.label}</p>
+                    <p className="font-display text-lg sm:text-xl font-bold text-white mt-0.5 sm:mt-1">{item.label}</p>
                     {isCenter && (
                       <Link
                         href={`/products?category=${item.slug}`}
-                        className="mt-3 inline-flex items-center gap-1.5 text-[11.5px] font-bold uppercase tracking-[2px] text-red-400 hover:underline"
+                        className="mt-2.5 sm:mt-3 inline-flex items-center gap-1.5 text-[10.5px] sm:text-[11.5px] font-bold uppercase tracking-[2px] text-red-400 hover:underline"
                       >
                         Browse Category <ArrowRight size={13} />
                       </Link>

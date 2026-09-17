@@ -81,7 +81,7 @@ export function ProductCard({ p, index = 0 }: { p: CardProduct; index?: number }
             transform: `rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)`,
             transformStyle: "preserve-3d",
           }}
-          className="glass lift-card relative flex h-full flex-col overflow-hidden rounded-[30px] border border-red-500/15 bg-white shadow-md transition-transform duration-300"
+          className="glass lift-card relative flex h-full flex-col overflow-hidden rounded-[26px] sm:rounded-[30px] border border-red-500/15 bg-white shadow-md transition-transform duration-300"
         >
           <div
             onClick={() => setLightboxOpen(true)}
@@ -94,24 +94,24 @@ export function ProductCard({ p, index = 0 }: { p: CardProduct; index?: number }
               loading="lazy"
               className="h-full w-full scale-[1.02] object-cover transition-transform duration-[1.4s] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-110"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-slate-950/15 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/75 via-slate-950/15 to-transparent" />
 
-            <div className="absolute left-4 top-4 flex flex-col gap-1.5 z-10">
-              <span className="rounded-full bg-red-600 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white shadow-sm">
+            <div className="absolute left-2.5 sm:left-4 top-2.5 sm:top-4 flex flex-col gap-1 z-10">
+              <span className="rounded-full bg-red-600 px-2 sm:px-2.5 py-0.5 sm:py-1 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-white shadow-sm">
                 {p.discountPercent}% Off
               </span>
               {p.isNewArrival && (
-                <span className="rounded-full bg-blue-600 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white">
+                <span className="rounded-full bg-blue-600 px-2 sm:px-2.5 py-0.5 sm:py-1 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-white">
                   New
                 </span>
               )}
               {p.isBestSeller && (
-                <span className="rounded-full bg-orange-600 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white">
+                <span className="rounded-full bg-orange-600 px-2 sm:px-2.5 py-0.5 sm:py-1 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-white">
                   Best Seller
                 </span>
               )}
               {p.isPremium && (
-                <span className="rounded-full bg-amber-500 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white">
+                <span className="rounded-full bg-amber-500 px-2 sm:px-2.5 py-0.5 sm:py-1 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-white">
                   Premium
                 </span>
               )}
@@ -123,59 +123,59 @@ export function ProductCard({ p, index = 0 }: { p: CardProduct; index?: number }
                 setLightboxOpen(true);
               }}
               aria-label={`View photo of ${p.name}`}
-              className="absolute right-4 top-4 flex h-9 w-9 translate-y-2 items-center justify-center rounded-xl bg-white/95 text-red-600 shadow-md opacity-0 transition-all duration-500 group-hover:translate-y-0 group-hover:opacity-100 hover:bg-red-600 hover:text-white z-10"
+              className="absolute right-2.5 sm:right-4 top-2.5 sm:top-4 flex h-7 w-7 sm:h-9 sm:w-9 translate-y-2 items-center justify-center rounded-xl bg-white/95 text-red-600 shadow-md opacity-0 transition-all duration-500 group-hover:translate-y-0 group-hover:opacity-100 hover:bg-red-600 hover:text-white z-10"
             >
-              <ZoomIn size={16} />
+              <ZoomIn size={15} />
             </button>
 
-            <div className="absolute bottom-3 left-4 right-4 flex items-center justify-between text-[11px] text-white font-medium z-10">
-              <span className="uppercase tracking-[2px] opacity-90">{p.sku}</span>
+            <div className="absolute bottom-2.5 sm:bottom-3 left-2.5 sm:left-4 right-2.5 sm:right-4 flex items-center justify-between text-[10px] sm:text-[11px] text-white font-medium z-10">
+              <span className="uppercase tracking-[1.5px] opacity-90 font-mono text-[10px]">{p.sku}</span>
               <span className="flex items-center gap-1 text-amber-300 font-bold">
                 <Star size={11} fill="currentColor" /> {Number(p.rating).toFixed(1)}
-                <span className="text-white/70">({p.reviewCount})</span>
+                <span className="text-white/70 hidden sm:inline">({p.reviewCount})</span>
               </span>
             </div>
           </div>
 
-          <div className="flex flex-1 flex-col p-5 bg-white">
-            <p className="text-[10.5px] font-bold uppercase tracking-[2.6px] text-red-600">
+          <div className="flex flex-1 flex-col p-3.5 sm:p-5 bg-white">
+            <p className="text-[9.5px] sm:text-[10.5px] font-bold uppercase tracking-[2px] sm:tracking-[2.6px] text-red-600 truncate">
               {p.categoryName}
             </p>
-            <Link href={`/products/${p.slug}`} className="mt-1.5">
-              <h3 className="font-display text-[16px] font-bold leading-snug text-slate-900 transition-colors duration-400 group-hover:text-red-600">
+            <Link href={`/products/${p.slug}`} className="mt-1">
+              <h3 className="font-display text-[14px] sm:text-[16px] font-bold leading-snug text-slate-900 transition-colors duration-300 group-hover:text-red-600 line-clamp-2 min-h-[2.5rem] sm:min-h-[2.7rem]">
                 {p.name}
               </h3>
             </Link>
-            <p className="mt-1 text-[11.5px] font-medium text-slate-500">
+            <p className="mt-1 text-[11px] sm:text-[11.5px] font-medium text-slate-500">
               {p.packing} · MOQ {p.moq}
             </p>
 
-            <div className="mt-auto pt-4">
+            <div className="mt-auto pt-3 sm:pt-4">
               <div className="flex items-end justify-between">
                 <div>
-                  <p className="text-[11px] font-medium text-slate-400 line-through">{formatINR(mrp)}</p>
-                  <p className="font-display text-[22px] font-bold text-red-600">{formatINR(price)}</p>
+                  <p className="text-[10.5px] sm:text-[11px] font-medium text-slate-400 line-through">{formatINR(mrp)}</p>
+                  <p className="font-display text-[18px] sm:text-[22px] font-bold text-red-600 leading-none mt-0.5">{formatINR(price)}</p>
                 </div>
                 <span
-                  className={`text-[11px] font-bold ${p.stock > 60 ? "text-emerald-600" : "text-amber-600"}`}
+                  className={`text-[10px] sm:text-[11px] font-bold ${p.stock > 60 ? "text-emerald-600" : "text-amber-600"}`}
                 >
-                  {p.stock > 60 ? "In Stock" : `Only ${p.stock} left`}
+                  {p.stock > 60 ? "In Stock" : `${p.stock} left`}
                 </span>
               </div>
 
               <button
                 onClick={handleAdd}
-                className={`mt-4 flex w-full items-center justify-center gap-2 py-2.5 text-[12.5px] font-bold uppercase tracking-wider transition-all duration-300 ${
-                  added ? "bg-emerald-600 text-white rounded-[18px] shadow-md" : "btn-gold"
+                className={`mt-3 sm:mt-4 flex w-full items-center justify-center gap-1.5 sm:gap-2 py-2 sm:py-2.5 text-[11px] sm:text-[12.5px] font-bold uppercase tracking-wider transition-all duration-300 ${
+                  added ? "bg-emerald-600 text-white rounded-[16px] sm:rounded-[18px] shadow-md" : "btn-gold"
                 }`}
               >
                 {added ? (
                   <>
-                    <Check size={16} /> Added +1
+                    <Check size={15} /> Added
                   </>
                 ) : (
                   <>
-                    <Plus size={15} /> Add to Estimate
+                    <Plus size={14} /> Add to Estimate
                   </>
                 )}
               </button>
