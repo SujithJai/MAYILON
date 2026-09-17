@@ -63,22 +63,38 @@ type Stats = {
   activity: { id: string; actor: string; action: string; entity: string; createdAt: string }[];
 };
 
+type EstimateItemRow = {
+  id?: string;
+  name: string;
+  sku: string;
+  quantity: number;
+  price: number | string;
+  mrp?: number | string;
+  packing?: string;
+  imageUrl?: string;
+};
+
 type EstimateRow = {
   id: string;
   estimateNumber: string;
   customerName: string;
   mobile: string;
+  email?: string;
   state: string;
   district?: string;
   city?: string;
   address?: string;
+  pincode?: string;
   itemCount: number;
+  subtotal?: string | number;
+  discountTotal?: string | number;
   grandTotal: string;
   status: string;
   paymentStatus?: string;
   paymentMethod?: string;
   createdAt: string;
   adminNote?: string | null;
+  items?: EstimateItemRow[];
 };
 
 type ProductItem = {
@@ -227,6 +243,151 @@ export default function AdminPage() {
   const [paymentModalOrder, setPaymentModalOrder] = useState<EstimateRow | null>(null);
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
   const [paymentUpdatingId, setPaymentUpdatingId] = useState<string | null>(null);
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
+
+  // Google Sheets Export Functions
+  const handleExportGoogleSheetsCSV = () => {
+    if (!estimates || estimates.length === 0) {
+      alert("No order history available to export.");
+      return;
+    }
+
+    const headers = [
+      "Order Ref",
+      "Date & Time",
+      "Customer Name",
+      "Mobile Number",
+      "Email",
+      "Address",
+      "City",
+      "District",
+      "State",
+      "Pincode",
+      "Total Items Qty",
+      "Itemized Products Summary",
+      "Subtotal (₹)",
+      "Discount Total (₹)",
+      "Grand Total (₹)",
+      "Payment Status",
+      "Payment Method",
+      "Order Status"
+    ];
+
+    const escapeCSV = (val: string | number | undefined | null) => {
+      if (val === undefined || val === null) return '""';
+      const str = String(val).replace(/"/g, '""');
+      return `"${str}"`;
+    };
+
+    const rows = estimates.map((e) => {
+      const itemsSummary = (e.items || [])
+        .map((it) => `${it.sku || "PROD"}: ${it.name} [${it.quantity} ${it.packing || "pcs"} @ ₹${it.price} = ₹${(Number(it.price) || 0) * (Number(it.quantity) || 1)}]`)
+        .join(" | ");
+
+      return [
+        escapeCSV(e.estimateNumber),
+        escapeCSV(new Date(e.createdAt).toLocaleString("en-IN")),
+        escapeCSV(e.customerName),
+        escapeCSV(e.mobile),
+        escapeCSV(e.email || ""),
+        escapeCSV(e.address || ""),
+        escapeCSV(e.city || ""),
+        escapeCSV(e.district || ""),
+        escapeCSV(e.state || ""),
+        escapeCSV(e.pincode || ""),
+        escapeCSV(e.itemCount),
+        escapeCSV(itemsSummary || `${e.itemCount} items`),
+        escapeCSV(e.subtotal || e.grandTotal),
+        escapeCSV(e.discountTotal || 0),
+        escapeCSV(e.grandTotal),
+        escapeCSV(e.paymentStatus || "PENDING"),
+        escapeCSV(e.paymentMethod || "UPI"),
+        escapeCSV(e.status || "NEW")
+      ].join(",");
+    });
+
+    const csvContent = "\uFEFF" + [headers.join(","), ...rows].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Mayilon_Orders_GoogleSheets_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    setNotificationToast("📊 Order History CSV generated! Open Google Sheets -> File -> Import to load.");
+    setTimeout(() => setNotificationToast(null), 5000);
+  };
+
+  const handleCopyForGoogleSheets = async () => {
+    if (!estimates || estimates.length === 0) {
+      alert("No order history available to copy.");
+      return;
+    }
+
+    const headers = [
+      "Order Ref",
+      "Date & Time",
+      "Customer Name",
+      "Mobile Number",
+      "Email",
+      "Address",
+      "City",
+      "District",
+      "State",
+      "Pincode",
+      "Total Items Qty",
+      "Itemized Products Summary",
+      "Subtotal (₹)",
+      "Discount Total (₹)",
+      "Grand Total (₹)",
+      "Payment Status",
+      "Payment Method",
+      "Order Status"
+    ];
+
+    const sanitizeTSV = (val: string | number | undefined | null) => {
+      if (val === undefined || val === null) return "";
+      return String(val).replace(/[\t\r\n]+/g, " ");
+    };
+
+    const rows = estimates.map((e) => {
+      const itemsSummary = (e.items || [])
+        .map((it) => `${it.sku || "PROD"}: ${it.name} [${it.quantity} ${it.packing || "pcs"} @ ₹${it.price} = ₹${(Number(it.price) || 0) * (Number(it.quantity) || 1)}]`)
+        .join(" | ");
+
+      return [
+        sanitizeTSV(e.estimateNumber),
+        sanitizeTSV(new Date(e.createdAt).toLocaleString("en-IN")),
+        sanitizeTSV(e.customerName),
+        sanitizeTSV(e.mobile),
+        sanitizeTSV(e.email || ""),
+        sanitizeTSV(e.address || ""),
+        sanitizeTSV(e.city || ""),
+        sanitizeTSV(e.district || ""),
+        sanitizeTSV(e.state || ""),
+        sanitizeTSV(e.pincode || ""),
+        sanitizeTSV(e.itemCount),
+        sanitizeTSV(itemsSummary || `${e.itemCount} items`),
+        sanitizeTSV(e.subtotal || e.grandTotal),
+        sanitizeTSV(e.discountTotal || 0),
+        sanitizeTSV(e.grandTotal),
+        sanitizeTSV(e.paymentStatus || "PENDING"),
+        sanitizeTSV(e.paymentMethod || "UPI"),
+        sanitizeTSV(e.status || "NEW")
+      ].join("\t");
+    });
+
+    const tsvText = [headers.join("\t"), ...rows].join("\n");
+    try {
+      await navigator.clipboard.writeText(tsvText);
+      setNotificationToast("📋 All order details copied to clipboard! Open Google Sheets and press Ctrl+V to paste.");
+      setTimeout(() => setNotificationToast(null), 5000);
+    } catch {
+      alert("Could not write to clipboard automatically. Try clicking Export to CSV.");
+    }
+  };
 
   // Categories State
   const [categoriesList, setCategoriesList] = useState<{ id: string; name: string; slug: string; productCount: number }[]>([]);
@@ -1536,7 +1697,34 @@ export default function AdminPage() {
 
             {/* Orders & Estimates Tab */}
             {tab === "estimates" && (
-              <Panel title={`Orders & Estimates (${estimates.length})`}>
+              <Panel
+                title={
+                  <div className="flex flex-wrap items-center justify-between gap-3 w-full">
+                    <div className="flex items-center gap-2">
+                      <Receipt className="text-red-600" size={20} />
+                      <span className="text-base font-black text-slate-900">
+                        Orders & Estimates ({estimates.length})
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        onClick={handleExportGoogleSheetsCSV}
+                        className="flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-1.5 text-xs font-bold shadow-sm transition-all cursor-pointer"
+                        title="Download complete order history as CSV for Google Sheets"
+                      >
+                        <span>📊 Export to Google Sheets (CSV)</span>
+                      </button>
+                      <button
+                        onClick={handleCopyForGoogleSheets}
+                        className="flex items-center gap-1.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white px-3.5 py-1.5 text-xs font-bold shadow-sm transition-all cursor-pointer"
+                        title="Copy order history to clipboard to paste directly into Google Sheets (Ctrl+V)"
+                      >
+                        <span>📋 Copy for Google Sheets</span>
+                      </button>
+                    </div>
+                  </div>
+                }
+              >
                 {estimates.length === 0 && (
                   <Empty>No orders submitted yet. Build an estimate from the storefront to see live orders here.</Empty>
                 )}
@@ -1545,166 +1733,282 @@ export default function AdminPage() {
                     <table className="w-full min-w-[1080px] text-[13.5px]">
                       <thead>
                         <tr className="border-b border-slate-200 text-left text-[11px] font-bold uppercase tracking-[2px] text-slate-500">
-                          <th className="py-3 px-3">Order Ref</th>
+                          <th className="py-3 px-3">Order Ref & Slip</th>
                           <th className="py-3 px-3">Customer & Contact</th>
                           <th className="py-3 px-3">Full Delivery Address</th>
-                          <th className="py-3 px-3 text-center">Items</th>
+                          <th className="py-3 px-3 text-center">Ordered Products</th>
                           <th className="py-3 px-3 text-right">Grand Total</th>
                           <th className="py-3 px-3">Payment Status & Action</th>
                           <th className="py-3 px-3">Fulfillment Workflow Buttons</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {estimates.map((e) => (
-                          <tr key={e.id} className="border-b border-slate-100 hover:bg-slate-50/80">
-                            {/* 1. Order Ref */}
-                            <td className="py-4 px-3 font-bold">
-                              <Link href={`/estimate/${e.estimateNumber}`} target="_blank" className="text-red-600 hover:underline flex items-center gap-1">
-                                {e.estimateNumber} <ExternalLink size={12} />
-                              </Link>
-                              <p className="text-[11px] font-medium text-slate-400">
-                                {new Date(e.createdAt).toLocaleDateString("en-IN")}
-                              </p>
-                              <span className="mt-1.5 inline-block rounded-full bg-slate-100 border border-slate-200 px-2.5 py-0.5 text-[10.5px] font-bold text-slate-700 uppercase">
-                                {e.status}
-                              </span>
-                            </td>
+                        {estimates.map((e) => {
+                          const isExpanded = expandedOrderId === (e.id || e.estimateNumber);
+                          const itemsCount = e.items?.length || e.itemCount || 0;
 
-                            {/* 2. Customer & Contact */}
-                            <td className="py-4 px-3">
-                              <p className="font-bold text-slate-900">{e.customerName}</p>
-                              <a href={`https://wa.me/91${e.mobile}`} target="_blank" rel="noreferrer" className="text-[11.5px] font-bold text-emerald-600 hover:underline flex items-center gap-1 mt-0.5">
-                                <MessageCircle size={13} /> +91 {e.mobile}
-                              </a>
-                            </td>
-
-                            {/* 3. Delivery Address */}
-                            <td className="py-4 px-3 text-slate-700 text-xs font-medium max-w-[220px]">
-                              <p className="line-clamp-2">{e.address || "Direct Factory Address"}</p>
-                              <p className="text-[11px] text-slate-400 font-bold mt-0.5">
-                                {[e.city, e.district, e.state].filter(Boolean).join(", ")}
-                              </p>
-                            </td>
-
-                            {/* 4. Items */}
-                            <td className="py-4 px-3 text-center font-bold text-slate-800">{e.itemCount} pcs</td>
-
-                            {/* 5. Grand Total */}
-                            <td className="py-4 px-3 text-right font-bold text-red-600 font-display text-base">
-                              {formatINR(Number(e.grandTotal))}
-                            </td>
-
-                            {/* 6. Payment Status & Action (One-Time Use, Permanently Locked Once Paid) */}
-                            <td className="py-4 px-3 min-w-[170px]">
-                              <div className="flex flex-col gap-1.5">
-                                {e.paymentStatus === "PAID" ? (
-                                  <div className="flex items-center justify-center gap-1.5 rounded-xl bg-emerald-50 border border-emerald-300 px-3 py-2 text-[11px] font-extrabold text-emerald-800 shadow-xs">
-                                    <CheckCircle2 size={15} className="text-emerald-600 shrink-0" />
-                                    <span>PAID ({e.paymentMethod || "UPI"})</span>
-                                    <span className="rounded-full bg-emerald-200 text-emerald-800 px-1.5 py-0.5 text-[9px] uppercase tracking-wider font-mono">LOCKED</span>
+                          return (
+                            <React.Fragment key={e.id || e.estimateNumber}>
+                              <tr className={`border-b border-slate-100 hover:bg-slate-50/80 transition-colors ${isExpanded ? "bg-amber-50/40" : ""}`}>
+                                {/* 1. Order Ref & Slip Download */}
+                                <td className="py-4 px-3 font-bold">
+                                  <Link href={`/estimate/${e.estimateNumber}`} target="_blank" className="text-red-600 hover:underline flex items-center gap-1 font-mono text-sm">
+                                    {e.estimateNumber} <ExternalLink size={12} />
+                                  </Link>
+                                  <p className="text-[11px] font-medium text-slate-400 mt-0.5">
+                                    {new Date(e.createdAt).toLocaleDateString("en-IN")}
+                                  </p>
+                                  <div className="mt-1.5 flex flex-col gap-1 items-start">
+                                    <span className="inline-block rounded-full bg-slate-100 border border-slate-200 px-2.5 py-0.5 text-[10px] font-bold text-slate-700 uppercase">
+                                      {e.status}
+                                    </span>
+                                    <Link
+                                      href={`/estimate/${e.estimateNumber}`}
+                                      target="_blank"
+                                      className="inline-flex items-center gap-1 rounded-lg bg-red-50 border border-red-200 text-red-700 hover:bg-red-100 px-2 py-1 text-[11px] font-extrabold shadow-2xs transition-all mt-0.5"
+                                    >
+                                      📄 Download Slip / PDF
+                                    </Link>
                                   </div>
-                                ) : (
-                                  <>
-                                    <button
-                                      disabled={paymentUpdatingId === e.estimateNumber}
-                                      onClick={() => markPaymentReceived(e.estimateNumber, "UPI Verification")}
-                                      className="rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white px-3 py-1.5 text-[11px] font-bold shadow-sm flex items-center justify-center gap-1 transition-all disabled:opacity-50 cursor-pointer"
-                                    >
-                                      <CheckCircle2 size={13} /> {paymentUpdatingId === e.estimateNumber ? "Confirming..." : "Mark Payment Received"}
-                                    </button>
-                                    <button
-                                      disabled={paymentUpdatingId === e.estimateNumber}
-                                      onClick={() => setPaymentModalOrder(e)}
-                                      className="rounded-xl bg-amber-50 border border-amber-300 px-2 py-1 text-[10px] font-bold text-amber-800 hover:bg-amber-100 text-center disabled:opacity-50 cursor-pointer"
-                                    >
-                                      💳 Confirm Other Method
-                                    </button>
-                                  </>
-                                )}
-                              </div>
-                            </td>
+                                </td>
 
-                            {/* 7. Fulfillment Workflow Action Buttons (Strictly One-Time Sequential Use) */}
-                            <td className="py-4 px-3">
-                              {(() => {
-                                const isPackaged = e.status === "PACKAGE READY" || e.status === "SHIPPED" || e.status === "OUT FOR DELIVERY" || e.status === "DELIVERED";
-                                const isShipped = e.status === "SHIPPED" || e.status === "OUT FOR DELIVERY" || e.status === "DELIVERED";
-                                const isOutForDelivery = e.status === "OUT FOR DELIVERY" || e.status === "DELIVERED";
-                                const isDelivered = e.status === "DELIVERED";
+                                {/* 2. Customer & Contact */}
+                                <td className="py-4 px-3">
+                                  <p className="font-bold text-slate-900">{e.customerName}</p>
+                                  <a href={`https://wa.me/91${e.mobile}`} target="_blank" rel="noreferrer" className="text-[11.5px] font-bold text-emerald-600 hover:underline flex items-center gap-1 mt-0.5">
+                                    <MessageCircle size={13} /> +91 {e.mobile}
+                                  </a>
+                                  {e.email && (
+                                    <p className="text-[11px] text-slate-400 font-medium truncate max-w-[160px] mt-0.5">{e.email}</p>
+                                  )}
+                                </td>
 
-                                return (
-                                  <div className="flex flex-col gap-1.5 min-w-[165px]">
-                                    {/* Step A: Package Ready */}
+                                {/* 3. Delivery Address */}
+                                <td className="py-4 px-3 text-slate-700 text-xs font-medium max-w-[220px]">
+                                  <p className="line-clamp-2">{e.address || "Direct Factory Address"}</p>
+                                  <p className="text-[11px] text-slate-400 font-bold mt-0.5">
+                                    {[e.city, e.district, e.state, e.pincode].filter(Boolean).join(", ")}
+                                  </p>
+                                </td>
+
+                                {/* 4. Ordered Products */}
+                                <td className="py-4 px-3 text-center">
+                                  <div className="flex flex-col items-center gap-1">
+                                    <span className="font-extrabold text-slate-900 text-sm">{e.itemCount} pcs</span>
                                     <button
-                                      disabled={isPackaged || updatingStatusId === `${e.estimateNumber}-PACKAGE READY`}
-                                      onClick={() => updateStatus(e.estimateNumber, "PACKAGE READY", e.mobile)}
-                                      className={`flex items-center justify-center gap-1 rounded-xl px-3 py-1.5 text-[11px] font-bold transition ${
-                                        isPackaged
-                                          ? "bg-purple-100 border border-purple-300 text-purple-800 opacity-90 cursor-default"
-                                          : updatingStatusId === `${e.estimateNumber}-PACKAGE READY`
-                                            ? "bg-purple-400 text-white cursor-wait"
-                                            : "bg-purple-600 hover:bg-purple-700 text-white shadow-sm cursor-pointer"
+                                      onClick={() => setExpandedOrderId(isExpanded ? null : (e.id || e.estimateNumber))}
+                                      className={`rounded-xl px-2.5 py-1 text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer border ${
+                                        isExpanded
+                                          ? "bg-amber-600 text-white border-amber-600 shadow-sm"
+                                          : "bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-300"
                                       }`}
                                     >
-                                      <Package size={13} /> {isPackaged ? "✓ Packaged (Locked)" : updatingStatusId === `${e.estimateNumber}-PACKAGE READY` ? "Updating..." : "Mark Packaged"}
-                                    </button>
-
-                                    {/* Step B: Shipped */}
-                                    <button
-                                      disabled={isShipped || !isPackaged || updatingStatusId === `${e.estimateNumber}-SHIPPED`}
-                                      onClick={() => updateStatus(e.estimateNumber, "SHIPPED", e.mobile)}
-                                      className={`flex items-center justify-center gap-1 rounded-xl px-3 py-1.5 text-[11px] font-bold transition ${
-                                        isShipped
-                                          ? "bg-blue-100 border border-blue-300 text-blue-800 opacity-90 cursor-default"
-                                          : isPackaged
-                                            ? updatingStatusId === `${e.estimateNumber}-SHIPPED`
-                                              ? "bg-blue-400 text-white cursor-wait"
-                                              : "bg-blue-600 hover:bg-blue-700 text-white shadow-sm cursor-pointer"
-                                            : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
-                                      }`}
-                                    >
-                                      <Truck size={13} /> {isShipped ? "✓ Shipped (Locked)" : updatingStatusId === `${e.estimateNumber}-SHIPPED` ? "Updating..." : "Mark Shipped"}
-                                    </button>
-
-                                    {/* Step C: Out for Delivery */}
-                                    <button
-                                      disabled={isOutForDelivery || !isShipped || updatingStatusId === `${e.estimateNumber}-OUT FOR DELIVERY`}
-                                      onClick={() => updateStatus(e.estimateNumber, "OUT FOR DELIVERY", e.mobile)}
-                                      className={`flex items-center justify-center gap-1 rounded-xl px-3 py-1.5 text-[11px] font-bold transition ${
-                                        isOutForDelivery
-                                          ? "bg-amber-100 border border-amber-300 text-amber-800 opacity-90 cursor-default"
-                                          : isShipped
-                                            ? updatingStatusId === `${e.estimateNumber}-OUT FOR DELIVERY`
-                                              ? "bg-amber-400 text-white cursor-wait"
-                                              : "bg-amber-600 hover:bg-amber-700 text-white shadow-sm cursor-pointer"
-                                            : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
-                                      }`}
-                                    >
-                                      <Truck size={13} /> {isOutForDelivery ? "✓ Out for Delivery (Locked)" : updatingStatusId === `${e.estimateNumber}-OUT FOR DELIVERY` ? "Updating..." : "Mark Out for Delivery"}
-                                    </button>
-
-                                    {/* Step D: Delivered */}
-                                    <button
-                                      disabled={isDelivered || !isOutForDelivery || updatingStatusId === `${e.estimateNumber}-DELIVERED`}
-                                      onClick={() => updateStatus(e.estimateNumber, "DELIVERED", e.mobile)}
-                                      className={`flex items-center justify-center gap-1 rounded-xl px-3 py-1.5 text-[11px] font-bold transition ${
-                                        isDelivered
-                                          ? "bg-emerald-100 border border-emerald-300 text-emerald-800 opacity-90 cursor-default"
-                                          : isOutForDelivery
-                                            ? updatingStatusId === `${e.estimateNumber}-DELIVERED`
-                                              ? "bg-emerald-400 text-white cursor-wait"
-                                              : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm cursor-pointer"
-                                            : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
-                                      }`}
-                                    >
-                                      <CheckCircle2 size={13} /> {isDelivered ? "✓ Delivered (Complete)" : updatingStatusId === `${e.estimateNumber}-DELIVERED` ? "Updating..." : "Mark Delivered"}
+                                      <span>{isExpanded ? "▲ Hide Products" : "▼ View Products"}</span>
+                                      {itemsCount > 0 && (
+                                        <span className={`rounded-full px-1.5 py-0.2 text-[9.5px] font-extrabold ${isExpanded ? "bg-white/30 text-white" : "bg-amber-200 text-amber-900"}`}>
+                                          {itemsCount}
+                                        </span>
+                                      )}
                                     </button>
                                   </div>
-                                );
-                              })()}
-                            </td>
-                          </tr>
-                        ))}
+                                </td>
+
+                                {/* 5. Grand Total */}
+                                <td className="py-4 px-3 text-right font-bold text-red-600 font-display text-base">
+                                  {formatINR(Number(e.grandTotal))}
+                                </td>
+
+                                {/* 6. Payment Status & Action (One-Time Use, Permanently Locked Once Paid) */}
+                                <td className="py-4 px-3 min-w-[170px]">
+                                  <div className="flex flex-col gap-1.5">
+                                    {e.paymentStatus === "PAID" ? (
+                                      <div className="flex items-center justify-center gap-1.5 rounded-xl bg-emerald-50 border border-emerald-300 px-3 py-2 text-[11px] font-extrabold text-emerald-800 shadow-xs">
+                                        <CheckCircle2 size={15} className="text-emerald-600 shrink-0" />
+                                        <span>PAID ({e.paymentMethod || "UPI"})</span>
+                                        <span className="rounded-full bg-emerald-200 text-emerald-800 px-1.5 py-0.5 text-[9px] uppercase tracking-wider font-mono">LOCKED</span>
+                                      </div>
+                                    ) : (
+                                      <>
+                                        <button
+                                          disabled={paymentUpdatingId === e.estimateNumber}
+                                          onClick={() => markPaymentReceived(e.estimateNumber, "UPI Verification")}
+                                          className="rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white px-3 py-1.5 text-[11px] font-bold shadow-sm flex items-center justify-center gap-1 transition-all disabled:opacity-50 cursor-pointer"
+                                        >
+                                          <CheckCircle2 size={13} /> {paymentUpdatingId === e.estimateNumber ? "Confirming..." : "Mark Payment Received"}
+                                        </button>
+                                        <button
+                                          disabled={paymentUpdatingId === e.estimateNumber}
+                                          onClick={() => setPaymentModalOrder(e)}
+                                          className="rounded-xl bg-amber-50 border border-amber-300 px-2 py-1 text-[10px] font-bold text-amber-800 hover:bg-amber-100 text-center disabled:opacity-50 cursor-pointer"
+                                        >
+                                          💳 Confirm Other Method
+                                        </button>
+                                      </>
+                                    )}
+                                  </div>
+                                </td>
+
+                                {/* 7. Fulfillment Workflow Action Buttons (Strictly One-Time Sequential Use) */}
+                                <td className="py-4 px-3">
+                                  {(() => {
+                                    const isPackaged = e.status === "PACKAGE READY" || e.status === "SHIPPED" || e.status === "OUT FOR DELIVERY" || e.status === "DELIVERED";
+                                    const isShipped = e.status === "SHIPPED" || e.status === "OUT FOR DELIVERY" || e.status === "DELIVERED";
+                                    const isOutForDelivery = e.status === "OUT FOR DELIVERY" || e.status === "DELIVERED";
+                                    const isDelivered = e.status === "DELIVERED";
+
+                                    return (
+                                      <div className="flex flex-col gap-1.5 min-w-[165px]">
+                                        {/* Step A: Package Ready */}
+                                        <button
+                                          disabled={isPackaged || updatingStatusId === `${e.estimateNumber}-PACKAGE READY`}
+                                          onClick={() => updateStatus(e.estimateNumber, "PACKAGE READY", e.mobile)}
+                                          className={`flex items-center justify-center gap-1 rounded-xl px-3 py-1.5 text-[11px] font-bold transition ${
+                                            isPackaged
+                                              ? "bg-purple-100 border border-purple-300 text-purple-800 opacity-90 cursor-default"
+                                              : updatingStatusId === `${e.estimateNumber}-PACKAGE READY`
+                                                ? "bg-purple-400 text-white cursor-wait"
+                                                : "bg-purple-600 hover:bg-purple-700 text-white shadow-sm cursor-pointer"
+                                          }`}
+                                        >
+                                          <Package size={13} /> {isPackaged ? "✓ Packaged (Locked)" : updatingStatusId === `${e.estimateNumber}-PACKAGE READY` ? "Updating..." : "Mark Packaged"}
+                                        </button>
+
+                                        {/* Step B: Shipped */}
+                                        <button
+                                          disabled={isShipped || !isPackaged || updatingStatusId === `${e.estimateNumber}-SHIPPED`}
+                                          onClick={() => updateStatus(e.estimateNumber, "SHIPPED", e.mobile)}
+                                          className={`flex items-center justify-center gap-1 rounded-xl px-3 py-1.5 text-[11px] font-bold transition ${
+                                            isShipped
+                                              ? "bg-blue-100 border border-blue-300 text-blue-800 opacity-90 cursor-default"
+                                              : isPackaged
+                                                ? updatingStatusId === `${e.estimateNumber}-SHIPPED`
+                                                  ? "bg-blue-400 text-white cursor-wait"
+                                                  : "bg-blue-600 hover:bg-blue-700 text-white shadow-sm cursor-pointer"
+                                                : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
+                                          }`}
+                                        >
+                                          <Truck size={13} /> {isShipped ? "✓ Shipped (Locked)" : updatingStatusId === `${e.estimateNumber}-SHIPPED` ? "Updating..." : "Mark Shipped"}
+                                        </button>
+
+                                        {/* Step C: Out for Delivery */}
+                                        <button
+                                          disabled={isOutForDelivery || !isShipped || updatingStatusId === `${e.estimateNumber}-OUT FOR DELIVERY`}
+                                          onClick={() => updateStatus(e.estimateNumber, "OUT FOR DELIVERY", e.mobile)}
+                                          className={`flex items-center justify-center gap-1 rounded-xl px-3 py-1.5 text-[11px] font-bold transition ${
+                                            isOutForDelivery
+                                              ? "bg-amber-100 border border-amber-300 text-amber-800 opacity-90 cursor-default"
+                                              : isShipped
+                                                ? updatingStatusId === `${e.estimateNumber}-OUT FOR DELIVERY`
+                                                  ? "bg-amber-400 text-white cursor-wait"
+                                                  : "bg-amber-600 hover:bg-amber-700 text-white shadow-sm cursor-pointer"
+                                                : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
+                                          }`}
+                                        >
+                                          <Truck size={13} /> {isOutForDelivery ? "✓ Out for Delivery (Locked)" : updatingStatusId === `${e.estimateNumber}-OUT FOR DELIVERY` ? "Updating..." : "Mark Out for Delivery"}
+                                        </button>
+
+                                        {/* Step D: Delivered */}
+                                        <button
+                                          disabled={isDelivered || !isOutForDelivery || updatingStatusId === `${e.estimateNumber}-DELIVERED`}
+                                          onClick={() => updateStatus(e.estimateNumber, "DELIVERED", e.mobile)}
+                                          className={`flex items-center justify-center gap-1 rounded-xl px-3 py-1.5 text-[11px] font-bold transition ${
+                                            isDelivered
+                                              ? "bg-emerald-100 border border-emerald-300 text-emerald-800 opacity-90 cursor-default"
+                                              : isOutForDelivery
+                                                ? updatingStatusId === `${e.estimateNumber}-DELIVERED`
+                                                  ? "bg-emerald-400 text-white cursor-wait"
+                                                  : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm cursor-pointer"
+                                                : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
+                                          }`}
+                                        >
+                                          <CheckCircle2 size={13} /> {isDelivered ? "✓ Delivered (Complete)" : updatingStatusId === `${e.estimateNumber}-DELIVERED` ? "Updating..." : "Mark Delivered"}
+                                        </button>
+                                      </div>
+                                    );
+                                  })()}
+                                </td>
+                              </tr>
+
+                              {/* 8. Expandable Product Breakdown Drawer */}
+                              {isExpanded && (
+                                <tr className="bg-amber-50/50 border-b border-amber-200/60">
+                                  <td colSpan={7} className="p-3">
+                                    <div className="rounded-2xl border border-amber-200 bg-white p-4 shadow-sm">
+                                      <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
+                                        <h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-900 flex items-center gap-2">
+                                          <span>📦 Itemized Product Breakdown for Order #{e.estimateNumber}</span>
+                                          <span className="rounded-full bg-red-100 text-red-800 px-2.5 py-0.5 text-[10px] font-bold">
+                                            {e.items?.length || 0} Products Ordered
+                                          </span>
+                                        </h4>
+                                        <button
+                                          onClick={() => setExpandedOrderId(null)}
+                                          className="text-xs font-bold text-slate-500 hover:text-slate-800 cursor-pointer px-2 py-1 rounded-lg hover:bg-slate-100"
+                                        >
+                                          ✕ Close Breakdown
+                                        </button>
+                                      </div>
+
+                                      {(!e.items || e.items.length === 0) ? (
+                                        <div className="py-4 text-center text-slate-500 text-xs italic bg-slate-50 rounded-xl border border-slate-100">
+                                          No individual item snapshot stored for this order ref. Total Quantity: {e.itemCount} items.
+                                        </div>
+                                      ) : (
+                                        <div className="overflow-x-auto">
+                                          <table className="w-full text-xs">
+                                            <thead>
+                                              <tr className="border-b border-slate-200 text-slate-500 text-[10.5px] uppercase tracking-wider font-bold text-left bg-slate-50">
+                                                <th className="py-2.5 px-3">#</th>
+                                                <th className="py-2.5 px-3">Product Name</th>
+                                                <th className="py-2.5 px-3">SKU</th>
+                                                <th className="py-2.5 px-3">Packing</th>
+                                                <th className="py-2.5 px-3 text-center">Ordered Qty</th>
+                                                <th className="py-2.5 px-3 text-right">Offer Price</th>
+                                                <th className="py-2.5 px-3 text-right">Line Total</th>
+                                              </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-100">
+                                              {e.items.map((item, idx) => {
+                                                const qty = Number(item.quantity) || 1;
+                                                const unitPrice = Number(item.price) || 0;
+                                                const lineTotal = qty * unitPrice;
+
+                                                return (
+                                                  <tr key={idx} className="hover:bg-slate-50/80">
+                                                    <td className="py-2.5 px-3 font-mono text-slate-400">{idx + 1}</td>
+                                                    <td className="py-2.5 px-3 font-bold text-slate-900 flex items-center gap-2.5">
+                                                      {item.imageUrl ? (
+                                                        <img src={item.imageUrl} alt={item.name} className="h-8 w-8 rounded-lg object-cover border border-slate-200 shrink-0" />
+                                                      ) : (
+                                                        <div className="h-8 w-8 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center font-bold text-xs shrink-0">
+                                                          🎆
+                                                        </div>
+                                                      )}
+                                                      <span className="text-slate-900 font-bold">{item.name}</span>
+                                                    </td>
+                                                    <td className="py-2.5 px-3 font-mono text-slate-500 text-[11px]">{item.sku || "N/A"}</td>
+                                                    <td className="py-2.5 px-3 text-slate-600 font-medium">{item.packing || "1 Box"}</td>
+                                                    <td className="py-2.5 px-3 text-center">
+                                                      <span className="inline-block rounded-md bg-slate-100 px-2 py-0.5 font-bold text-slate-900 text-xs">
+                                                        {qty}
+                                                      </span>
+                                                    </td>
+                                                    <td className="py-2.5 px-3 text-right font-medium text-slate-700">{formatINR(unitPrice)}</td>
+                                                    <td className="py-2.5 px-3 text-right font-extrabold text-red-600">{formatINR(lineTotal)}</td>
+                                                  </tr>
+                                                );
+                                              })}
+                                            </tbody>
+                                          </table>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                            </React.Fragment>
+                          );
+                        })}
                       </tbody>
                     </table>
                   )}
