@@ -81,37 +81,37 @@ export function ProductCard({ p, index = 0 }: { p: CardProduct; index?: number }
             transform: `rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)`,
             transformStyle: "preserve-3d",
           }}
-          className="glass lift-card relative flex h-full flex-col overflow-hidden rounded-[26px] sm:rounded-[30px] border border-red-500/15 bg-white shadow-md transition-transform duration-300"
+          className="glass lift-card relative flex h-full flex-col overflow-hidden rounded-[20px] sm:rounded-[24px] border border-red-500/15 bg-white shadow-sm transition-transform duration-300"
         >
           <div
             onClick={() => setLightboxOpen(true)}
-            className="relative aspect-[4/3] cursor-pointer overflow-hidden bg-slate-100"
+            className="relative h-[170px] sm:h-[195px] w-full cursor-pointer overflow-hidden bg-slate-100 flex items-center justify-center"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={p.imageUrl ?? ""}
               alt={p.name}
               loading="lazy"
-              className="h-full w-full scale-[1.02] object-cover transition-transform duration-[1.4s] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-110"
+              className="h-full w-full object-cover transition-transform duration-[1.4s] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-108"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/75 via-slate-950/15 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-transparent" />
 
-            <div className="absolute left-2.5 sm:left-4 top-2.5 sm:top-4 flex flex-col gap-1 z-10">
-              <span className="rounded-full bg-red-600 px-2 sm:px-2.5 py-0.5 sm:py-1 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-white shadow-sm">
+            <div className="absolute left-2.5 sm:left-3 top-2.5 sm:top-3 flex flex-col gap-1 z-10">
+              <span className="rounded-full bg-red-600 px-2 py-0.5 text-[9px] sm:text-[9.5px] font-bold uppercase tracking-wider text-white shadow-sm">
                 {p.discountPercent}% Off
               </span>
               {p.isNewArrival && (
-                <span className="rounded-full bg-blue-600 px-2 sm:px-2.5 py-0.5 sm:py-1 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-white">
+                <span className="rounded-full bg-blue-600 px-2 py-0.5 text-[9px] sm:text-[9.5px] font-bold uppercase tracking-wider text-white">
                   New
                 </span>
               )}
               {p.isBestSeller && (
-                <span className="rounded-full bg-orange-600 px-2 sm:px-2.5 py-0.5 sm:py-1 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-white">
+                <span className="rounded-full bg-orange-600 px-2 py-0.5 text-[9px] sm:text-[9.5px] font-bold uppercase tracking-wider text-white">
                   Best Seller
                 </span>
               )}
               {p.isPremium && (
-                <span className="rounded-full bg-amber-500 px-2 sm:px-2.5 py-0.5 sm:py-1 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-white">
+                <span className="rounded-full bg-amber-500 px-2 py-0.5 text-[9px] sm:text-[9.5px] font-bold uppercase tracking-wider text-white">
                   Premium
                 </span>
               )}
@@ -123,21 +123,21 @@ export function ProductCard({ p, index = 0 }: { p: CardProduct; index?: number }
                 setLightboxOpen(true);
               }}
               aria-label={`View photo of ${p.name}`}
-              className="absolute right-2.5 sm:right-4 top-2.5 sm:top-4 flex h-7 w-7 sm:h-9 sm:w-9 translate-y-2 items-center justify-center rounded-xl bg-white/95 text-red-600 shadow-md opacity-0 transition-all duration-500 group-hover:translate-y-0 group-hover:opacity-100 hover:bg-red-600 hover:text-white z-10"
+              className="absolute right-2.5 sm:right-3 top-2.5 sm:top-3 flex h-7 w-7 items-center justify-center rounded-xl bg-white/95 text-red-600 shadow-md opacity-0 transition-all duration-300 group-hover:opacity-100 hover:bg-red-600 hover:text-white z-10"
             >
-              <ZoomIn size={15} />
+              <ZoomIn size={14} />
             </button>
 
-            <div className="absolute bottom-2.5 sm:bottom-3 left-2.5 sm:left-4 right-2.5 sm:right-4 flex items-center justify-between text-[10px] sm:text-[11px] text-white font-medium z-10">
-              <span className="uppercase tracking-[1.5px] opacity-90 font-mono text-[10px]">{p.sku}</span>
-              <span className="flex items-center gap-1 text-amber-300 font-bold">
-                <Star size={11} fill="currentColor" /> {Number(p.rating).toFixed(1)}
+            <div className="absolute bottom-2 left-2.5 sm:left-3 right-2.5 sm:right-3 flex items-center justify-between text-[10px] text-white font-medium z-10">
+              <span className="uppercase tracking-[1px] opacity-90 font-mono text-[9.5px]">{p.sku}</span>
+              <span className="flex items-center gap-1 text-amber-300 font-bold text-[10px]">
+                <Star size={10} fill="currentColor" /> {Number(p.rating).toFixed(1)}
                 <span className="text-white/70 hidden sm:inline">({p.reviewCount})</span>
               </span>
             </div>
           </div>
 
-          <div className="flex flex-1 flex-col p-3.5 sm:p-5 bg-white">
+          <div className="flex flex-1 flex-col p-3 sm:p-4 bg-white">
             <p className="text-[9.5px] sm:text-[10.5px] font-bold uppercase tracking-[2px] sm:tracking-[2.6px] text-red-600 truncate">
               {p.categoryName}
             </p>

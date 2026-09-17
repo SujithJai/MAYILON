@@ -80,7 +80,7 @@ export default async function HomePage() {
             </Link>
           }
         />
-        <div className="grid gap-3.5 sm:gap-6 grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3.5 sm:gap-4 md:gap-5 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
           {featured.map((p, i) => (
             <ProductCard key={p.id} p={p} index={i} />
           ))}

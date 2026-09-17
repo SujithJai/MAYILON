@@ -344,7 +344,7 @@ export default async function ProductPage({ params }: { params: Params }) {
             </Link>
           }
         />
-        <div className="grid gap-4 sm:gap-6 grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3.5 sm:gap-4 md:gap-5 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4">
           {related.map((r, i) => (
             <ProductCard key={r.id} p={r} index={i} />
           ))}
