@@ -225,7 +225,7 @@ export function ProductBrowser({
   }, []);
 
   return (
-    <div className="grid items-start gap-8 lg:grid-cols-[270px_1fr]">
+    <div className="grid items-start gap-6 lg:gap-8 lg:grid-cols-[260px_1fr] min-w-0">
       <BrowserControls
         categories={categories}
         total={productTotal}
@@ -233,7 +233,7 @@ export function ProductBrowser({
         onViewChange={setView}
       />
 
-      <div id="products-grid">
+      <div id="products-grid" className="min-w-0 w-full overflow-hidden">
         {/* Quick Category Navigation Bar for smooth scrolling and 1-tap filtering */}
         <div className="mb-6 flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
           <Link
@@ -295,7 +295,7 @@ export function ProductBrowser({
         )}
 
         {view === "grid" ? (
-          <div className="grid gap-3.5 sm:gap-4 lg:gap-5 grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-5">
+          <div className="grid gap-3 sm:gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 min-w-0">
             {productList.map((p, i) => (
               <ProductCard key={p.id} p={p} index={i} />
             ))}

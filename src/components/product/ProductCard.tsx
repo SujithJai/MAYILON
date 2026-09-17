@@ -81,11 +81,11 @@ export function ProductCard({ p, index = 0 }: { p: CardProduct; index?: number }
             transform: `rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)`,
             transformStyle: "preserve-3d",
           }}
-          className="glass lift-card relative flex h-full flex-col overflow-hidden rounded-[20px] sm:rounded-[24px] border border-red-500/15 bg-white shadow-sm transition-transform duration-300"
+          className="glass lift-card relative flex h-full flex-col overflow-hidden rounded-[18px] sm:rounded-[22px] border border-red-500/15 bg-white shadow-sm transition-transform duration-300 min-w-0"
         >
           <div
             onClick={() => setLightboxOpen(true)}
-            className="relative h-[170px] sm:h-[195px] w-full cursor-pointer overflow-hidden bg-slate-100 flex items-center justify-center"
+            className="relative h-[135px] sm:h-[160px] w-full cursor-pointer overflow-hidden bg-slate-100 flex items-center justify-center"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -96,22 +96,22 @@ export function ProductCard({ p, index = 0 }: { p: CardProduct; index?: number }
             />
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-transparent" />
 
-            <div className="absolute left-2.5 sm:left-3 top-2.5 sm:top-3 flex flex-col gap-1 z-10">
-              <span className="rounded-full bg-red-600 px-2 py-0.5 text-[9px] sm:text-[9.5px] font-bold uppercase tracking-wider text-white shadow-sm">
+            <div className="absolute left-2 sm:left-2.5 top-2 sm:top-2.5 flex flex-col gap-1 z-10">
+              <span className="rounded-full bg-red-600 px-2 py-0.5 text-[8.5px] sm:text-[9px] font-bold uppercase tracking-wider text-white shadow-sm">
                 {p.discountPercent}% Off
               </span>
               {p.isNewArrival && (
-                <span className="rounded-full bg-blue-600 px-2 py-0.5 text-[9px] sm:text-[9.5px] font-bold uppercase tracking-wider text-white">
+                <span className="rounded-full bg-blue-600 px-2 py-0.5 text-[8.5px] sm:text-[9px] font-bold uppercase tracking-wider text-white">
                   New
                 </span>
               )}
               {p.isBestSeller && (
-                <span className="rounded-full bg-orange-600 px-2 py-0.5 text-[9px] sm:text-[9.5px] font-bold uppercase tracking-wider text-white">
+                <span className="rounded-full bg-orange-600 px-2 py-0.5 text-[8.5px] sm:text-[9px] font-bold uppercase tracking-wider text-white">
                   Best Seller
                 </span>
               )}
               {p.isPremium && (
-                <span className="rounded-full bg-amber-500 px-2 py-0.5 text-[9px] sm:text-[9.5px] font-bold uppercase tracking-wider text-white">
+                <span className="rounded-full bg-amber-500 px-2 py-0.5 text-[8.5px] sm:text-[9px] font-bold uppercase tracking-wider text-white">
                   Premium
                 </span>
               )}
@@ -123,41 +123,41 @@ export function ProductCard({ p, index = 0 }: { p: CardProduct; index?: number }
                 setLightboxOpen(true);
               }}
               aria-label={`View photo of ${p.name}`}
-              className="absolute right-2.5 sm:right-3 top-2.5 sm:top-3 flex h-7 w-7 items-center justify-center rounded-xl bg-white/95 text-red-600 shadow-md opacity-0 transition-all duration-300 group-hover:opacity-100 hover:bg-red-600 hover:text-white z-10"
+              className="absolute right-2 sm:right-2.5 top-2 sm:top-2.5 flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-lg bg-white/95 text-red-600 shadow-md opacity-0 transition-all duration-300 group-hover:opacity-100 hover:bg-red-600 hover:text-white z-10"
             >
-              <ZoomIn size={14} />
+              <ZoomIn size={13} />
             </button>
 
-            <div className="absolute bottom-2 left-2.5 sm:left-3 right-2.5 sm:right-3 flex items-center justify-between text-[10px] text-white font-medium z-10">
-              <span className="uppercase tracking-[1px] opacity-90 font-mono text-[9.5px]">{p.sku}</span>
-              <span className="flex items-center gap-1 text-amber-300 font-bold text-[10px]">
-                <Star size={10} fill="currentColor" /> {Number(p.rating).toFixed(1)}
+            <div className="absolute bottom-1.5 left-2 sm:left-2.5 right-2 sm:right-2.5 flex items-center justify-between text-[9.5px] text-white font-medium z-10">
+              <span className="uppercase tracking-[1px] opacity-90 font-mono text-[9px] truncate max-w-[80px]">{p.sku}</span>
+              <span className="flex items-center gap-0.5 text-amber-300 font-bold text-[9.5px]">
+                <Star size={9.5} fill="currentColor" /> {Number(p.rating).toFixed(1)}
                 <span className="text-white/70 hidden sm:inline">({p.reviewCount})</span>
               </span>
             </div>
           </div>
 
-          <div className="flex flex-1 flex-col p-3 sm:p-4 bg-white">
-            <p className="text-[9.5px] sm:text-[10.5px] font-bold uppercase tracking-[2px] sm:tracking-[2.6px] text-red-600 truncate">
+          <div className="flex flex-1 flex-col p-2.5 sm:p-3.5 bg-white min-w-0">
+            <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[1.5px] sm:tracking-[2px] text-red-600 truncate">
               {p.categoryName}
             </p>
-            <Link href={`/products/${p.slug}`} className="mt-1">
-              <h3 className="font-display text-[14px] sm:text-[16px] font-bold leading-snug text-slate-900 transition-colors duration-300 group-hover:text-red-600 line-clamp-2 min-h-[2.5rem] sm:min-h-[2.7rem]">
+            <Link href={`/products/${p.slug}`} className="mt-0.5">
+              <h3 className="font-display text-[13px] sm:text-[14.5px] font-bold leading-snug text-slate-900 transition-colors duration-300 group-hover:text-red-600 line-clamp-2 min-h-[2.2rem] sm:min-h-[2.4rem]">
                 {p.name}
               </h3>
             </Link>
-            <p className="mt-1 text-[11px] sm:text-[11.5px] font-medium text-slate-500">
+            <p className="mt-0.5 text-[10.5px] sm:text-[11px] font-medium text-slate-500 truncate">
               {p.packing} · MOQ {p.moq}
             </p>
 
-            <div className="mt-auto pt-3 sm:pt-4">
-              <div className="flex items-end justify-between">
+            <div className="mt-auto pt-2.5 sm:pt-3">
+              <div className="flex items-end justify-between gap-1">
                 <div>
-                  <p className="text-[10.5px] sm:text-[11px] font-medium text-slate-400 line-through">{formatINR(mrp)}</p>
-                  <p className="font-display text-[18px] sm:text-[22px] font-bold text-red-600 leading-none mt-0.5">{formatINR(price)}</p>
+                  <p className="text-[10px] sm:text-[10.5px] font-medium text-slate-400 line-through">{formatINR(mrp)}</p>
+                  <p className="font-display text-[16px] sm:text-[19px] font-bold text-red-600 leading-none mt-0.5">{formatINR(price)}</p>
                 </div>
                 <span
-                  className={`text-[10px] sm:text-[11px] font-bold ${p.stock > 60 ? "text-emerald-600" : "text-amber-600"}`}
+                  className={`text-[9.5px] sm:text-[10px] font-bold shrink-0 ${p.stock > 60 ? "text-emerald-600" : "text-amber-600"}`}
                 >
                   {p.stock > 60 ? "In Stock" : `${p.stock} left`}
                 </span>
@@ -165,17 +165,18 @@ export function ProductCard({ p, index = 0 }: { p: CardProduct; index?: number }
 
               <button
                 onClick={handleAdd}
-                className={`mt-3 sm:mt-4 flex w-full items-center justify-center gap-1.5 sm:gap-2 py-2 sm:py-2.5 text-[11px] sm:text-[12.5px] font-bold uppercase tracking-wider transition-all duration-300 ${
-                  added ? "bg-emerald-600 text-white rounded-[16px] sm:rounded-[18px] shadow-md" : "btn-gold"
+                className={`mt-2.5 flex w-full items-center justify-center gap-1 py-1.5 sm:py-2 px-1 text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider transition-all duration-300 overflow-hidden ${
+                  added ? "bg-emerald-600 text-white rounded-[14px] shadow-sm" : "btn-gold"
                 }`}
               >
                 {added ? (
                   <>
-                    <Check size={15} /> Added
+                    <Check size={14} /> Added
                   </>
                 ) : (
                   <>
-                    <Plus size={14} /> Add to Estimate
+                    <Plus size={13} className="shrink-0" />
+                    <span className="truncate">Add to Estimate</span>
                   </>
                 )}
               </button>

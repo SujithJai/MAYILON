@@ -175,7 +175,7 @@ export function BrowserControls({
   return (
     <>
       {/* top bar */}
-      <div className="glass mb-2 flex flex-wrap items-center gap-3 rounded-[24px] p-4 border border-red-500/15 bg-white shadow-md lg:col-span-2">
+      <div className="glass mb-2 flex flex-wrap items-center gap-3 rounded-[24px] p-3.5 sm:p-4 border border-red-500/15 bg-white shadow-md lg:col-span-2 w-full min-w-0 max-w-full overflow-hidden">
         <form
           onSubmit={(e) => {
             e.preventDefault();
