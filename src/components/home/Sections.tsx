@@ -363,9 +363,9 @@ export function QuickCalculator({ products }: { products: CalcProduct[] }) {
   );
 
   return (
-    <div className="glass overflow-hidden rounded-[24px] sm:rounded-[34px] border border-red-500/20 bg-white shadow-xl">
-      <div className="grid lg:grid-cols-[1.5fr_1fr]">
-        <div className="border-b border-red-500/12 p-3 sm:p-5 lg:p-7 lg:border-b-0 lg:border-r">
+    <div className="glass overflow-hidden rounded-[24px] sm:rounded-[34px] border border-red-500/20 bg-white shadow-xl w-full max-w-full min-w-0">
+      <div className="grid lg:grid-cols-[1.5fr_1fr] w-full min-w-0">
+        <div className="border-b border-red-500/12 p-3 sm:p-5 lg:p-7 lg:border-b-0 lg:border-r w-full min-w-0">
           <div className="mb-3.5 sm:mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <span className="text-[11px] sm:text-[11.5px] font-bold uppercase tracking-[1px] sm:tracking-[1.5px] text-slate-500">
               Instant Order Pricing · 80% Off MRP
@@ -439,40 +439,51 @@ export function QuickCalculator({ products }: { products: CalcProduct[] }) {
                       {formatINR(Number(p.offerPrice))}
                     </p>
 
-                    {/* Quantity Stepper - ALWAYS shrink-0 and fits perfectly within mobile screen */}
-                    <div className="flex items-center gap-1 shrink-0 ml-auto">
-                      <button
-                        aria-label={`Decrease ${p.name}`}
-                        onClick={() => {
-                          const next = Math.max(0, n - 1);
-                          setQty((s) => ({ ...s, [p.id]: next }));
-                          if (next > 0) {
-                            add({ ...p, price: p.offerPrice } as any, next);
-                          }
-                        }}
-                        disabled={n === 0}
-                        className={`flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg border transition active:scale-90 ${
-                          n > 0
-                            ? "border-red-500/40 bg-white text-red-600 hover:bg-red-600 hover:text-white"
-                            : "border-slate-200 bg-slate-100 text-slate-300 opacity-60 cursor-not-allowed"
-                        }`}
-                      >
-                        <Minus size={13} />
-                      </button>
-                      <span className="w-6 sm:w-7 shrink-0 text-center text-xs sm:text-sm font-extrabold tabular-nums text-slate-900 select-none">
-                        {n}
-                      </span>
-                      <button
-                        aria-label={`Increase ${p.name}`}
-                        onClick={() => {
-                          const next = n + 1;
-                          setQty((s) => ({ ...s, [p.id]: next }));
-                          add({ ...p, price: p.offerPrice } as any, next);
-                        }}
-                        className="flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg border border-red-600 bg-red-600 text-white shadow-xs transition hover:bg-red-700 active:scale-90 font-bold"
-                      >
-                        <Plus size={14} />
-                      </button>
+                    {/* 3. Prominent Add / Stepper Button - 100% visible on mobile */}
+                    <div className="shrink-0 ml-auto pl-1">
+                      {n === 0 ? (
+                        <button
+                          aria-label={`Add ${p.name} to estimate`}
+                          onClick={() => {
+                            setQty((s) => ({ ...s, [p.id]: 1 }));
+                            add({ ...p, price: p.offerPrice } as any, 1);
+                          }}
+                          className="flex items-center justify-center gap-1 rounded-xl bg-red-600 hover:bg-red-700 active:scale-95 text-white px-3 sm:px-3.5 py-1.5 sm:py-2 text-[11px] sm:text-xs font-black uppercase tracking-wider shadow-sm transition shrink-0 cursor-pointer"
+                        >
+                          <Plus size={14} strokeWidth={3} />
+                          <span>ADD</span>
+                        </button>
+                      ) : (
+                        <div className="flex items-center gap-0.5 sm:gap-1 rounded-xl bg-red-50 border border-red-300 p-0.5 shadow-xs shrink-0">
+                          <button
+                            aria-label={`Decrease ${p.name}`}
+                            onClick={() => {
+                              const next = Math.max(0, n - 1);
+                              setQty((s) => ({ ...s, [p.id]: next }));
+                              if (next > 0) {
+                                add({ ...p, price: p.offerPrice } as any, next);
+                              }
+                            }}
+                            className="flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg bg-white text-red-600 font-bold border border-red-200 hover:bg-red-100 active:scale-90 transition cursor-pointer"
+                          >
+                            <Minus size={13} strokeWidth={2.5} />
+                          </button>
+                          <span className="w-5 sm:w-6 shrink-0 text-center text-xs sm:text-sm font-black text-red-700 select-none">
+                            {n}
+                          </span>
+                          <button
+                            aria-label={`Increase ${p.name}`}
+                            onClick={() => {
+                              const next = n + 1;
+                              setQty((s) => ({ ...s, [p.id]: next }));
+                              add({ ...p, price: p.offerPrice } as any, next);
+                            }}
+                            className="flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg bg-red-600 text-white font-bold hover:bg-red-700 active:scale-90 transition cursor-pointer"
+                          >
+                            <Plus size={13} strokeWidth={2.5} />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );

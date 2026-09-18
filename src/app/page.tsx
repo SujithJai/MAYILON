@@ -45,7 +45,7 @@ export default async function HomePage() {
       />
 
       {/* 1. Instant Pricing Quick Estimate Calculator at the TOP */}
-      <section className="shell pt-3 pb-8 sm:pt-6 sm:pb-14">
+      <section className="shell pt-3 pb-8 sm:pt-6 sm:pb-14 w-full max-w-full overflow-hidden">
         <SectionHeading
           eyebrow="Instant Pricing"
           title={
@@ -55,7 +55,7 @@ export default async function HomePage() {
           }
           sub="Search any product, set quantity, watch the factory total calculate instantly. 80% Off MRP applied automatically."
         />
-        <Reveal>
+        <Reveal className="w-full max-w-full min-w-0">
           <QuickCalculator products={all.items} />
         </Reveal>
       </section>
