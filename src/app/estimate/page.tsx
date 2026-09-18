@@ -359,8 +359,8 @@ export default function CheckoutPage() {
             {checkoutStep === 1 && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
                 <div className="glass overflow-hidden rounded-[30px] border border-red-500/15 bg-white shadow-md">
-                  <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
-                    <h2 className="font-display text-[17px] font-bold text-slate-900 flex items-center gap-2">
+                  <div className="flex items-center justify-between border-b border-slate-200 px-4 sm:px-6 py-3.5 sm:py-4">
+                    <h2 className="font-display text-[15px] sm:text-[17px] font-bold text-slate-900 flex items-center gap-2">
                       <ShoppingBag size={18} className="text-red-600" /> Step 1: Review Order Items ({items.length})
                     </h2>
                     <button
@@ -396,12 +396,12 @@ export default function CheckoutPage() {
                           const itemMrp = extractNumber(it.mrp, (it as any).offerPrice, itemPrice);
                           const itemQty = Math.max(1, extractNumber(it.quantity, 1));
                           return (
-                            <div className="grid grid-cols-[64px_1fr] items-center gap-3 px-6 py-4 md:grid-cols-[64px_1fr_110px_110px_130px_44px]">
+                            <div className="grid grid-cols-[52px_1fr] sm:grid-cols-[64px_1fr] items-center gap-2.5 sm:gap-3 px-3.5 sm:px-6 py-3 sm:py-4 md:grid-cols-[64px_1fr_110px_110px_130px_44px]">
                               {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img
                                 src={it.imageUrl ?? ""}
                                 alt={it.name}
-                                className="h-14 w-14 rounded-xl object-cover border border-slate-200"
+                                className="h-12 w-12 sm:h-14 sm:w-14 rounded-xl object-cover border border-slate-200"
                                 loading="lazy"
                               />
                               <div className="min-w-0">
@@ -485,7 +485,7 @@ export default function CheckoutPage() {
             {/* STEP 2: DELIVERY ADDRESS FORM */}
             {checkoutStep === 2 && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-                <div className="glass rounded-[30px] p-7 border border-red-500/15 bg-white shadow-md">
+                <div className="glass rounded-[24px] sm:rounded-[30px] p-4 sm:p-7 border border-red-500/15 bg-white shadow-md">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-6">
                     <h2 className="font-display text-[17px] font-bold text-slate-900 flex items-center gap-2">
                       <Truck size={18} className="text-red-600" /> Step 2: Shipping Address & Customer Details
@@ -625,7 +625,7 @@ export default function CheckoutPage() {
             {/* STEP 3: PAYMENT METHOD & FINAL ORDER CONFIRMATION */}
             {checkoutStep === 3 && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-                <div className="glass rounded-[30px] p-7 border border-red-500/15 bg-white shadow-md space-y-6">
+                <div className="glass rounded-[24px] sm:rounded-[30px] p-4 sm:p-7 border border-red-500/15 bg-white shadow-md space-y-6">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                     <h2 className="font-display text-[17px] font-bold text-slate-900 flex items-center gap-2">
                       <CreditCard size={18} className="text-red-600" /> Step 3: Select Payment Method

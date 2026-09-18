@@ -363,16 +363,16 @@ export function QuickCalculator({ products }: { products: CalcProduct[] }) {
   );
 
   return (
-    <div className="glass overflow-hidden rounded-[34px] border border-red-500/20 bg-white shadow-xl">
+    <div className="glass overflow-hidden rounded-[24px] sm:rounded-[34px] border border-red-500/20 bg-white shadow-xl">
       <div className="grid lg:grid-cols-[1.5fr_1fr]">
-        <div className="border-b border-red-500/12 p-7 lg:border-b-0 lg:border-r">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-            <span className="text-[11.5px] font-bold uppercase tracking-[1.5px] text-slate-500">
+        <div className="border-b border-red-500/12 p-3 sm:p-5 lg:p-7 lg:border-b-0 lg:border-r">
+          <div className="mb-3.5 sm:mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <span className="text-[11px] sm:text-[11.5px] font-bold uppercase tracking-[1px] sm:tracking-[1.5px] text-slate-500">
               Instant Order Pricing · 80% Off MRP
             </span>
             <button
               onClick={() => setDownloadModalOpen(true)}
-              className="flex items-center gap-1.5 rounded-full border border-red-500/30 bg-red-50 px-3 py-1.5 text-[11.5px] font-bold text-red-600 shadow-sm transition hover:bg-red-600 hover:text-white active:scale-95"
+              className="flex items-center justify-center gap-1.5 rounded-full border border-red-500/30 bg-red-50 px-3 py-1.5 text-[11px] sm:text-[11.5px] font-bold text-red-600 shadow-sm transition hover:bg-red-600 hover:text-white active:scale-95"
             >
               <Download size={13} />
               <span>Download Price List (PDF / Excel)</span>
@@ -380,19 +380,19 @@ export function QuickCalculator({ products }: { products: CalcProduct[] }) {
           </div>
 
           <div className="relative">
-            <Search size={17} className="absolute left-4 top-1/2 -translate-y-1/2 text-red-600" />
+            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-red-600" />
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search all 110 products to price instantly..."
-              className="field pl-11 pr-10 !border-red-500/25 !bg-slate-50 !text-slate-900 focus:!border-red-600 font-bold"
+              className="field !pl-10 !pr-9 !py-2.5 sm:!py-3 !text-[13px] sm:!text-[14px] !border-red-500/25 !bg-slate-50 !text-slate-900 focus:!border-red-600 font-bold"
             />
             {q && (
               <button
                 onClick={() => setQ("")}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 hover:text-red-600"
+                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 hover:text-red-600"
               >
-                <X size={15} />
+                <X size={14} />
               </button>
             )}
           </div>
@@ -402,7 +402,7 @@ export function QuickCalculator({ products }: { products: CalcProduct[] }) {
             {q && <button onClick={() => setQ("")} className="text-red-600 hover:underline">Clear Search</button>}
           </div>
 
-          <div className="mt-3 max-h-[500px] space-y-3 overflow-y-auto pr-1.5 hide-scrollbar">
+          <div className="mt-3 max-h-[500px] space-y-2.5 overflow-y-auto pr-1 hide-scrollbar">
             {filtered.length === 0 ? (
               <div className="p-10 text-center text-slate-500 font-medium">
                 No products match &quot;{q}&quot;. Try searching for &quot;Laxmi&quot;, &quot;Sparklers&quot;, or &quot;Fancy&quot;.
@@ -413,32 +413,36 @@ export function QuickCalculator({ products }: { products: CalcProduct[] }) {
                 return (
                   <div
                     key={p.id}
-                    className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-slate-50/80 p-3 transition-all duration-300 hover:border-red-500/40 hover:bg-red-50/30"
+                    className="flex items-center gap-2 sm:gap-3 rounded-xl sm:rounded-2xl border border-slate-200 bg-slate-50/80 p-2 sm:p-2.5 transition-all duration-300 hover:border-red-500/40 hover:bg-red-50/30 min-w-0"
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={p.imageUrl ?? ""}
                       alt={p.name}
                       loading="lazy"
-                      className="h-12 w-12 rounded-xl object-cover border border-slate-200"
+                      className="h-11 w-11 sm:h-12 sm:w-12 shrink-0 rounded-lg sm:rounded-xl object-cover border border-slate-200"
                     />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-[13.5px] font-bold text-slate-900">{p.name}</p>
-                      <div className="flex flex-wrap items-center gap-2 text-[11px]">
-                        <span className="font-bold text-red-600 sm:hidden">
+                    <div className="min-w-0 flex-1 pr-1">
+                      <p className="truncate text-[12.5px] sm:text-[13.5px] font-bold text-slate-900 leading-snug">
+                        {p.name}
+                      </p>
+                      <div className="flex flex-wrap items-center gap-1.5 text-[10px] sm:text-[11px] mt-0.5">
+                        <span className="font-black text-red-600 sm:hidden">
                           {formatINR(Number(p.offerPrice))}
                         </span>
-                        <span className="uppercase tracking-[1.5px] text-slate-500 font-medium">
+                        <span className="uppercase tracking-[0.5px] sm:tracking-[1px] text-slate-500 font-medium truncate max-w-[130px] sm:max-w-none">
                           {p.sku} · {p.packing}
                         </span>
                       </div>
                     </div>
-                    <p className="hidden text-sm font-bold text-red-600 sm:block">
+                    <p className="hidden text-sm font-bold text-red-600 sm:block shrink-0">
                       {formatINR(Number(p.offerPrice))}
                     </p>
-                    <div className="flex items-center gap-1.5">
+
+                    {/* Quantity Stepper - ALWAYS shrink-0 and fits perfectly within mobile screen */}
+                    <div className="flex items-center gap-1 shrink-0 ml-auto">
                       <button
-                        aria-label="decrease"
+                        aria-label={`Decrease ${p.name}`}
                         onClick={() => {
                           const next = Math.max(0, n - 1);
                           setQty((s) => ({ ...s, [p.id]: next }));
@@ -446,19 +450,26 @@ export function QuickCalculator({ products }: { products: CalcProduct[] }) {
                             add({ ...p, price: p.offerPrice } as any, next);
                           }
                         }}
-                        className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-500/30 text-red-600 transition hover:bg-red-600 hover:text-white active:scale-90"
+                        disabled={n === 0}
+                        className={`flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg border transition active:scale-90 ${
+                          n > 0
+                            ? "border-red-500/40 bg-white text-red-600 hover:bg-red-600 hover:text-white"
+                            : "border-slate-200 bg-slate-100 text-slate-300 opacity-60 cursor-not-allowed"
+                        }`}
                       >
-                        <Minus size={14} />
+                        <Minus size={13} />
                       </button>
-                      <span className="w-8 text-center text-sm font-bold tabular-nums text-slate-900">{n}</span>
+                      <span className="w-6 sm:w-7 shrink-0 text-center text-xs sm:text-sm font-extrabold tabular-nums text-slate-900 select-none">
+                        {n}
+                      </span>
                       <button
-                        aria-label="increase"
+                        aria-label={`Increase ${p.name}`}
                         onClick={() => {
                           const next = n + 1;
                           setQty((s) => ({ ...s, [p.id]: next }));
                           add({ ...p, price: p.offerPrice } as any, next);
                         }}
-                        className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-500/30 text-red-600 transition hover:bg-red-600 hover:text-white active:scale-90"
+                        className="flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg border border-red-600 bg-red-600 text-white shadow-xs transition hover:bg-red-700 active:scale-90 font-bold"
                       >
                         <Plus size={14} />
                       </button>
@@ -470,7 +481,7 @@ export function QuickCalculator({ products }: { products: CalcProduct[] }) {
           </div>
         </div>
 
-        <div className="flex flex-col justify-between p-7 bg-slate-50/60">
+        <div className="flex flex-col justify-between p-4 sm:p-7 bg-slate-50/60">
           <div>
             <p className="text-[11px] font-bold uppercase tracking-[3px] text-red-600">Live Calculation</p>
             <p className="mt-4 font-display text-[38px] font-bold text-slate-900">

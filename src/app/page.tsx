@@ -45,7 +45,7 @@ export default async function HomePage() {
       />
 
       {/* 1. Instant Pricing Quick Estimate Calculator at the TOP */}
-      <section className="shell pt-6 pb-14">
+      <section className="shell pt-3 pb-8 sm:pt-6 sm:pb-14">
         <SectionHeading
           eyebrow="Instant Pricing"
           title={
