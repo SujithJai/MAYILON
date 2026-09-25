@@ -58,7 +58,7 @@ function sanitizeLine(it: any): EstimateLine {
     imageUrl: it.imageUrl ? String(it.imageUrl) : null,
     mrp: m,
     price: p,
-    moq: extractNumber(it.moq, 1),
+    moq: 1,
     quantity: q,
   };
 }
@@ -111,7 +111,7 @@ export function EstimateProvider({ children }: { children: ReactNode }) {
     return () => window.clearTimeout(t);
   }, [toast]);
 
-  // 4. Add item with robust ID & SKU matching
+  // 4. Add item with robust ID & SKU matching (Always 1-by-1 single item increment)
   const add = useCallback<Ctx["add"]>((rawLine, qty) => {
     const line = sanitizeLine(rawLine);
     setItems((prev) => {
@@ -119,7 +119,7 @@ export function EstimateProvider({ children }: { children: ReactNode }) {
       const found = prev.find(
         (p) => String(p.id) === lineIdStr || (p.sku && line.sku && p.sku === line.sku),
       );
-      const step = qty ?? line.moq ?? 1;
+      const step = Math.max(1, typeof qty === "number" ? qty : 1);
 
       if (found) {
         return prev.map((p) =>

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { dealerApplications } from "@/db/schema";
 import { clientKey, fail, ok, rateLimit, requireAdmin, zodFail } from "@/lib/api";
+import { getAllDealersFromStore, saveDealerToStore, type DealerApplicationRecord } from "@/lib/dealers-store";
 
 export const dynamic = "force-dynamic";
 
@@ -26,28 +27,75 @@ export async function POST(req: Request) {
   const parsed = schema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return zodFail(parsed.error);
 
-  const [row] = await db
-    .insert(dealerApplications)
-    .values({
-      ...parsed.data,
-      email: parsed.data.email || null,
-      gstNumber: parsed.data.gstNumber || null,
-      licenseNumber: parsed.data.licenseNumber || null,
-      city: parsed.data.city || null,
-      expectedVolume: parsed.data.expectedVolume || null,
-    })
-    .returning();
+  const newRecord: DealerApplicationRecord = {
+    id: `dlr-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    businessName: parsed.data.businessName,
+    contactName: parsed.data.contactName,
+    mobile: parsed.data.mobile,
+    email: parsed.data.email || null,
+    gstNumber: parsed.data.gstNumber || null,
+    licenseNumber: parsed.data.licenseNumber || null,
+    state: parsed.data.state,
+    city: parsed.data.city || null,
+    expectedVolume: parsed.data.expectedVolume || null,
+    tier: parsed.data.tier,
+    status: "PENDING_VERIFICATION",
+    createdAt: new Date().toISOString(),
+  };
 
-  return ok({ id: row.id, status: row.status }, "Dealer application received — our team will verify within 24 hours", 201);
+  // 1. Guaranteed storage to universal store first
+  saveDealerToStore(newRecord);
+
+  // 2. Best-effort DB insert
+  try {
+    const [row] = await db
+      .insert(dealerApplications)
+      .values({
+        businessName: newRecord.businessName,
+        contactName: newRecord.contactName,
+        mobile: newRecord.mobile,
+        email: newRecord.email,
+        gstNumber: newRecord.gstNumber,
+        licenseNumber: newRecord.licenseNumber,
+        state: newRecord.state,
+        city: newRecord.city,
+        expectedVolume: newRecord.expectedVolume,
+        tier: newRecord.tier,
+      })
+      .returning();
+    if (row?.id) newRecord.id = row.id;
+  } catch (err) {
+    console.warn("[dealers] DB sync note (safe fallback to store):", err);
+  }
+
+  return ok({ id: newRecord.id, status: newRecord.status }, "Dealer application received — our team will verify within 24 hours", 201);
 }
 
 export async function GET(req: Request) {
   const unauthorized = requireAdmin(req);
   if (unauthorized) return unauthorized;
-  const rows = await db
-    .select()
-    .from(dealerApplications)
-    .orderBy(desc(dealerApplications.createdAt))
-    .limit(100);
-  return ok({ items: rows, total: rows.length });
+
+  const storeItems = getAllDealersFromStore();
+  let dbRows: any[] = [];
+  try {
+    dbRows = await db
+      .select()
+      .from(dealerApplications)
+      .orderBy(desc(dealerApplications.createdAt))
+      .limit(100);
+  } catch (err) {
+    console.warn("[dealers] DB read note:", err);
+  }
+
+  const map = new Map<string, any>();
+  for (const it of storeItems) map.set(it.id, it);
+  for (const r of dbRows) {
+    if (!map.has(r.id)) map.set(r.id, r);
+  }
+
+  const items = Array.from(map.values()).sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  );
+
+  return ok({ items, total: items.length });
 }

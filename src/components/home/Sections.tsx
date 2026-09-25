@@ -15,6 +15,7 @@ import {
   Quote,
   Search,
   Star,
+  Trash2,
   Truck,
   Users,
   X,
@@ -241,10 +242,9 @@ type CalcProduct = {
 };
 
 export function QuickCalculator({ products }: { products: CalcProduct[] }) {
-  const { add, totals, items } = useEstimate();
+  const { add, setQty: setGlobalQty, remove, clear, totals, items } = useEstimate();
   const [liveProducts, setLiveProducts] = useState<CalcProduct[]>(products);
   const [q, setQ] = useState("");
-  const [qty, setQty] = useState<Record<string, number>>({});
   const [downloadModalOpen, setDownloadModalOpen] = useState(false);
 
   // 1. Instant rehydration from client storage (zero flicker on refresh)
@@ -357,10 +357,14 @@ export function QuickCalculator({ products }: { products: CalcProduct[] }) {
       : liveProducts;
   }, [q, liveProducts]);
 
-  const runningTotal = liveProducts.reduce(
-    (s, p) => s + Number(p.offerPrice) * (qty[p.id] ?? 0),
-    0,
-  );
+  const cartQtyMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const it of items) {
+      if (it.id) map[it.id] = it.quantity;
+      if (it.sku) map[it.sku] = it.quantity;
+    }
+    return map;
+  }, [items]);
 
   return (
     <div className="glass overflow-hidden rounded-[24px] sm:rounded-[34px] border border-red-500/20 bg-white shadow-xl w-full max-w-full min-w-0">
@@ -399,7 +403,22 @@ export function QuickCalculator({ products }: { products: CalcProduct[] }) {
 
           <div className="mt-2 flex items-center justify-between px-1 text-[11px] font-bold uppercase tracking-[1px] text-slate-500">
             <span>Showing {filtered.length} of {products.length} products</span>
-            {q && <button onClick={() => setQ("")} className="text-red-600 hover:underline">Clear Search</button>}
+            <div className="flex items-center gap-3">
+              {items.length > 0 && (
+                <button
+                  onClick={() => {
+                    if (window.confirm("Are you sure you want to clear your cart?")) {
+                      clear();
+                    }
+                  }}
+                  className="flex items-center gap-1 text-red-600 hover:text-red-700 font-bold hover:underline cursor-pointer"
+                  title="Clear all selected items"
+                >
+                  <Trash2 size={12} /> Clear Cart
+                </button>
+              )}
+              {q && <button onClick={() => setQ("")} className="text-red-600 hover:underline">Clear Search</button>}
+            </div>
           </div>
 
           <div className="mt-3 max-h-[500px] space-y-2.5 overflow-y-auto pr-1 hide-scrollbar">
@@ -409,7 +428,7 @@ export function QuickCalculator({ products }: { products: CalcProduct[] }) {
               </div>
             ) : (
               filtered.map((p) => {
-                const n = qty[p.id] ?? 0;
+                const n = cartQtyMap[p.id] ?? (p.sku ? cartQtyMap[p.sku] : 0) ?? 0;
                 return (
                   <div
                     key={p.id}
@@ -439,13 +458,12 @@ export function QuickCalculator({ products }: { products: CalcProduct[] }) {
                       {formatINR(Number(p.offerPrice))}
                     </p>
 
-                    {/* 3. Prominent Add / Stepper Button - 100% visible on mobile */}
+                    {/* 3. Prominent Add / Stepper Button - 100% visible on mobile, strictly 1-by-1 */}
                     <div className="shrink-0 ml-auto pl-1">
                       {n === 0 ? (
                         <button
                           aria-label={`Add ${p.name} to estimate`}
                           onClick={() => {
-                            setQty((s) => ({ ...s, [p.id]: 1 }));
                             add({ ...p, price: p.offerPrice } as any, 1);
                           }}
                           className="flex items-center justify-center gap-1 rounded-xl bg-red-600 hover:bg-red-700 active:scale-95 text-white px-3 sm:px-3.5 py-1.5 sm:py-2 text-[11px] sm:text-xs font-black uppercase tracking-wider shadow-sm transition shrink-0 cursor-pointer"
@@ -458,10 +476,10 @@ export function QuickCalculator({ products }: { products: CalcProduct[] }) {
                           <button
                             aria-label={`Decrease ${p.name}`}
                             onClick={() => {
-                              const next = Math.max(0, n - 1);
-                              setQty((s) => ({ ...s, [p.id]: next }));
-                              if (next > 0) {
-                                add({ ...p, price: p.offerPrice } as any, next);
+                              if (n <= 1) {
+                                remove(p.id);
+                              } else {
+                                setGlobalQty(p.id, n - 1);
                               }
                             }}
                             className="flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg bg-white text-red-600 font-bold border border-red-200 hover:bg-red-100 active:scale-90 transition cursor-pointer"
@@ -474,9 +492,7 @@ export function QuickCalculator({ products }: { products: CalcProduct[] }) {
                           <button
                             aria-label={`Increase ${p.name}`}
                             onClick={() => {
-                              const next = n + 1;
-                              setQty((s) => ({ ...s, [p.id]: next }));
-                              add({ ...p, price: p.offerPrice } as any, next);
+                              setGlobalQty(p.id, n + 1);
                             }}
                             className="flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg bg-red-600 text-white font-bold hover:bg-red-700 active:scale-90 transition cursor-pointer"
                           >
@@ -494,12 +510,27 @@ export function QuickCalculator({ products }: { products: CalcProduct[] }) {
 
         <div className="flex flex-col justify-between p-4 sm:p-7 bg-slate-50/60">
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-[3px] text-red-600">Live Calculation</p>
+            <div className="flex items-center justify-between">
+              <p className="text-[11px] font-bold uppercase tracking-[3px] text-red-600">Live Calculation</p>
+              {items.length > 0 && (
+                <button
+                  onClick={() => {
+                    if (window.confirm("Are you sure you want to clear your cart?")) {
+                      clear();
+                    }
+                  }}
+                  className="flex items-center gap-1 text-[11px] font-bold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 px-2 py-0.5 rounded-lg transition cursor-pointer"
+                  title="Clear all products from estimate"
+                >
+                  <Trash2 size={11} /> Clear Cart
+                </button>
+              )}
+            </div>
             <p className="mt-4 font-display text-[38px] font-bold text-slate-900">
-              {formatINR(runningTotal)}
+              {formatINR(totals.subtotal)}
             </p>
             <p className="text-[12.5px] text-slate-500 font-medium">
-              {Object.values(qty).reduce((a, b) => a + b, 0)} units selected here
+              {totals.units} units selected ({items.length} products)
             </p>
 
             <div className="mt-6 space-y-2 border-t border-slate-200 pt-5 text-[13px]">
@@ -518,7 +549,7 @@ export function QuickCalculator({ products }: { products: CalcProduct[] }) {
             </div>
           </div>
 
-          <div className="mt-7 pt-4">
+          <div className="mt-7 pt-4 space-y-2">
             <Link
               href="/estimate"
               className="btn-gold block w-full py-3.5 text-center text-sm uppercase"

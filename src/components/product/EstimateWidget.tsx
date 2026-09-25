@@ -26,7 +26,7 @@ type P = {
 
 export function EstimateWidget({ p }: { p: P }) {
   const { add, items } = useEstimate();
-  const [qty, setQty] = useState(p.moq);
+  const [qty, setQty] = useState(1);
   const [wish, setWish] = useState(false);
   const inEstimate = items.find((i) => i.id === p.id);
 
@@ -66,14 +66,14 @@ export function EstimateWidget({ p }: { p: P }) {
           <motion.button
             whileTap={{ scale: 0.85 }}
             aria-label="Decrease quantity"
-            onClick={() => setQty((q) => Math.max(p.moq, q - 1))}
+            onClick={() => setQty((q) => Math.max(1, q - 1))}
             className="flex h-9 w-9 items-center justify-center rounded-xl border border-red-500/30 bg-white text-red-600 shadow-sm transition hover:bg-red-600 hover:text-white"
           >
             <Minus size={14} />
           </motion.button>
           <input
             value={qty}
-            onChange={(e) => setQty(Math.max(p.moq, Math.min(9999, Number(e.target.value) || p.moq)))}
+            onChange={(e) => setQty(Math.max(1, Math.min(9999, Number(e.target.value) || 1)))}
             className="no-spin w-16 rounded-xl border border-red-500/20 bg-white py-2 text-center font-display text-lg font-bold text-slate-900 outline-none focus:border-red-600"
             inputMode="numeric"
           />
@@ -109,7 +109,7 @@ export function EstimateWidget({ p }: { p: P }) {
               imageUrl: p.imageUrl,
               mrp: p.mrp,
               price: p.price,
-              moq: p.moq,
+              moq: 1,
             },
             qty,
           )

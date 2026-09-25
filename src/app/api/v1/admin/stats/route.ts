@@ -1,6 +1,8 @@
 import { ok, requireAdmin } from "@/lib/api";
 import { getProducts } from "@/lib/data";
 import { getAllOrdersFromStore } from "@/lib/orders-store";
+import { getAllDealersFromStore } from "@/lib/dealers-store";
+import { getAllEnquiriesFromStore } from "@/lib/enquiries-store";
 
 export const dynamic = "force-dynamic";
 
@@ -115,8 +117,8 @@ export async function GET(req: Request) {
       pending: pendingCount,
       conversionRate,
       products: productsCount,
-      dealers: 0,
-      enquiries: 0,
+      dealers: getAllDealersFromStore().length,
+      enquiries: getAllEnquiriesFromStore().length,
       subscribers: 0,
     },
     byStatus,

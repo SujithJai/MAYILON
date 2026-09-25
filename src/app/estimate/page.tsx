@@ -348,8 +348,9 @@ export default function CheckoutPage() {
           <p className="mx-auto mt-3 max-w-md text-[14.5px] text-slate-600 font-medium">
             Add your favourite fireworks from our catalogue and proceed to instant online checkout.
           </p>
-          <Link href="/products" className="btn-gold mt-7 inline-block px-8 py-3.5 text-sm uppercase font-bold">
-            Browse Products & Order
+          <Link href="/products" className="btn-gold mt-7 inline-flex items-center gap-2 px-8 py-3.5 text-sm uppercase font-bold">
+            <Plus size={16} strokeWidth={2.5} />
+            <span>Add Products & Order</span>
           </Link>
         </div>
       ) : (
@@ -364,10 +365,16 @@ export default function CheckoutPage() {
                       <ShoppingBag size={18} className="text-red-600" /> Step 1: Review Order Items ({items.length})
                     </h2>
                     <button
-                      onClick={clear}
-                      className="text-[12px] font-bold text-slate-500 transition hover:text-red-600"
+                      onClick={() => {
+                        if (window.confirm("Are you sure you want to clear your cart? All items will be removed.")) {
+                          clear();
+                        }
+                      }}
+                      className="flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 hover:bg-red-600 hover:text-white px-3.5 py-1.5 text-xs font-bold text-red-600 transition shadow-xs cursor-pointer"
+                      title="Clear all products from estimate"
                     >
-                      Clear Cart
+                      <Trash2 size={13} />
+                      <span>Clear Cart</span>
                     </button>
                   </div>
 
@@ -473,12 +480,21 @@ export default function CheckoutPage() {
                   </AnimatePresence>
                 </div>
 
-                <button
-                  onClick={handleGoToAddressStep}
-                  className="btn-gold w-full py-4 text-sm font-bold uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg"
-                >
-                  Proceed to Delivery Address <ArrowRight size={16} />
-                </button>
+                <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                  <Link
+                    href="/products"
+                    className="flex flex-1 items-center justify-center gap-2 rounded-2xl border-2 border-red-600 bg-white hover:bg-red-50 text-red-600 py-3.5 sm:py-4 text-sm font-extrabold uppercase tracking-wider transition shadow-sm cursor-pointer"
+                  >
+                    <Plus size={16} strokeWidth={3} />
+                    <span>Add More Products</span>
+                  </Link>
+                  <button
+                    onClick={handleGoToAddressStep}
+                    className="btn-gold flex-[1.4] py-3.5 sm:py-4 text-sm font-bold uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg cursor-pointer"
+                  >
+                    Proceed to Delivery Address <ArrowRight size={16} />
+                  </button>
+                </div>
               </motion.div>
             )}
 
@@ -814,6 +830,14 @@ export default function CheckoutPage() {
                 {busy ? "Placing Order…" : "🔒 CONFIRM & PLACE ORDER NOW"}
               </button>
             )}
+
+            <Link
+              href="/products"
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-red-500/30 bg-white hover:bg-red-50 py-3 text-xs font-bold uppercase tracking-wider text-red-600 transition shadow-xs cursor-pointer"
+            >
+              <Plus size={14} strokeWidth={2.5} />
+              <span>Add More Products</span>
+            </Link>
 
             <p className="mt-4 flex items-center justify-center gap-1.5 text-center text-[11.5px] font-bold text-slate-500">
               <ShieldCheck size={14} className="text-red-600" /> PESO Licensed Direct Factory Dispatch

@@ -47,18 +47,21 @@ export function ProductCard({ p, index = 0 }: { p: CardProduct; index?: number }
 
   const handleAdd = (e?: React.MouseEvent) => {
     e?.stopPropagation();
-    add({
-      id: p.id,
-      sku: p.sku,
-      slug: p.slug,
-      name: p.name,
-      categoryName: p.categoryName,
-      packing: p.packing,
-      imageUrl: p.imageUrl,
-      mrp,
-      price,
-      moq: p.moq,
-    });
+    add(
+      {
+        id: p.id,
+        sku: p.sku,
+        slug: p.slug,
+        name: p.name,
+        categoryName: p.categoryName,
+        packing: p.packing,
+        imageUrl: p.imageUrl,
+        mrp,
+        price,
+        moq: 1,
+      },
+      1,
+    );
     setAdded(true);
     setTimeout(() => setAdded(false), 1600);
   };

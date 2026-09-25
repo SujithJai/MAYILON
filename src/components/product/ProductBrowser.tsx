@@ -339,18 +339,21 @@ export function ProductBrowser({
                   </div>
                   <button
                     onClick={() =>
-                      add({
-                        id: p.id,
-                        sku: p.sku,
-                        slug: p.slug,
-                        name: p.name,
-                        categoryName: p.categoryName,
-                        packing: p.packing,
-                        imageUrl: p.imageUrl,
-                        mrp: Number(p.mrp),
-                        price: Number(p.offerPrice),
-                        moq: p.moq,
-                      })
+                      add(
+                        {
+                          id: p.id,
+                          sku: p.sku,
+                          slug: p.slug,
+                          name: p.name,
+                          categoryName: p.categoryName,
+                          packing: p.packing,
+                          imageUrl: p.imageUrl,
+                          mrp: Number(p.mrp),
+                          price: Number(p.offerPrice),
+                          moq: 1,
+                        },
+                        1,
+                      )
                     }
                     className="btn-gold flex h-11 w-11 items-center justify-center rounded-2xl"
                     aria-label={`Add ${p.name} to estimate`}
