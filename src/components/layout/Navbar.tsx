@@ -15,11 +15,10 @@ import { SearchOverlay } from "./SearchOverlay";
 const LINKS = [
   { href: "/", label: "Home" },
   { href: "/products", label: "Products" },
-  { href: "/track", label: "My Orders" },
   { href: "/categories", label: "Categories" },
   { href: "/dealers", label: "Wholesale" },
-  { href: "/safety", label: "Safety" },
-  { href: "/about", label: "About" },
+  { href: "/safety", label: "Safety", hideOnCompact: true },
+  { href: "/about", label: "About", hideOnCompact: true },
   { href: "/contact", label: "Contact" },
 ];
 
@@ -109,41 +108,44 @@ export function Navbar() {
               : "border-b border-slate-200/80 bg-white/85 backdrop-blur-md"
           }`}
         >
-          <div className="shell flex h-[66px] sm:h-[74px] items-center justify-between gap-2 sm:gap-4">
-            <Link href="/" aria-label="Mayilon Crackers home" className="shrink min-w-0">
+          <div className="shell flex h-[66px] sm:h-[74px] items-center justify-between gap-1 sm:gap-3 xl:gap-4">
+            <Link href="/" aria-label="Mayilon Crackers home" className="shrink-0 flex items-center pr-2 xl:pr-4 z-10 whitespace-nowrap">
               <LogoLockup />
             </Link>
 
-            <nav className="hidden items-center gap-1 lg:flex">
+            <nav className="hidden items-center gap-0.5 xl:gap-1.5 lg:flex whitespace-nowrap min-w-0">
               {LINKS.map((l) => {
                 const active = l.href === "/" ? pathname === "/" : pathname?.startsWith(l.href);
                 return (
-                  <div key={l.href} className="flex items-center gap-1">
+                  <div
+                    key={l.href}
+                    className={`flex items-center gap-1 shrink-0 ${l.hideOnCompact ? "hidden xl:flex" : ""}`}
+                  >
                     <Link
                       href={l.href}
-                      className={`group relative rounded-xl px-3 py-2 text-[13px] font-bold tracking-[0.5px] transition-all duration-300 ${
+                      className={`group relative rounded-xl px-2 xl:px-3 py-1.5 text-[12.5px] xl:text-[13.5px] font-bold tracking-[0.3px] transition-all duration-300 whitespace-nowrap ${
                         active ? "text-red-600" : "text-slate-700 hover:text-red-600"
                       }`}
                     >
                       {l.label}
                       <span
-                        className={`absolute inset-x-3 -bottom-0.5 h-0.5 origin-left bg-red-600 transition-transform duration-300 ${
+                        className={`absolute inset-x-2 -bottom-0.5 h-0.5 origin-left bg-red-600 transition-transform duration-300 ${
                           active ? "scale-x-100" : "scale-x-0 group-hover:scale-x-100"
                         }`}
                       />
                     </Link>
 
-                    {/* Prominent Price List Download Option beside Products */}
+                    {/* Compact Price List Download Option beside Products */}
                     {l.href === "/products" && (
                       <button
                         onClick={() => setDownloadModalOpen(true)}
-                        className="group flex items-center gap-1.5 rounded-full border border-red-500/30 bg-red-50 px-2.5 py-1 text-[11px] font-bold text-red-600 shadow-sm transition hover:bg-red-600 hover:text-white"
+                        className="group flex items-center gap-1 rounded-full border border-red-500/30 bg-red-50 px-2 py-0.5 text-[10.5px] xl:text-[11px] font-bold text-red-600 shadow-xs transition hover:bg-red-600 hover:text-white shrink-0 whitespace-nowrap"
                         title="Download Price List (PDF, Excel, Word)"
                       >
-                        <Download size={12} className="text-red-600 group-hover:text-white" />
-                        <span>Price List</span>
-                        <span className="rounded bg-red-600 px-1 py-0.2 text-[8.5px] font-extrabold text-white group-hover:bg-white group-hover:text-red-600">
-                          PDF/XLS
+                        <Download size={11} className="text-red-600 group-hover:text-white" />
+                        <span className="hidden xl:inline">Price List</span>
+                        <span className="rounded bg-red-600 px-1 py-0.2 text-[8px] font-extrabold text-white group-hover:bg-white group-hover:text-red-600">
+                          PDF
                         </span>
                       </button>
                     )}
@@ -172,19 +174,19 @@ export function Navbar() {
               {/* MY ORDERS BUTTON IN HEADER */}
               <Link
                 href="/track"
-                className="hidden md:flex h-10 items-center gap-1.5 rounded-xl border border-red-500/25 bg-red-50/90 px-3.5 text-[12.5px] font-bold text-red-600 shadow-xs transition hover:bg-red-600 hover:text-white shrink-0"
+                className="hidden md:flex h-9 sm:h-10 items-center gap-1.5 rounded-xl border border-red-500/25 bg-red-50/90 px-2.5 sm:px-3 text-[12px] sm:text-[12.5px] font-bold text-red-600 shadow-xs transition hover:bg-red-600 hover:text-white shrink-0 whitespace-nowrap"
                 title="View your orders & live tracking"
               >
                 <Package size={15} />
-                <span>My Orders</span>
+                <span className="hidden xl:inline">My Orders</span>
               </Link>
 
               <Link
                 href="/estimate"
-                className="btn-gold relative flex h-9 sm:h-10 items-center gap-1.5 px-2.5 sm:px-4 text-[12px] sm:text-[12.5px] uppercase font-bold shrink-0"
+                className="btn-gold relative flex h-9 sm:h-10 items-center gap-1.5 px-2.5 sm:px-3.5 text-[11.5px] sm:text-[12px] uppercase font-bold shrink-0 whitespace-nowrap"
               >
                 <ShoppingBag size={15} />
-                <span className="hidden sm:inline">Cart / Order</span>
+                <span className="hidden sm:inline">Cart</span>
                 {count > 0 && (
                   <span className="flex h-4.5 min-w-[18px] sm:h-5 sm:min-w-[20px] items-center justify-center rounded-full bg-white px-1 sm:px-1.5 text-[10px] sm:text-[11px] font-bold text-red-600 shadow">
                     {count}
@@ -195,7 +197,7 @@ export function Navbar() {
               {/* LOGIN BUTTON RIGHT NEXT TO CART / ORDER */}
               <button
                 onClick={() => setLoginModalOpen(true)}
-                className="btn-ghost flex h-9 sm:h-10 items-center gap-1 px-2.5 sm:px-3.5 text-[12px] sm:text-[12.5px] font-bold uppercase shadow-sm shrink-0"
+                className="btn-ghost flex h-9 sm:h-10 items-center gap-1 px-2 sm:px-3 text-[11.5px] sm:text-[12px] font-bold uppercase shadow-sm shrink-0 whitespace-nowrap"
               >
                 <User size={15} className="text-red-600" />
                 <span className="hidden sm:inline">
