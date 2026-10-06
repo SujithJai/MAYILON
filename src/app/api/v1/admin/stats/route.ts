@@ -119,7 +119,7 @@ export async function GET(req: Request) {
       products: productsCount,
       dealers: getAllDealersFromStore().length,
       enquiries: getAllEnquiriesFromStore().length,
-      subscribers: 0,
+      subscribers: (await import("@/lib/subscribers-store")).getAllSubscribersFromStore().length,
     },
     byStatus,
     topProducts,
