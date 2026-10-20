@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import React, { useCallback, useEffect, useMemo, useState, Fragment } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState, Fragment } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Activity,
@@ -93,6 +93,7 @@ type EstimateRow = {
   paymentStatus?: string;
   paymentMethod?: string;
   createdAt: string;
+  transportName?: string;
   adminNote?: string | null;
   items?: EstimateItemRow[];
 };
@@ -404,6 +405,110 @@ export default function AdminPage() {
   const [assignModalCat, setAssignModalCat] = useState<{ id: string; name: string } | null>(null);
   const [assignProductIds, setAssignProductIds] = useState<string[]>([]);
   const [assignSearch, setAssignSearch] = useState("");
+
+  // Dashboard Live Orders State & Filters (Last 30 Days)
+  const [dashOrderFilter, setDashOrderFilter] = useState<"30_DAYS" | "TODAY" | "ALL" | "PENDING" | "PAID">("30_DAYS");
+  const [dashOrderSearch, setDashOrderSearch] = useState("");
+  const prevEstimateCountRef = useRef<number | null>(null);
+
+  const dashboardFilteredOrders = useMemo(() => {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    let list = estimates;
+
+    if (dashOrderFilter === "30_DAYS") {
+      list = list.filter((e) => new Date(e.createdAt) >= thirtyDaysAgo);
+    } else if (dashOrderFilter === "TODAY") {
+      list = list.filter((e) => new Date(e.createdAt) >= todayStart);
+    } else if (dashOrderFilter === "PENDING") {
+      list = list.filter((e) => e.status === "NEW" || e.paymentStatus !== "PAID");
+    } else if (dashOrderFilter === "PAID") {
+      list = list.filter((e) => e.paymentStatus === "PAID");
+    }
+
+    const q = dashOrderSearch.trim().toLowerCase();
+    if (!q) return list;
+
+    return list.filter((e) => {
+      const name = (e.customerName || "").toLowerCase();
+      const mob = (e.mobile || "").toLowerCase();
+      const ref = (e.estimateNumber || "").toLowerCase();
+      const city = (e.city || "").toLowerCase();
+      const st = (e.status || "").toLowerCase();
+      return name.includes(q) || mob.includes(q) || ref.includes(q) || city.includes(q) || st.includes(q);
+    });
+  }, [estimates, dashOrderFilter, dashOrderSearch]);
+
+  // Real-time audio chime & visual toast when new customer order arrives
+  useEffect(() => {
+    if (prevEstimateCountRef.current !== null && estimates.length > prevEstimateCountRef.current) {
+      const latest = estimates[0];
+      if (latest) {
+        setNotificationToast(`🔔 NEW ORDER RECEIVED! #${latest.estimateNumber} from ${latest.customerName} (${formatINR(Number(latest.grandTotal))})`);
+        setTimeout(() => setNotificationToast(null), 6000);
+        try {
+          const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+          osc.frequency.setValueAtTime(880, ctx.currentTime + 0.15);
+          gain.gain.setValueAtTime(0.3, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.5);
+        } catch {}
+      }
+    }
+    prevEstimateCountRef.current = estimates.length;
+  }, [estimates]);
+
+  // Master JSON Order Backup Download
+  const handleExportJsonBackup = () => {
+    const jsonStr = JSON.stringify(estimates, null, 2);
+    const blob = new Blob([jsonStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `Mayilon_Orders_Master_Backup_${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+    setNotificationToast("💾 Master Orders Backup JSON downloaded!");
+    setTimeout(() => setNotificationToast(null), 4000);
+  };
+
+  // Master JSON Order Backup Restore
+  const handleImportJsonBackup = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const text = e.target?.result as string;
+        const list = JSON.parse(text);
+        if (Array.isArray(list) && list.length > 0) {
+          const res = await fetch("/api/v1/estimates", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "sync_orders", orders: list }),
+          });
+          const json = await res.json();
+          if (json.success) {
+            setNotificationToast(`✅ Successfully restored ${list.length} orders to server & database!`);
+            setTimeout(() => setNotificationToast(null), 5000);
+            void load();
+          }
+        }
+      } catch (err) {
+        alert("Invalid JSON backup file. Please select a valid Mayilon Orders Backup file.");
+      }
+    };
+    reader.readAsText(file);
+  };
 
   // Festive Banner State
   const [bannerForm, setBannerForm] = useState({
@@ -858,12 +963,12 @@ export default function AdminPage() {
     }
 
     try {
-      const s = await fetch("/api/v1/admin/stats").then((r) => r.json()).catch(() => null);
+      const s = await fetch("/api/v1/admin/stats", { headers: { "x-admin-key": "mayilon-admin" } }).then((r) => r.json()).catch(() => null);
       if (s?.success) setStats(s.data);
     } catch {}
 
     try {
-      const e = await fetch("/api/v1/estimates").then((r) => r.json()).catch(() => null);
+      const e = await fetch("/api/v1/estimates", { headers: { "x-admin-key": "mayilon-admin" } }).then((r) => r.json()).catch(() => null);
       let list = e?.success && Array.isArray(e?.data?.items) ? e.data.items : [];
 
       try {
@@ -939,7 +1044,7 @@ export default function AdminPage() {
     // 5-second live polling for immediate arrival of incoming customer orders
     const pollInterval = setInterval(() => {
       void load();
-    }, 5000);
+    }, 3000);
     return () => clearInterval(pollInterval);
   }, [authed, load]);
 
@@ -1692,6 +1797,353 @@ export default function AdminPage() {
                     </div>
                   </Panel>
                 </div>
+
+                {/* 🚨 LIVE ORDERS & CUSTOMER DETAILS (LAST 30 DAYS) ON DASHBOARD */}
+                <Panel
+                  title={
+                    <div className="flex flex-wrap items-center justify-between gap-3 w-full">
+                      <div className="flex items-center gap-2.5">
+                        <span className="relative flex h-3 w-3">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                        </span>
+                        <Receipt className="text-red-600" size={20} />
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-base font-black text-slate-900">
+                              Live Customer Orders & Dispatch Feed (Last 30 Days)
+                            </span>
+                            <span className="rounded-full bg-red-100 text-red-700 font-extrabold text-[11px] px-2 py-0.5">
+                              {dashboardFilteredOrders.length}
+                            </span>
+                          </div>
+                          <p className="text-[11.5px] text-slate-500 font-medium">
+                            Real-time order feed synced with server & permanent zero-loss master storage
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          onClick={handleExportGoogleSheetsCSV}
+                          className="flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 text-xs font-bold shadow-sm transition-all cursor-pointer"
+                          title="Export all orders to Google Sheets CSV"
+                        >
+                          <span>📊 Export Sheets (CSV)</span>
+                        </button>
+                        <button
+                          onClick={handleCopyForGoogleSheets}
+                          className="flex items-center gap-1.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white px-3 py-1.5 text-xs font-bold shadow-sm transition-all cursor-pointer"
+                          title="Copy table to paste directly into Google Sheets"
+                        >
+                          <span>📋 Copy Sheets</span>
+                        </button>
+                        <button
+                          onClick={handleExportJsonBackup}
+                          className="flex items-center gap-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 text-xs font-bold shadow-sm transition-all cursor-pointer"
+                          title="Download master backup JSON file"
+                        >
+                          <span>💾 Master Backup</span>
+                        </button>
+                        <label className="flex items-center gap-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 px-3 py-1.5 text-xs font-bold shadow-xs transition-all cursor-pointer">
+                          <span>📤 Restore Backup</span>
+                          <input
+                            type="file"
+                            accept=".json"
+                            className="hidden"
+                            onChange={(ev) => {
+                              const f = ev.target.files?.[0];
+                              if (f) handleImportJsonBackup(f);
+                            }}
+                          />
+                        </label>
+                        <button
+                          onClick={() => {
+                            void load();
+                            setNotificationToast("🔄 Orders refreshed and synced with server!");
+                            setTimeout(() => setNotificationToast(null), 3000);
+                          }}
+                          className="flex items-center gap-1 rounded-xl bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 text-xs font-bold shadow-sm transition-all cursor-pointer"
+                          title="Instant re-sync with server"
+                        >
+                          <span>🔄 Sync Now</span>
+                        </button>
+                      </div>
+                    </div>
+                  }
+                >
+                  {/* Dashboard Order Search & Filter Bar */}
+                  <div className="mb-4 flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {[
+                        { id: "30_DAYS", label: "Last 30 Days" },
+                        { id: "TODAY", label: "Today" },
+                        { id: "ALL", label: `All (${estimates.length})` },
+                        { id: "PENDING", label: "Pending Review" },
+                        { id: "PAID", label: "Paid" },
+                      ].map((f) => (
+                        <button
+                          key={f.id}
+                          onClick={() => setDashOrderFilter(f.id as any)}
+                          className={`rounded-xl px-3 py-1 text-xs font-bold transition-all cursor-pointer ${
+                            dashOrderFilter === f.id
+                              ? "bg-red-600 text-white shadow-xs"
+                              : "bg-slate-100 hover:bg-slate-200 text-slate-700"
+                          }`}
+                        >
+                          {f.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="relative min-w-[240px]">
+                      <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input
+                        type="text"
+                        value={dashOrderSearch}
+                        onChange={(e) => setDashOrderSearch(e.target.value)}
+                        placeholder="Search name, phone, city, ref..."
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-8 pr-3 py-1.5 text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                      />
+                    </div>
+                  </div>
+
+                  {dashboardFilteredOrders.length === 0 ? (
+                    <Empty>
+                      No orders found matching this filter. Any new customer order will automatically appear here within seconds of checkout.
+                    </Empty>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full min-w-[1080px] text-[13.5px]">
+                        <thead>
+                          <tr className="border-b border-slate-200 text-left text-[11px] font-bold uppercase tracking-[2px] text-slate-500">
+                            <th className="py-3 px-3">Order Ref & Slip</th>
+                            <th className="py-3 px-3">Customer & Contact</th>
+                            <th className="py-3 px-3">Full Delivery Address</th>
+                            <th className="py-3 px-3 text-center">Ordered Products</th>
+                            <th className="py-3 px-3 text-right">Grand Total</th>
+                            <th className="py-3 px-3">Payment Status & Action</th>
+                            <th className="py-3 px-3">Fulfillment Workflow Buttons</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {dashboardFilteredOrders.map((e) => {
+                            const isExpanded = expandedOrderId === (e.id || e.estimateNumber);
+                            const itemsCount = e.items?.length || e.itemCount || 0;
+
+                            return (
+                              <Fragment key={e.id || e.estimateNumber}>
+                                <tr className={`border-b border-slate-100 hover:bg-slate-50/80 transition-colors ${isExpanded ? "bg-amber-50/40" : ""}`}>
+                                  {/* 1. Order Ref & Slip */}
+                                  <td className="py-4 px-3 font-bold">
+                                    <Link href={`/estimate/${e.estimateNumber}`} target="_blank" className="text-red-600 hover:underline flex items-center gap-1 font-mono text-sm">
+                                      {e.estimateNumber} <ExternalLink size={12} />
+                                    </Link>
+                                    <p className="text-[11px] font-medium text-slate-400 mt-0.5">
+                                      {new Date(e.createdAt).toLocaleDateString("en-IN", {
+                                        day: "2-digit",
+                                        month: "short",
+                                        year: "numeric",
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                      })}
+                                    </p>
+                                    <div className="mt-1.5 flex flex-col gap-1 items-start">
+                                      <span className="inline-block rounded-full bg-slate-100 border border-slate-200 px-2.5 py-0.5 text-[10px] font-bold text-slate-700 uppercase">
+                                        {e.status}
+                                      </span>
+                                      <Link
+                                        href={`/estimate/${e.estimateNumber}`}
+                                        target="_blank"
+                                        className="inline-flex items-center gap-1 rounded-lg bg-red-50 border border-red-200 text-red-700 hover:bg-red-100 px-2 py-1 text-[11px] font-extrabold shadow-2xs transition-all mt-0.5"
+                                      >
+                                        📄 Download Slip / PDF
+                                      </Link>
+                                    </div>
+                                  </td>
+
+                                  {/* 2. Customer & Contact */}
+                                  <td className="py-4 px-3">
+                                    <p className="font-bold text-slate-900">{e.customerName}</p>
+                                    <a
+                                      href={`https://wa.me/91${e.mobile}?text=${encodeURIComponent(`வணக்கம் ${e.customerName}, உங்கள் Mayilon Crackers ஆர்டர் (${e.estimateNumber}) தொடர்பான விபரம்:`)}`}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="text-[11.5px] font-bold text-emerald-600 hover:underline flex items-center gap-1 mt-0.5"
+                                    >
+                                      <MessageCircle size={13} /> +91 {e.mobile}
+                                    </a>
+                                    {e.email && (
+                                      <p className="text-[11px] text-slate-400 font-medium truncate max-w-[160px] mt-0.5">{e.email}</p>
+                                    )}
+                                  </td>
+
+                                  {/* 3. Delivery Address */}
+                                  <td className="py-4 px-3 text-slate-700 text-xs font-medium max-w-[220px]">
+                                    <p className="line-clamp-2">{e.address || "Direct Factory Address"}</p>
+                                    <p className="text-[11px] text-slate-400 font-bold mt-0.5">
+                                      {[e.city, e.district, e.state, e.pincode].filter(Boolean).join(", ")}
+                                    </p>
+                                    {e.transportName && (
+                                      <p className="text-[10px] text-blue-600 font-bold mt-0.5">
+                                        🚚 {e.transportName}
+                                      </p>
+                                    )}
+                                  </td>
+
+                                  {/* 4. Ordered Products */}
+                                  <td className="py-4 px-3 text-center">
+                                    <div className="flex flex-col items-center gap-1">
+                                      <span className="font-extrabold text-slate-900 text-sm">{e.itemCount} pcs</span>
+                                      <button
+                                        onClick={() => setExpandedOrderId(isExpanded ? null : (e.id || e.estimateNumber))}
+                                        className={`rounded-xl px-2.5 py-1 text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer border ${
+                                          isExpanded
+                                            ? "bg-amber-600 text-white border-amber-600 shadow-sm"
+                                            : "bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-300"
+                                        }`}
+                                      >
+                                        <span>{isExpanded ? "▲ Hide Products" : "▼ View Products"}</span>
+                                        {itemsCount > 0 && (
+                                          <span className={`rounded-full px-1.5 py-0.2 text-[9.5px] font-extrabold ${isExpanded ? "bg-white/30 text-white" : "bg-amber-200 text-amber-900"}`}>
+                                            {itemsCount}
+                                          </span>
+                                        )}
+                                      </button>
+                                    </div>
+                                  </td>
+
+                                  {/* 5. Grand Total */}
+                                  <td className="py-4 px-3 text-right font-bold text-red-600 font-display text-base">
+                                    {formatINR(Number(e.grandTotal))}
+                                  </td>
+
+                                  {/* 6. Payment Status */}
+                                  <td className="py-4 px-3 min-w-[170px]">
+                                    <div className="flex flex-col gap-1.5">
+                                      {e.paymentStatus === "PAID" ? (
+                                        <div className="flex items-center justify-center gap-1.5 rounded-xl bg-emerald-50 border border-emerald-300 px-3 py-2 text-[11px] font-extrabold text-emerald-800 shadow-xs">
+                                          <CheckCircle2 size={15} className="text-emerald-600 shrink-0" />
+                                          <span>PAID ({e.paymentMethod || "UPI"})</span>
+                                          <span className="rounded-full bg-emerald-200 text-emerald-800 px-1.5 py-0.5 text-[9px] uppercase tracking-wider font-mono">LOCKED</span>
+                                        </div>
+                                      ) : (
+                                        <>
+                                          <button
+                                            disabled={paymentUpdatingId === e.estimateNumber}
+                                            onClick={() => markPaymentReceived(e.estimateNumber, "UPI Verification")}
+                                            className="rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white px-3 py-1.5 text-[11px] font-bold shadow-sm flex items-center justify-center gap-1 transition-all disabled:opacity-50 cursor-pointer"
+                                          >
+                                            <CheckCircle2 size={13} /> {paymentUpdatingId === e.estimateNumber ? "Confirming..." : "Mark Payment Received"}
+                                          </button>
+                                          <button
+                                            disabled={paymentUpdatingId === e.estimateNumber}
+                                            onClick={() => setPaymentModalOrder(e)}
+                                            className="rounded-xl bg-amber-50 border border-amber-300 px-2 py-1 text-[10px] font-bold text-amber-800 hover:bg-amber-100 text-center disabled:opacity-50 cursor-pointer"
+                                          >
+                                            💳 Confirm Other Method
+                                          </button>
+                                        </>
+                                      )}
+                                    </div>
+                                  </td>
+
+                                  {/* 7. Fulfillment Workflow Buttons */}
+                                  <td className="py-4 px-3">
+                                    {(() => {
+                                      const isPackaged = e.status === "PACKAGE READY" || e.status === "SHIPPED" || e.status === "OUT FOR DELIVERY" || e.status === "DELIVERED";
+                                      const isShipped = e.status === "SHIPPED" || e.status === "OUT FOR DELIVERY" || e.status === "DELIVERED";
+                                      const isOutForDelivery = e.status === "OUT FOR DELIVERY" || e.status === "DELIVERED";
+                                      const isDelivered = e.status === "DELIVERED";
+
+                                      return (
+                                        <div className="flex flex-col gap-1.5 min-w-[165px]">
+                                          <button
+                                            disabled={isPackaged || updatingStatusId === e.estimateNumber}
+                                            onClick={() => updateStatus(e.estimateNumber, "PACKAGE READY", e.mobile)}
+                                            className={`rounded-xl px-3 py-1.5 text-[11px] font-bold shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                                              isPackaged
+                                                ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
+                                                : "bg-blue-600 hover:bg-blue-700 active:scale-98 text-white shadow-sm"
+                                            }`}
+                                          >
+                                            <Package size={13} /> {isPackaged ? "✓ Packaged" : "1. Mark Packaged"}
+                                          </button>
+                                          <button
+                                            disabled={!isPackaged || isShipped || updatingStatusId === e.estimateNumber}
+                                            onClick={() => updateStatus(e.estimateNumber, "SHIPPED", e.mobile)}
+                                            className={`rounded-xl px-3 py-1.5 text-[11px] font-bold shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                                              isShipped
+                                                ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
+                                                : !isPackaged
+                                                ? "bg-slate-100 text-slate-300 border border-slate-200 cursor-not-allowed"
+                                                : "bg-amber-600 hover:bg-amber-700 active:scale-98 text-white shadow-sm"
+                                            }`}
+                                          >
+                                            <Truck size={13} /> {isShipped ? "✓ Shipped" : "2. Mark Shipped"}
+                                          </button>
+                                          <button
+                                            disabled={!isShipped || isDelivered || updatingStatusId === e.estimateNumber}
+                                            onClick={() => updateStatus(e.estimateNumber, "DELIVERED", e.mobile)}
+                                            className={`rounded-xl px-3 py-1.5 text-[11px] font-bold shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                                              isDelivered
+                                                ? "bg-emerald-100 text-emerald-800 border border-emerald-300 cursor-not-allowed font-extrabold"
+                                                : !isShipped
+                                                ? "bg-slate-100 text-slate-300 border border-slate-200 cursor-not-allowed"
+                                                : "bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white shadow-sm"
+                                            }`}
+                                          >
+                                            <CheckCircle2 size={13} /> {isDelivered ? "✓ Delivered" : "3. Mark Delivered"}
+                                          </button>
+                                        </div>
+                                      );
+                                    })()}
+                                  </td>
+                                </tr>
+
+                                {/* Expanded itemized product drawer */}
+                                {isExpanded && (
+                                  <tr className="bg-amber-50/70 border-b border-amber-200">
+                                    <td colSpan={7} className="p-4">
+                                      <div className="rounded-2xl border border-amber-200 bg-white p-4 shadow-sm">
+                                        <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2">
+                                          <span className="text-xs font-bold uppercase tracking-wider text-amber-800 flex items-center gap-1">
+                                            📦 Itemized Product Breakdown — Order {e.estimateNumber}
+                                          </span>
+                                          <span className="text-xs font-extrabold text-slate-700">
+                                            {e.items?.length || 0} Products · {e.itemCount} Units Total
+                                          </span>
+                                        </div>
+                                        {(!e.items || e.items.length === 0) ? (
+                                          <p className="text-xs text-slate-500 py-2">No individual product lines attached to this order.</p>
+                                        ) : (
+                                          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                                            {e.items.map((it: any, itIdx: number) => (
+                                              <div key={itIdx} className="flex items-center justify-between p-2.5 rounded-xl border border-slate-100 bg-slate-50/80 text-xs">
+                                                <div className="truncate pr-2">
+                                                  <p className="font-bold text-slate-900 truncate">{it.name}</p>
+                                                  <p className="text-[11px] text-slate-500">{it.sku} · {it.packing}</p>
+                                                </div>
+                                                <div className="text-right shrink-0">
+                                                  <span className="font-extrabold text-red-600">x{it.quantity}</span>
+                                                  <p className="text-[11px] text-slate-600 font-bold">{formatINR(Number(it.lineTotal || (Number(it.price) * Number(it.quantity))))}</p>
+                                                </div>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </td>
+                                  </tr>
+                                )}
+                              </Fragment>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </Panel>
               </div>
             )}
 

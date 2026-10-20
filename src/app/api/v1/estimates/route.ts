@@ -1,4 +1,4 @@
-import { desc, ilike } from "drizzle-orm";
+import { desc, ilike, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { customers, estimateItems, estimates } from "@/db/schema";
@@ -20,10 +20,14 @@ export async function POST(req: Request) {
 
   if (body.action === "sync_orders" && Array.isArray(body.orders)) {
     bulkSyncOrders(body.orders);
-    revalidatePath("/admin");
-    revalidatePath("/track");
+    await persistOrdersToDb().catch(() => null);
+    try {
+      revalidatePath("/admin");
+      revalidatePath("/track");
+    } catch {}
     return ok({ total: getAllOrdersFromStore().length }, "Orders synced successfully", 200);
   }
+
   const rawCustomer = body.customer || {};
   const rawItems = Array.isArray(body.items) && body.items.length > 0 ? body.items : [];
   const paymentMethod = body.paymentMethod || "COD";
@@ -221,16 +225,55 @@ export async function GET(req: Request) {
         .from(estimates)
         .where(ilike(estimates.mobile, `%${cleanMobile}%`))
         .orderBy(desc(estimates.createdAt))
-        .limit(100);
+        .limit(200);
     } else {
       dbRows = await db
         .select()
         .from(estimates)
         .orderBy(desc(estimates.createdAt))
-        .limit(100);
+        .limit(500);
     }
   } catch (err) {
     console.warn("[GET /estimates] DB read fallback:", err);
+  }
+
+  // Fetch items for any dbRows missing items
+  if (dbRows.length > 0) {
+    try {
+      const estimateIds = dbRows.map((r) => r.id).filter(Boolean);
+      if (estimateIds.length > 0) {
+        const itemRows = await db
+          .select()
+          .from(estimateItems)
+          .where(inArray(estimateItems.estimateId, estimateIds));
+
+        const itemMap = new Map<string, any[]>();
+        for (const it of itemRows) {
+          const list = itemMap.get(it.estimateId) || [];
+          list.push({
+            id: it.productId || it.id,
+            sku: it.sku,
+            name: it.name,
+            categoryName: it.categoryName || "Fireworks",
+            packing: it.packing || "1 Box",
+            imageUrl: it.imageUrl || "/images/placeholder.jpg",
+            mrp: String(it.mrp),
+            price: String(it.price),
+            quantity: Number(it.quantity) || 1,
+            lineTotal: String(it.lineTotal),
+          });
+          itemMap.set(it.estimateId, list);
+        }
+
+        for (const r of dbRows) {
+          if (!r.items || !r.items.length) {
+            r.items = itemMap.get(r.id) || [];
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("[GET /estimates] estimate items join fallback:", err);
+    }
   }
 
   // Merge store orders and db rows, avoiding duplicates by estimateNumber
@@ -245,9 +288,44 @@ export async function GET(req: Request) {
       map.set(o.estimateNumber, o);
     }
   }
+
   for (const r of dbRows) {
-    if (!map.has(r.estimateNumber)) {
-      map.set(r.estimateNumber, r);
+    const existing = map.get(r.estimateNumber);
+    if (!existing) {
+      map.set(r.estimateNumber, {
+        id: r.id,
+        estimateNumber: r.estimateNumber,
+        customerName: r.customerName || "Valued Customer",
+        mobile: r.mobile,
+        email: r.email || "",
+        state: r.state,
+        district: r.district || "",
+        city: r.city || "",
+        pincode: r.pincode || "",
+        address: r.address || "",
+        gstNumber: r.gstNumber || undefined,
+        dealerName: r.dealerName || undefined,
+        transportName: r.transportName || "Direct Factory Transport",
+        deliveryLocation: r.deliveryLocation || "",
+        instructions: r.instructions || "",
+        paymentMethod: "COD",
+        paymentStatus: "UNPAID",
+        status: r.status || "NEW",
+        itemCount: Number(r.itemCount) || (r.items?.length ?? 0),
+        mrpTotal: String(r.mrpTotal || "0"),
+        subtotal: String(r.subtotal || "0"),
+        savings: String(r.savings || "0"),
+        discount: String(r.discount || "0"),
+        transportCharge: String(r.transportCharge || "0"),
+        gstAmount: String(r.gstAmount || "0"),
+        grandTotal: String(r.grandTotal || "0"),
+        couponCode: r.couponCode || undefined,
+        createdAt: new Date(r.createdAt).toISOString(),
+        items: r.items || [],
+      });
+    } else if ((!existing.items || !existing.items.length) && r.items?.length) {
+      existing.items = r.items;
+      map.set(r.estimateNumber, existing);
     }
   }
 
