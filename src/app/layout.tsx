@@ -33,6 +33,10 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE.url),
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/logo.png",
+  },
   title: {
     default: "Mayilon Crackers — Premium Sivakasi Fireworks | Factory Direct Price",
     template: "%s | Mayilon Crackers",

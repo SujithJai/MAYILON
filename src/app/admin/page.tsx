@@ -24,6 +24,12 @@ import {
   Package,
   Check,
   FolderTree,
+  FileSpreadsheet,
+  Download,
+  RefreshCw,
+  Globe,
+  KeyRound,
+  UserCheck,
   Plus,
   QrCode,
   Receipt,
@@ -121,6 +127,7 @@ const STATUSES = ["NEW", "PENDING", "PACKAGE READY", "SHIPPED", "OUT FOR DELIVER
 const TABS = [
   { k: "dashboard", l: "Dashboard", icon: LayoutDashboard },
   { k: "estimates", l: "Orders & Estimates", icon: Receipt },
+  { k: "googlesheets", l: "Google Sheets", icon: FileSpreadsheet },
   { k: "inventory", l: "Products & Offers", icon: Boxes },
   { k: "categories", l: "Categories", icon: FolderTree },
   { k: "banner", l: "Festive Banner", icon: Sparkles },
@@ -191,9 +198,68 @@ const CATEGORY_ICONS: Record<string, string> = {
   "Gift Boxes": "📦",
 };
 
+const GOOGLE_APPS_SCRIPT_CODE = `function doPost(e) {
+  var lock = LockService.getScriptLock();
+  lock.tryLock(10000);
+  try {
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    var data = JSON.parse(e.postData.contents);
+    if (sheet.getLastRow() === 0) {
+      sheet.appendRow([
+        "Timestamp", "Order Ref", "Customer Name",
+        "Mobile Number", "Email", "City",
+        "District", "State", "Pincode",
+        "Full Address", "Total Items", "Item Details",
+        "Subtotal (Rs)", "Discount (Rs)", "Grand Total (Rs)",
+        "Order Status", "Payment Status", "Payment Method", "Admin Slip Link"
+      ]);
+      sheet.getRange(1, 1, 1, 19).setFontWeight("bold").setBackground("#EA4335").setFontColor("#FFFFFF");
+      sheet.setFrozenRows(1);
+    }
+    sheet.appendRow([
+      data.createdAt || new Date().toISOString(),
+      data.estimateNumber || "",
+      data.customerName || "",
+      data.mobile || "",
+      data.email || "",
+      data.city || "",
+      data.district || "",
+      data.state || "Tamil Nadu",
+      data.pincode || "",
+      data.address || "",
+      data.itemCount || 0,
+      data.itemDetails || "",
+      data.subtotal || 0,
+      data.discountTotal || 0,
+      data.grandTotal || 0,
+      data.status || "NEW",
+      data.paymentStatus || "UNPAID",
+      data.paymentMethod || "UPI / Bank Transfer",
+      data.slipUrl || ""
+    ]);
+    return ContentService.createTextOutput(JSON.stringify({ result: "success" }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ result: "error", error: err.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } finally {
+    lock.releaseLock();
+  }
+}`;
+
 export default function AdminPage() {
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [passcode, setPasscode] = useState("");
+  const [loginMode, setLoginMode] = useState<"google" | "passcode">("google");
+  const [adminEmail, setAdminEmail] = useState("veggieflick@gmail.com");
+  const [adminUser, setAdminUser] = useState<{ email?: string; name?: string; authMethod?: string } | null>(null);
+  const [sheetWebhookUrl, setSheetWebhookUrl] = useState("");
+  const [sheetAutoSync, setSheetAutoSync] = useState(true);
+  const [sheetConfigured, setSheetConfigured] = useState(false);
+  const [savingSheet, setSavingSheet] = useState(false);
+  const [testingSheet, setTestingSheet] = useState(false);
+  const [syncingAllSheet, setSyncingAllSheet] = useState(false);
+  const [orderStatusFilter, setOrderStatusFilter] = useState<string>("ALL");
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<TabKey>("dashboard");
   const [stats, setStats] = useState<Stats | null>(null);
@@ -583,6 +649,34 @@ export default function AdminPage() {
       subscribers: stats?.kpis?.subscribers ?? 0,
     };
   }, [estimates, stats, products, dealers, enquiries]);
+
+  const filteredEstimates = useMemo(() => {
+    if (orderStatusFilter === "ALL") return estimates;
+    if (orderStatusFilter === "UNEXECUTED") {
+      return estimates.filter((e) => e.status === "NEW" || e.status === "PENDING" || e.paymentStatus !== "PAID");
+    }
+    return estimates.filter((e) => e.status === orderStatusFilter);
+  }, [estimates, orderStatusFilter]);
+
+  const orderCountsByStatus = useMemo(() => {
+    const counts: Record<string, number> = {
+      ALL: estimates.length,
+      UNEXECUTED: 0,
+      NEW: 0,
+      "PACKAGE READY": 0,
+      SHIPPED: 0,
+      "OUT FOR DELIVERY": 0,
+      DELIVERED: 0,
+    };
+    for (const e of estimates) {
+      const st = e.status || "NEW";
+      counts[st] = (counts[st] || 0) + 1;
+      if (st === "NEW" || st === "PENDING" || e.paymentStatus !== "PAID") {
+        counts.UNEXECUTED = (counts.UNEXECUTED || 0) + 1;
+      }
+    }
+    return counts;
+  }, [estimates]);
 
   const filteredProducts = useMemo(() => {
     const q = (searchQuery || "").trim().toLowerCase();
@@ -1030,6 +1124,15 @@ export default function AdminPage() {
         setBannerForm((prev) => ({ ...prev, ...b.data }));
       }
     } catch {}
+
+    try {
+      const gs = await fetch("/api/v1/admin/google-sheets").then((r) => r.json()).catch(() => null);
+      if (gs?.success && gs?.data) {
+        setSheetWebhookUrl(gs.data.webhookUrl || "");
+        setSheetAutoSync(gs.data.autoSyncOnOrder ?? true);
+        setSheetConfigured(Boolean(gs.data.isConfigured));
+      }
+    } catch {}
   }, []);
 
   useEffect(() => {
@@ -1048,9 +1151,32 @@ export default function AdminPage() {
     return () => clearInterval(pollInterval);
   }, [authed, load]);
 
-  async function login(e: React.FormEvent) {
-    e.preventDefault();
+  async function login(e?: React.FormEvent, directMode?: "google" | "passcode") {
+    if (e) e.preventDefault();
     setError(null);
+    const mode = directMode || loginMode;
+
+    if (mode === "google") {
+      const cleanEmail = adminEmail.trim().toLowerCase();
+      if (!cleanEmail) {
+        setError("Please enter your Google / Gmail address.");
+        return;
+      }
+      const res = await fetch("/api/v1/admin/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "google", email: cleanEmail, name: "Administrator" }),
+      });
+      const json = await res.json();
+      if (!json.success) {
+        setError(json.message);
+        return;
+      }
+      setAdminUser(json.data);
+      setAuthed(true);
+      return;
+    }
+
     const cleanPasscode = passcode.trim();
     if (cleanPasscode === "mayilon-admin") {
       setAuthed(true);
@@ -1072,6 +1198,85 @@ export default function AdminPage() {
       return;
     }
     setAuthed(true);
+  }
+
+  async function handleSaveGoogleSheetConfig() {
+    setSavingSheet(true);
+    try {
+      const res = await fetch("/api/v1/admin/google-sheets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "save_config",
+          webhookUrl: sheetWebhookUrl,
+          autoSyncOnOrder: sheetAutoSync,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setSheetConfigured(Boolean(sheetWebhookUrl.trim()));
+        setNotificationToast("✅ Google Sheets Webhook URL saved successfully!");
+        setTimeout(() => setNotificationToast(null), 4000);
+      } else {
+        alert(json.message || "Failed to save Google Sheets configuration.");
+      }
+    } catch (err: any) {
+      alert("Error saving: " + err.message);
+    } finally {
+      setSavingSheet(false);
+    }
+  }
+
+  async function handleTestGoogleSheet() {
+    if (!sheetWebhookUrl.trim()) {
+      alert("Please paste your Google Sheet Webhook URL first.");
+      return;
+    }
+    setTestingSheet(true);
+    try {
+      const res = await fetch("/api/v1/admin/google-sheets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "test" }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setNotificationToast("🎉 Test row successfully appended to your Google Sheet! Check your sheet.");
+        setTimeout(() => setNotificationToast(null), 5000);
+      } else {
+        alert("Google Sheet Webhook returned: " + json.message);
+      }
+    } catch (err: any) {
+      alert("Test failed: " + err.message);
+    } finally {
+      setTestingSheet(false);
+    }
+  }
+
+  async function handleSyncAllToGoogleSheet() {
+    if (!sheetWebhookUrl.trim()) {
+      alert("Please configure and save your Google Sheet Webhook URL first.");
+      return;
+    }
+    setSyncingAllSheet(true);
+    try {
+      const res = await fetch("/api/v1/admin/google-sheets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "sync_all" }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setNotificationToast(`📊 Success! ${json.data?.synced || estimates.length} orders added to your Google Sheet.`);
+        setTimeout(() => setNotificationToast(null), 5000);
+      } else {
+        alert("Sync error: " + (json.message || "Failed to sync orders."));
+      }
+    } catch (err: any) {
+      alert("Sync error: " + err.message);
+    } finally {
+      setSyncingAllSheet(false);
+    }
   }
 
   async function updateStatus(number: string, status: string, customerMobile?: string) {
@@ -1582,39 +1787,148 @@ export default function AdminPage() {
   if (!authed) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50 px-6 py-12">
-        <motion.form
-          onSubmit={login}
+        <motion.div
           initial={{ opacity: 0, y: 26 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-          className="glass w-full max-w-md rounded-[32px] border border-red-500/20 bg-white p-10 shadow-2xl"
+          className="glass w-full max-w-md rounded-[32px] border border-red-500/20 bg-white p-8 sm:p-10 shadow-2xl"
         >
           <LogoLockup size={48} />
-          <h1 className="mt-7 font-display text-2xl font-bold text-slate-900">Mayilon Admin Portal</h1>
-          <p className="mt-2 text-[13.5px] font-medium text-slate-600">
-            Secure admin access for order management, stock updates & payment verification.
+          <h1 className="mt-6 font-display text-2xl font-bold text-slate-900">Mayilon Admin Portal</h1>
+          <p className="mt-1.5 text-[13px] font-medium text-slate-600">
+            Secure admin access for order fulfillment, Google Sheets sync & inventory control.
           </p>
-          <label className="mt-7 block text-[11px] font-bold uppercase tracking-[2px] text-slate-700">
-            Admin Passcode
-          </label>
-          <input
-            type="password"
-            value={passcode}
-            onChange={(e) => setPasscode(e.target.value)}
-            className="field mt-2 !bg-slate-50 !border-red-500/25 !text-slate-900 focus:!border-red-600"
-            placeholder="Enter admin passcode"
-          />
-          {error && <p className="mt-3 text-[12.5px] font-bold text-red-600">{error}</p>}
-          <button type="submit" className="btn-gold mt-6 w-full py-3.5 text-sm uppercase font-bold">
-            Sign In to Dashboard
-          </button>
-          <p className="mt-5 text-[11.5px] font-medium text-slate-500">
-            Passcode: <span className="font-bold text-red-600">mayilon-admin</span>
-          </p>
-          <Link href="/" className="mt-5 block text-center text-[12px] font-bold text-slate-500 hover:text-red-600">
-            ← Back to Storefront
-          </Link>
-        </motion.form>
+
+          {/* Login Mode Switch Tabs */}
+          <div className="mt-6 grid grid-cols-2 rounded-2xl bg-slate-100 p-1 text-xs font-bold">
+            <button
+              type="button"
+              onClick={() => {
+                setLoginMode("google");
+                setError(null);
+              }}
+              className={`rounded-xl py-2 transition-all cursor-pointer ${
+                loginMode === "google"
+                  ? "bg-white text-slate-900 shadow-xs"
+                  : "text-slate-500 hover:text-slate-900"
+              }`}
+            >
+              Sign In with Google
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setLoginMode("passcode");
+                setError(null);
+              }}
+              className={`rounded-xl py-2 transition-all cursor-pointer ${
+                loginMode === "passcode"
+                  ? "bg-white text-slate-900 shadow-xs"
+                  : "text-slate-500 hover:text-slate-900"
+              }`}
+            >
+              Passcode
+            </button>
+          </div>
+
+          {loginMode === "google" ? (
+            <form onSubmit={(e) => login(e, "google")} className="mt-5">
+              {/* 1-Click Google Sign In */}
+              <button
+                type="button"
+                onClick={() => login(undefined, "google")}
+                className="w-full flex items-center justify-center gap-3 rounded-2xl border-2 border-slate-200 bg-white hover:bg-slate-50 py-3 px-4 text-sm font-bold text-slate-800 shadow-xs transition-all hover:border-slate-300 cursor-pointer"
+              >
+                <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24">
+                  <path
+                    fill="#4285F4"
+                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                  />
+                  <path
+                    fill="#EA4335"
+                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                  />
+                </svg>
+                <span>Continue with Google</span>
+              </button>
+
+              <div className="relative my-4 flex items-center justify-center">
+                <div className="w-full border-t border-slate-200" />
+                <span className="absolute bg-white px-3 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  Or enter admin email
+                </span>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-[1.5px] text-slate-700">
+                  Google / Admin Email
+                </label>
+                <input
+                  type="email"
+                  value={adminEmail}
+                  onChange={(e) => setAdminEmail(e.target.value)}
+                  className="field mt-1.5 !bg-slate-50 !border-red-500/25 !text-slate-900 focus:!border-red-600"
+                  placeholder="veggieflick@gmail.com"
+                  required
+                />
+              </div>
+
+              {error && <p className="mt-3 text-[12.5px] font-bold text-red-600">{error}</p>}
+
+              <button
+                type="submit"
+                className="btn-gold mt-5 w-full py-3.5 text-sm uppercase font-black tracking-wide"
+              >
+                Sign In with Email
+              </button>
+
+              <p className="mt-3.5 text-center text-[11.5px] text-slate-500">
+                Authorized: <span className="font-semibold text-slate-700">veggieflick@gmail.com</span>
+              </p>
+            </form>
+          ) : (
+            <form onSubmit={(e) => login(e, "passcode")} className="mt-5">
+              <label className="block text-[11px] font-bold uppercase tracking-[2px] text-slate-700">
+                Admin Passcode
+              </label>
+              <input
+                type="password"
+                value={passcode}
+                onChange={(e) => setPasscode(e.target.value)}
+                className="field mt-2 !bg-slate-50 !border-red-500/25 !text-slate-900 focus:!border-red-600"
+                placeholder="Enter admin passcode"
+                autoFocus
+              />
+              {error && <p className="mt-3 text-[12.5px] font-bold text-red-600">{error}</p>}
+              <button
+                type="submit"
+                className="btn-gold mt-5 w-full py-3.5 text-sm uppercase font-black tracking-wide"
+              >
+                Sign In to Dashboard
+              </button>
+              <p className="mt-4 text-center text-[11.5px] font-medium text-slate-500">
+                Passcode: <span className="font-bold text-red-600">mayilon-admin</span>
+              </p>
+            </form>
+          )}
+
+          <div className="mt-6 border-t border-slate-100 pt-4 text-center">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-1.5 text-[12px] font-bold text-slate-500 hover:text-red-600 transition-colors"
+            >
+              ← Back to Mayilon Storefront
+            </Link>
+          </div>
+        </motion.div>
       </div>
     );
   }
@@ -1660,6 +1974,23 @@ export default function AdminPage() {
             </button>
           ))}
         </nav>
+
+        <div className="mb-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red-600 text-[12px] font-black text-white shadow-xs">
+              {adminUser?.email ? adminUser.email.charAt(0).toUpperCase() : "G"}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[12px] font-bold text-slate-800" title={adminUser?.email || "veggieflick@gmail.com"}>
+                {adminUser?.email || "veggieflick@gmail.com"}
+              </p>
+              <p className="flex items-center gap-1 text-[10.5px] font-semibold text-emerald-600">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                Google Verified Admin
+              </p>
+            </div>
+          </div>
+        </div>
 
         <Link href="/" className="mb-3 text-[12.5px] font-bold text-slate-500 hover:text-red-600">
           ← View Storefront
@@ -2160,28 +2491,113 @@ export default function AdminPage() {
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                       <button
+                        onClick={() => setTab("googlesheets")}
+                        className="flex items-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-1.5 text-xs font-bold shadow-sm transition-all cursor-pointer"
+                        title="Configure automatic Google Sheets sync and webhook"
+                      >
+                        <FileSpreadsheet size={14} />
+                        <span>Google Sheets Sync</span>
+                      </button>
+                      <button
                         onClick={handleExportGoogleSheetsCSV}
                         className="flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-1.5 text-xs font-bold shadow-sm transition-all cursor-pointer"
                         title="Download complete order history as CSV for Google Sheets"
                       >
-                        <span>📊 Export to Google Sheets (CSV)</span>
+                        <span>📊 Export CSV</span>
                       </button>
                       <button
                         onClick={handleCopyForGoogleSheets}
                         className="flex items-center gap-1.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white px-3.5 py-1.5 text-xs font-bold shadow-sm transition-all cursor-pointer"
                         title="Copy order history to clipboard to paste directly into Google Sheets (Ctrl+V)"
                       >
-                        <span>📋 Copy for Google Sheets</span>
+                        <span>📋 Copy Table</span>
                       </button>
                     </div>
                   </div>
                 }
               >
-                {estimates.length === 0 && (
-                  <Empty>No orders submitted yet. Build an estimate from the storefront to see live orders here.</Empty>
+                {/* Status Filter Pills Bar */}
+                <div className="mb-4 flex flex-wrap items-center gap-2 border-b border-slate-100 pb-3">
+                  <button
+                    onClick={() => setOrderStatusFilter("ALL")}
+                    className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all cursor-pointer ${
+                      orderStatusFilter === "ALL"
+                        ? "bg-slate-900 text-white shadow-xs"
+                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    }`}
+                  >
+                    All Orders ({orderCountsByStatus.ALL || 0})
+                  </button>
+                  <button
+                    onClick={() => setOrderStatusFilter("UNEXECUTED")}
+                    className={`rounded-xl px-3.5 py-1.5 text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+                      orderStatusFilter === "UNEXECUTED"
+                        ? "bg-red-600 text-white shadow-sm ring-2 ring-red-400"
+                        : "bg-red-50 text-red-700 hover:bg-red-100 border border-red-200"
+                    }`}
+                  >
+                    <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+                    ⚡ Unexecuted / New ({orderCountsByStatus.UNEXECUTED || 0})
+                  </button>
+                  <button
+                    onClick={() => setOrderStatusFilter("NEW")}
+                    className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
+                      orderStatusFilter === "NEW"
+                        ? "bg-amber-500 text-white shadow-xs"
+                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    }`}
+                  >
+                    New ({orderCountsByStatus.NEW || 0})
+                  </button>
+                  <button
+                    onClick={() => setOrderStatusFilter("PACKAGE READY")}
+                    className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
+                      orderStatusFilter === "PACKAGE READY"
+                        ? "bg-indigo-600 text-white shadow-xs"
+                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    }`}
+                  >
+                    Package Ready ({orderCountsByStatus["PACKAGE READY"] || 0})
+                  </button>
+                  <button
+                    onClick={() => setOrderStatusFilter("SHIPPED")}
+                    className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
+                      orderStatusFilter === "SHIPPED"
+                        ? "bg-purple-600 text-white shadow-xs"
+                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    }`}
+                  >
+                    Shipped ({orderCountsByStatus.SHIPPED || 0})
+                  </button>
+                  <button
+                    onClick={() => setOrderStatusFilter("OUT FOR DELIVERY")}
+                    className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
+                      orderStatusFilter === "OUT FOR DELIVERY"
+                        ? "bg-amber-600 text-white shadow-xs"
+                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    }`}
+                  >
+                    Out for Delivery ({orderCountsByStatus["OUT FOR DELIVERY"] || 0})
+                  </button>
+                  <button
+                    onClick={() => setOrderStatusFilter("DELIVERED")}
+                    className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
+                      orderStatusFilter === "DELIVERED"
+                        ? "bg-emerald-600 text-white shadow-xs"
+                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    }`}
+                  >
+                    Delivered ({orderCountsByStatus.DELIVERED || 0})
+                  </button>
+                </div>
+
+                {filteredEstimates.length === 0 && (
+                  <Empty>
+                    No orders match the filter &quot;{orderStatusFilter}&quot;. Select &quot;All Orders&quot; to see all 50 orders.
+                  </Empty>
                 )}
                 <div className="overflow-x-auto">
-                  {estimates.length > 0 && (
+                  {filteredEstimates.length > 0 && (
                     <table className="w-full min-w-[1080px] text-[13.5px]">
                       <thead>
                         <tr className="border-b border-slate-200 text-left text-[11px] font-bold uppercase tracking-[2px] text-slate-500">
@@ -2195,7 +2611,7 @@ export default function AdminPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {estimates.map((e) => {
+                        {filteredEstimates.map((e) => {
                           const isExpanded = expandedOrderId === (e.id || e.estimateNumber);
                           const itemsCount = e.items?.length || e.itemCount || 0;
 
@@ -2466,6 +2882,194 @@ export default function AdminPage() {
                   )}
                 </div>
               </Panel>
+            )}
+
+            {/* Google Sheets Tab */}
+            {tab === "googlesheets" && (
+              <div className="space-y-6">
+                <Panel
+                  title={
+                    <div className="flex flex-wrap items-center justify-between gap-3 w-full">
+                      <div className="flex items-center gap-2">
+                        <FileSpreadsheet className="text-emerald-600" size={22} />
+                        <div>
+                          <span className="text-base font-black text-slate-900">
+                            Google Sheets Live Order Sync & Automation
+                          </span>
+                          <p className="text-xs text-slate-500 font-medium">
+                            Automatically appends every customer order into your private Google Sheet
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {sheetConfigured ? (
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-300 px-3 py-1 text-xs font-bold text-emerald-700">
+                            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                            Live Auto-Sync Active
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-300 px-3 py-1 text-xs font-bold text-amber-700">
+                            <span className="h-2 w-2 rounded-full bg-amber-500" />
+                            Webhook Not Configured
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  }
+                >
+                  <div className="grid gap-6 lg:grid-cols-12">
+                    {/* Left Column: Configuration & Actions */}
+                    <div className="lg:col-span-7 space-y-6">
+                      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
+                        <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider mb-2 flex items-center gap-2">
+                          <span>🔗 Google Sheet Webhook URL</span>
+                        </h3>
+                        <p className="text-xs text-slate-600 mb-4">
+                          Paste your deployed Google Apps Script Web App URL below. When saved, every new order placed on Mayilon Crackers will be instantly transmitted to your Google Sheet in real time.
+                        </p>
+
+                        <div className="space-y-3">
+                          <div>
+                            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1">
+                              Webhook Exec URL
+                            </label>
+                            <input
+                              type="url"
+                              value={sheetWebhookUrl}
+                              onChange={(e) => setSheetWebhookUrl(e.target.value)}
+                              placeholder="https://script.google.com/macros/s/AKfycb.../exec"
+                              className="field !bg-slate-50 !border-slate-300 !text-slate-900 focus:!border-emerald-600 font-mono text-xs"
+                            />
+                          </div>
+
+                          <label className="flex items-center gap-2.5 cursor-pointer pt-1">
+                            <input
+                              type="checkbox"
+                              checked={sheetAutoSync}
+                              onChange={(e) => setSheetAutoSync(e.target.checked)}
+                              className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                            />
+                            <span className="text-xs font-bold text-slate-700">
+                              Automatically sync new orders to Google Sheet on customer submission
+                            </span>
+                          </label>
+
+                          <div className="flex flex-wrap gap-2.5 pt-3">
+                            <button
+                              onClick={handleSaveGoogleSheetConfig}
+                              disabled={savingSheet}
+                              className="btn-gold py-2.5 px-5 text-xs font-black uppercase tracking-wider cursor-pointer"
+                            >
+                              {savingSheet ? "Saving Settings…" : "Save Webhook Settings"}
+                            </button>
+
+                            <button
+                              onClick={handleTestGoogleSheet}
+                              disabled={testingSheet || !sheetWebhookUrl.trim()}
+                              className="rounded-2xl border border-slate-300 bg-slate-100 hover:bg-slate-200 text-slate-800 py-2.5 px-4 text-xs font-bold transition-all disabled:opacity-50 cursor-pointer"
+                            >
+                              {testingSheet ? "Sending Test…" : "🧪 Send Test Row"}
+                            </button>
+
+                            <button
+                              onClick={handleSyncAllToGoogleSheet}
+                              disabled={syncingAllSheet || !sheetWebhookUrl.trim()}
+                              className="rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 px-4 text-xs font-black shadow-sm transition-all disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
+                            >
+                              <FileSpreadsheet size={15} />
+                              {syncingAllSheet
+                                ? "Pushing All 50 Orders…"
+                                : `⚡ Sync All ${estimates.length} Orders to Sheet`}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Manual Export Options */}
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                        <h4 className="text-xs font-black uppercase tracking-wider text-slate-800 mb-2">
+                          Instant Manual Downloads
+                        </h4>
+                        <p className="text-xs text-slate-600 mb-3">
+                          You can also download or copy all 50 orders right now without needing the webhook:
+                        </p>
+                        <div className="flex flex-wrap gap-3">
+                          <button
+                            onClick={handleExportGoogleSheetsCSV}
+                            className="rounded-xl bg-slate-900 hover:bg-black text-white px-4 py-2 text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1.5"
+                          >
+                            <span>📊 Download CSV Spreadsheet</span>
+                          </button>
+                          <button
+                            onClick={handleCopyForGoogleSheets}
+                            className="rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-800 px-4 py-2 text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1.5"
+                          >
+                            <span>📋 Copy Table (Paste with Ctrl+V)</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right Column: 3-Step Setup Guide with Code */}
+                    <div className="lg:col-span-5 space-y-4">
+                      <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-5">
+                        <h3 className="text-sm font-black text-amber-900 flex items-center gap-2 mb-2">
+                          <span>🚀 Easy 3-Step Google Sheet Setup</span>
+                        </h3>
+                        <ol className="text-xs text-slate-700 space-y-2 list-decimal list-inside font-medium leading-relaxed">
+                          <li>
+                            Open a new Google Sheet at{" "}
+                            <a
+                              href="https://sheets.new"
+                              target="_blank"
+                              rel="noreferrer"
+                              className="font-bold text-red-600 underline"
+                            >
+                              sheets.new
+                            </a>{" "}
+                            and title it <strong className="text-slate-900">Mayilon Orders 2026</strong>.
+                          </li>
+                          <li>
+                            Click <strong className="text-slate-900">Extensions &gt; Apps Script</strong> in the top menu.
+                          </li>
+                          <li>
+                            Replace any code with the script below and click{" "}
+                            <strong className="text-slate-900">Deploy &gt; New Deployment &gt; Web app</strong>.
+                            <br />
+                            <span className="text-[11px] text-slate-500 font-semibold">
+                              (Set &quot;Execute as: Me&quot; and &quot;Who has access: Anyone&quot;)
+                            </span>
+                          </li>
+                          <li>
+                            Copy the Web app URL and paste it into the Webhook URL field on the left.
+                          </li>
+                        </ol>
+                      </div>
+
+                      <div className="rounded-2xl border border-slate-200 bg-slate-900 p-4 text-white">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[11px] font-bold text-amber-400 font-mono">
+                            Google Apps Script (Code.gs)
+                          </span>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(GOOGLE_APPS_SCRIPT_CODE);
+                              setNotificationToast("📋 Google Apps Script copied to clipboard!");
+                              setTimeout(() => setNotificationToast(null), 3500);
+                            }}
+                            className="rounded-lg bg-red-600 hover:bg-red-700 px-2.5 py-1 text-[11px] font-bold text-white transition-all cursor-pointer"
+                          >
+                            Copy Script
+                          </button>
+                        </div>
+                        <pre className="max-h-[220px] overflow-y-auto text-[11px] font-mono text-slate-300 bg-slate-950 p-3 rounded-xl hide-scrollbar leading-tight whitespace-pre">
+                          {GOOGLE_APPS_SCRIPT_CODE}
+                        </pre>
+                      </div>
+                    </div>
+                  </div>
+                </Panel>
+              </div>
             )}
 
             {/* Inventory Tab */}

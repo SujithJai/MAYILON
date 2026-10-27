@@ -112,6 +112,14 @@ export async function POST(req: Request) {
   saveOrderToStore(newOrder);
   await persistOrdersToDb().catch(() => null);
 
+  // 1b. Real-time automatic push to Google Sheets (Non-blocking)
+  try {
+    const { appendOrderToGoogleSheet } = await import("@/lib/google-sheets");
+    void appendOrderToGoogleSheet(newOrder);
+  } catch (sheetErr) {
+    console.warn("[POST /estimates] Google Sheets auto-sync note:", sheetErr);
+  }
+
   // 2. Background DB Insert (Best Effort Sync)
   try {
     const [customerRow] = await db
