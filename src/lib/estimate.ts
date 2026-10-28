@@ -20,11 +20,7 @@ export const STATES = [
   "Other",
 ];
 
-export const COUPONS: Record<string, { label: string; percent: number; minValue: number }> = {
-  DEEPAVALI10: { label: "Festival Offer — 10% off", percent: 10, minValue: 5000 },
-  DEALER15: { label: "Dealer Advantage — 15% off", percent: 15, minValue: 25000 },
-  BULK20: { label: "Bulk Buyer — 20% off", percent: 20, minValue: 75000 },
-};
+export const COUPONS: Record<string, { label: string; percent: number; minValue: number }> = {};
 
 export function minOrderFor(state?: string | null): number {
   if (!state) return MIN_ORDER_RULES.DEFAULT;
@@ -83,12 +79,8 @@ export function calculateTotals(
   const subtotal = round(safeLines.reduce((s, l) => s + l.price * l.quantity, 0));
   const units = safeLines.reduce((s, l) => s + l.quantity, 0);
 
-  const code = opts.couponCode?.trim().toUpperCase() ?? "";
-  const coupon = COUPONS[code];
-  const couponValid = Boolean(coupon && subtotal >= coupon.minValue);
-  const discount = couponValid && coupon ? round((subtotal * coupon.percent) / 100) : 0;
-
-  const netAfterDiscount = Math.max(0, subtotal - discount);
+  const discount = 0;
+  const netAfterDiscount = subtotal;
   const transportCharge = 0;
   const gstAmount = 0;
   const grandTotal = round(netAfterDiscount);
@@ -98,12 +90,12 @@ export function calculateTotals(
     units,
     mrpTotal,
     subtotal,
-    savings: round(mrpTotal - subtotal + discount),
-    discount,
+    savings: round(mrpTotal - subtotal),
+    discount: 0,
     transportCharge,
     gstAmount,
     grandTotal,
-    couponLabel: couponValid && coupon ? coupon.label : null,
+    couponLabel: null,
   };
 }
 

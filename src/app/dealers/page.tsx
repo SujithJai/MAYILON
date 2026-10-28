@@ -8,7 +8,7 @@ import { SectionHeading } from "@/components/ui/SectionHeading";
 import { STATES } from "@/lib/estimate";
 
 const TIERS = [
-  { name: "Retail", margin: "Standard price list", credit: "Prepaid", moq: "₹3,000", perks: ["Full catalogue access", "Festival coupons", "Estimate PDF"] },
+  { name: "Retail", margin: "Standard price list", credit: "Prepaid", moq: "₹3,000", perks: ["Full catalogue access", "Direct factory prices", "Estimate PDF"] },
   { name: "Wholesale", margin: "8% below list", credit: "7-day credit", moq: "₹50,000", perks: ["Priority packing slot", "Free transport", "Dedicated executive"] },
   { name: "Distributor", margin: "14% below list", credit: "21-day credit", moq: "₹2,50,000", perks: ["Territory allocation", "Bulk Excel ordering", "Co-branded catalogue"] },
   { name: "Super Dealer", margin: "20% below list", credit: "45-day credit + wallet", moq: "₹10,00,000", perks: ["Season stock reservation", "Custom pack manufacturing", "Quarterly rebate"] },

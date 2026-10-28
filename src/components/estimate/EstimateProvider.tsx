@@ -84,7 +84,7 @@ export function EstimateProvider({ children }: { children: ReactNode }) {
           const sanitized = parsed.items.map(sanitizeLine);
           setItems(sanitized);
         }
-        if (parsed.coupon) setCoupon(parsed.coupon);
+        setCoupon("");
         if (parsed.state) setState(parsed.state);
       }
     } catch (err) {
@@ -98,11 +98,11 @@ export function EstimateProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!ready) return;
     try {
-      localStorage.setItem(LS_KEY, JSON.stringify({ items, coupon, state }));
+      localStorage.setItem(LS_KEY, JSON.stringify({ items, coupon: "", state }));
     } catch (err) {
       console.warn("[EstimateProvider] Error saving cart to localStorage:", err);
     }
-  }, [items, coupon, state, ready]);
+  }, [items, state, ready]);
 
   // 3. Auto hide toast
   useEffect(() => {

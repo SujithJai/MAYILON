@@ -19,7 +19,7 @@ import {
   Truck,
 } from "lucide-react";
 import { useEstimate } from "@/components/estimate/EstimateProvider";
-import { COUPONS, extractNumber, formatINR, minOrderFor, STATES } from "@/lib/estimate";
+import { extractNumber, formatINR, minOrderFor, STATES } from "@/lib/estimate";
 
 type Customer = {
   name: string;
@@ -36,7 +36,7 @@ type Customer = {
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { items, setQty, remove, clear, totals, coupon, setCoupon, state, setState } = useEstimate();
+  const { items, setQty, remove, clear, totals, state, setState } = useEstimate();
 
   const [checkoutStep, setCheckoutStep] = useState<1 | 2 | 3>(1);
 
@@ -90,15 +90,6 @@ export default function CheckoutPage() {
   const minimum = minOrderFor(customer.state);
   const shortfall = Math.max(0, minimum - totals.subtotal);
   const meetsMinimum = totals.subtotal >= minimum && items.length > 0;
-
-  const couponHint = useMemo(() => {
-    const c = COUPONS[coupon.trim().toUpperCase()];
-    if (!coupon.trim()) return null;
-    if (!c) return { ok: false, msg: "Invalid coupon code" };
-    if (totals.subtotal < c.minValue)
-      return { ok: false, msg: `${c.label} — needs ${formatINR(c.minValue)} subtotal` };
-    return { ok: true, msg: c.label };
-  }, [coupon, totals.subtotal]);
 
   function upd<K extends keyof Customer>(k: K, v: string) {
     setCustomer((c) => ({ ...c, [k]: v }));
@@ -237,7 +228,7 @@ export default function CheckoutPage() {
       transportCharge: totals.transportCharge.toFixed(2),
       gstAmount: totals.gstAmount.toFixed(2),
       grandTotal: totals.grandTotal.toFixed(2),
-      couponCode: coupon || undefined,
+      couponCode: undefined,
       createdAt: new Date().toISOString(),
       items: preparedItems,
     };
@@ -268,7 +259,6 @@ export default function CheckoutPage() {
           customer: finalCustomer,
           transport,
           paymentMethod,
-          couponCode: coupon,
           items: preparedItems,
         }),
       });
@@ -746,9 +736,6 @@ export default function CheckoutPage() {
               <Row label={`Items (${totals.itemCount} products / ${totals.units} units)`} value={formatINR(totals.mrpTotal)} muted />
               <Row label="Factory offer price" value={formatINR(totals.subtotal)} />
               <Row label="You save" value={`- ${formatINR(totals.savings)}`} accent="verde" />
-              {totals.discount > 0 && (
-                <Row label={`Coupon (${coupon.toUpperCase()})`} value={`- ${formatINR(totals.discount)}`} accent="verde" />
-              )}
             </div>
 
             <div className="mt-5 flex items-end justify-between border-t border-slate-200 pt-5">
@@ -756,35 +743,6 @@ export default function CheckoutPage() {
               <span className="font-display text-[30px] font-bold text-red-600">
                 {formatINR(totals.grandTotal)}
               </span>
-            </div>
-
-            {/* Coupon */}
-            <div className="mt-6">
-              <label className="text-[11px] font-bold uppercase tracking-[2px] text-slate-700">
-                Coupon Code
-              </label>
-              <input
-                className="field mt-2 uppercase !bg-slate-50 !border-red-500/25 !text-slate-900 focus:!border-red-600 font-bold"
-                value={coupon}
-                onChange={(e) => setCoupon(e.target.value.toUpperCase())}
-                placeholder="DEEPAVALI10"
-              />
-              {couponHint && (
-                <p className={`mt-2 text-xs font-bold ${couponHint.ok ? "text-emerald-600" : "text-amber-600"}`}>
-                  {couponHint.msg}
-                </p>
-              )}
-              <div className="mt-3 flex flex-wrap gap-2">
-                {Object.keys(COUPONS).map((code) => (
-                  <button
-                    key={code}
-                    onClick={() => setCoupon(code)}
-                    className="rounded-xl border border-red-500/20 bg-red-50 px-3 py-1 text-[11px] font-bold text-red-600 hover:bg-red-100"
-                  >
-                    {code}
-                  </button>
-                ))}
-              </div>
             </div>
 
             {/* Minimum Order Warning */}
