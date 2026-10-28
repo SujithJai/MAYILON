@@ -16,7 +16,7 @@ const loginSchema = z.object({
 const ALLOWED_ADMIN_EMAILS = [
   "admin@mayiloncrackers.com",
   "sales@mayiloncrackers.com",
-  "veggieflick@gmail.com",
+  "kesavansubburaj16@gmail.com",
   "sujithdon000@gmail.com",
   "rajeswariproperties@gmail.com",
   ...(process.env.ADMIN_ALLOWED_EMAILS ? process.env.ADMIN_ALLOWED_EMAILS.split(",").map((e) => e.trim().toLowerCase()) : []),
@@ -39,8 +39,7 @@ export async function POST(req: Request) {
     // Check if email is in allowed list, or if in developer/setup mode (allows owner email)
     const isAllowed =
       ALLOWED_ADMIN_EMAILS.includes(cleanEmail) ||
-      cleanEmail.endsWith("@mayiloncrackers.com") ||
-      !process.env.ADMIN_ALLOWED_EMAILS; // If not strictly restricted via env, allow verified owner email
+      cleanEmail.endsWith("@mayiloncrackers.com");
 
     if (isAllowed) {
       const res = NextResponse.json({

@@ -251,7 +251,7 @@ export default function AdminPage() {
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [passcode, setPasscode] = useState("");
   const [loginMode, setLoginMode] = useState<"google" | "passcode">("google");
-  const [adminEmail, setAdminEmail] = useState("veggieflick@gmail.com");
+  const [adminEmail, setAdminEmail] = useState("kesavansubburaj16@gmail.com");
   const [adminUser, setAdminUser] = useState<{ email?: string; name?: string; authMethod?: string } | null>(null);
   const [sheetWebhookUrl, setSheetWebhookUrl] = useState("");
   const [sheetAutoSync, setSheetAutoSync] = useState(true);
@@ -1876,7 +1876,7 @@ export default function AdminPage() {
                   value={adminEmail}
                   onChange={(e) => setAdminEmail(e.target.value)}
                   className="field mt-1.5 !bg-slate-50 !border-red-500/25 !text-slate-900 focus:!border-red-600"
-                  placeholder="veggieflick@gmail.com"
+                  placeholder="kesavansubburaj16@gmail.com"
                   required
                 />
               </div>
@@ -1891,7 +1891,7 @@ export default function AdminPage() {
               </button>
 
               <p className="mt-3.5 text-center text-[11.5px] text-slate-500">
-                Authorized: <span className="font-semibold text-slate-700">veggieflick@gmail.com</span>
+                Authorized: <span className="font-semibold text-slate-700">kesavansubburaj16@gmail.com</span>
               </p>
             </form>
           ) : (
@@ -1981,8 +1981,8 @@ export default function AdminPage() {
               {adminUser?.email ? adminUser.email.charAt(0).toUpperCase() : "G"}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[12px] font-bold text-slate-800" title={adminUser?.email || "veggieflick@gmail.com"}>
-                {adminUser?.email || "veggieflick@gmail.com"}
+              <p className="truncate text-[12px] font-bold text-slate-800" title={adminUser?.email || "kesavansubburaj16@gmail.com"}>
+                {adminUser?.email || "kesavansubburaj16@gmail.com"}
               </p>
               <p className="flex items-center gap-1 text-[10.5px] font-semibold text-emerald-600">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
